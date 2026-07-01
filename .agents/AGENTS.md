@@ -23,4 +23,15 @@ O Relatório Final da Sprint deve conter as seguintes informações obrigatória
 * Próxima Sprint planejada
 
 ## Regra de Conclusão de Sprint
-CRITICAL: Nenhuma Sprint será considerada concluída enquanto o ambiente de homologação não estiver atualizado e disponível para validação pelo usuário.
+CRITICAL: O Antigravity nunca poderá informar que uma Sprint foi concluída sem apresentar evidências da publicação.
+
+A entrega obrigatória passa a ser:
+1. Código implementado.
+2. Changelog atualizado.
+3. Commit realizado.
+4. Deploy concluído.
+5. URL da Vercel funcionando.
+6. Checklist de homologação.
+
+Só depois disso o status muda para Concluída.
+Nenhuma Sprint será considerada concluída enquanto o ambiente de homologação não estiver atualizado e disponível para validação pelo usuário.
