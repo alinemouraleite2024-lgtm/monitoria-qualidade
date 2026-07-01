@@ -25,6 +25,8 @@ export const INITIAL_USERS = [
   { id: 'usr-3', email: 'carlos@mouraleite.com.br', name: 'Carlos Ramos', role: 'MONITOR', active: true },
   { id: 'usr-4', email: 'joao@mouraleite.com.br', name: 'João Silva', role: 'GESTOR', active: true },
   { id: 'usr-5', email: 'admin@mouraleite.com.br', name: 'Admin Moura Leite', role: 'ADMIN', active: true },
+  { id: 'usr-6', email: 'marcos@mouraleite.com.br', name: 'Marcos Diretor', role: 'ADMIN', active: true },
+  { id: 'usr-7', email: 'fernanda@mouraleite.com.br', name: 'Fernanda Liderança', role: 'GESTOR', active: true }
 ];
 
 export const INITIAL_COLLABORATORS = [
@@ -132,10 +134,9 @@ export const INITIAL_MONITORINGS = [
     strengths: 'Rapidez na consulta à base de conhecimento e empatia.',
     opportunities: 'Reduzir levemente o uso de gerúndios.',
     scores: [
-      { criterionId: 'crit-1', score: 9.5, lowScoreReason: '' },
-      { criterionId: 'crit-2', score: 9.0, lowScoreReason: '' },
-      { criterionId: 'crit-4', score: 9.5, lowScoreReason: '' },
-      { criterionId: 'crit-5', score: 9.0, lowScoreReason: '' },
+      { criterionId: 'crit-2', score: 8.5, lowScoreReason: '' },
+      { criterionId: 'crit-4', score: 7.0, lowScoreReason: 'Problemas de sistema afetaram o tempo, mas não justificam a falta de contorno da situação.' },
+      { criterionId: 'crit-5', score: 6.0, lowScoreReason: 'SLA não cumprido.' },
     ]
   },
   {
@@ -194,6 +195,46 @@ export const INITIAL_MONITORINGS = [
       { criterionId: 'crit-5', score: 7.5, lowScoreReason: '' },
     ]
   },
+  {
+    id: 'mon-5',
+    monitorId: 'usr-1',
+    colaboradorId: 'ag-1',
+    canal: 'E-mail',
+    status: 'Rascunho',
+    tipo: 'Fluxo',
+    date: '2026-06-15T09:00:00Z',
+    finalScore: 0,
+    comments: '',
+    strengths: '',
+    opportunities: '',
+    scores: []
+  },
+  {
+    id: 'mon-6',
+    monitorId: 'usr-2',
+    colaboradorId: 'ag-3',
+    canal: 'Chat',
+    status: 'Pendente',
+    tipo: 'Regular',
+    date: '2026-06-10T11:00:00Z',
+    finalScore: 8.5,
+    comments: 'Bom atendimento no geral, pendente validação do gestor sobre o procedimento técnico.',
+    strengths: 'Comunicação muito clara.',
+    opportunities: 'Melhorar a didática.',
+    scores: [
+      { criterionId: 'crit-1', score: 10, lowScoreReason: '' },
+      { criterionId: 'crit-3', score: 7.0, lowScoreReason: 'Faltou explicar o passo a passo de forma simplificada.' }
+    ]
+  }
+];
+
+// Pesquisas de Satisfação (Mock)
+export const INITIAL_SURVEYS = [
+  { id: 'surv-1', type: 'NPS', date: '2026-06-01', score: 10, comment: 'Excelente atendimento, rápido e prático.', collaboratorId: 'ag-1' },
+  { id: 'surv-2', type: 'NPS', date: '2026-06-02', score: 6, comment: 'Demorou muito para me transferir.', collaboratorId: 'ag-2' },
+  { id: 'surv-3', type: 'CSAT', date: '2026-06-03', score: 5, comment: 'Problema resolvido na hora.', collaboratorId: 'ag-1' },
+  { id: 'surv-4', type: 'SAT', date: '2026-06-05', score: 4, comment: 'Atendente muito educada, mas o sistema estava fora do ar.', collaboratorId: 'ag-4' },
+  { id: 'surv-5', type: 'NPS', date: '2026-06-10', score: 9, comment: '', collaboratorId: 'ag-3' }
 ];
 
 export const INITIAL_HOLIDAYS = [
@@ -326,4 +367,7 @@ export const INITIAL_AGENDA = [
   { id: 'ag-evt-8', title: 'Revisão contestação Allanis', date: '2026-06-05', time: '14:00', assignedTo: 'usr-1', type: 'demanda', done: false },
   { id: 'ag-evt-9', title: 'Treinamento Taxas', date: '2026-06-06', time: '10:00', assignedTo: 'usr-1', type: 'treinamento', done: false },
   { id: 'ag-evt-10', title: 'Monitoria — Nathalia (WA)', date: '2026-06-06', time: '14:00', assignedTo: 'usr-1', type: 'monitoria', done: false },
+  { id: 'ag-evt-11', title: 'Comitê de Qualidade', date: '2026-06-10', time: '09:00', assignedTo: 'usr-5', type: 'reuniao', done: false },
+  { id: 'ag-evt-12', title: 'Calibração de Fluxo', date: '2026-06-12', time: '15:00', assignedTo: 'usr-2', type: 'reuniao', done: false },
+  { id: 'ag-evt-13', title: 'Feedback Allanis (Trimestral)', date: '2026-06-15', time: '10:30', assignedTo: 'usr-1', type: 'feedback', done: false },
 ];
