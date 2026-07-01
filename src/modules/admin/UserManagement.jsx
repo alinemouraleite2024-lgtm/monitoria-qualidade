@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Users, Plus, Edit, ShieldAlert, Lock, Unlock, Search, CheckCircle2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Edit, Lock, Unlock, Search } from 'lucide-react';
 import { getSystemUsers, saveSystemUsers, logAuthEvent, USER_STATUS, ROLES } from '../../auth';
 
 export const UserManagement = ({ currentUser }) => {

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Shield, Key, Mail, Building, Briefcase, Clock, CheckCircle2 } from 'lucide-react';
+import { useState } from 'react';
+import { Shield, Key, Mail, Building, Briefcase, Clock } from 'lucide-react';
 import { logAuthEvent } from '../../auth';
 
 export const MyProfile = ({ currentUser }) => {

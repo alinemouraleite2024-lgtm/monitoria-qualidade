@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Filter, ShieldAlert } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, Filter } from 'lucide-react';
 import { getAuditLogs } from '../../auth';
 
 export const AuditLogs = () => {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Shield, Check, X, ShieldAlert } from 'lucide-react';
 import { ROLES, PERMISSIONS } from '../../auth';
 

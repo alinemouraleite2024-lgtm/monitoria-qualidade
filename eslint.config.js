@@ -18,9 +18,7 @@ export default defineConfig([
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
     rules: {
-      'no-unused-vars': 'off',
       'react-hooks/set-state-in-effect': 'off',
-      'no-undef': 'off',
       'react-hooks/exhaustive-deps': 'off',
       'react-hooks/purity': 'off',
       'no-useless-assignment': 'off'
