@@ -55,13 +55,20 @@ import {
   INITIAL_MONITORINGS,
   INITIAL_HOLIDAYS,
   INITIAL_DEMANDS,
-  INITIAL_ANNOUNCEMENTS,
+  INITIAL_ANNOUNCEMENTS
+} from './mockData';
+
 import {
   HOMOLOG_USERS,
   logAuthEvent,
   hasPermission,
   ROLES
 } from './auth';
+
+import { UserManagement } from './modules/admin/UserManagement';
+import { RolesManagement } from './modules/admin/RolesManagement';
+import { AuditLogs } from './modules/admin/AuditLogs';
+import { MyProfile } from './modules/profile/MyProfile';
 
 // Simulated current system date
 const SYSTEM_TODAY = '2026-06-05';
@@ -71,6 +78,8 @@ const tabPermissionMap = {
   dashboard: 'VIEW_DASHBOARD',
   planning: 'VIEW_PLANNING',
   demands: 'VIEW_CENTRAL_DEMANDS',
+  roles: 'VIEW_ROLES',
+  'audit-logs': 'VIEW_AUDIT_LOGS',
   monitorings: 'VIEW_MONITORINGS',
   surveys: 'VIEW_SURVEYS',
   reports: 'VIEW_REPORTS',
@@ -439,7 +448,8 @@ function App() {
       { id: 'reports', label: 'Relatórios', icon: FileText },
       { id: 'allocations', label: 'Colaboradores', icon: Users },
       { id: 'users', label: 'Usuários', icon: UserCheck },
-      { id: 'admin', label: 'Administração', icon: Settings },
+      { id: 'roles', label: 'Perfis e Permissões', icon: ShieldAlert },
+      { id: 'audit-logs', label: 'Logs de Acesso', icon: Activity },
       { id: 'settings', label: 'Configurações', icon: Settings2 },
       { id: 'integrations', label: 'Integrações', icon: Plug },
       { id: 'history', label: 'Histórico de Versões', icon: Clock },
@@ -1422,10 +1432,22 @@ function App() {
                   return <AccessDeniedScreen />;
                 }
                 
-                const isUnimplemented = ['users', 'settings', 'history', 'op-calendar', 'demands', 'my-demands', 'surveys', 'integrations', 'calendar'].includes(activeTab);
+                const isUnimplemented = ['settings', 'history', 'op-calendar', 'demands', 'my-demands', 'surveys', 'integrations', 'calendar'].includes(activeTab);
                 
                 if (activeTab === 'profile') {
-                  return <MyProfileScreen currentUser={currentUser} />;
+                  return <MyProfile currentUser={currentUser} />;
+                }
+                
+                if (activeTab === 'users') {
+                  return <UserManagement currentUser={currentUser} />;
+                }
+                
+                if (activeTab === 'roles') {
+                  return <RolesManagement />;
+                }
+                
+                if (activeTab === 'audit-logs') {
+                  return <AuditLogs />;
                 }
                 
                 if (isUnimplemented) {
