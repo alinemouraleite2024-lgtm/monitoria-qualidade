@@ -1,16 +1,27 @@
-# React + Vite
+# Monitoria
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Projeto de monitoria desenvolvido com React e Vite.
 
-Currently, two official plugins are available:
+## Estrutura do Projeto
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+A documentação principal do projeto pode ser encontrada na pasta `/docs`.
 
-## React Compiler
+- `/docs`: Documentação geral, guias e arquitetura.
+- `/src`: Código-fonte da aplicação.
+- `CHANGELOG.md`: Histórico de alterações seguindo o padrão Keep a Changelog.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Scripts
 
-## Expanding the ESLint configuration
+- `npm run dev`: Inicia o servidor de desenvolvimento.
+- `npm run build`: Gera o build de produção.
+- `npm run lint`: Executa a verificação de linting.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Versionamento
+
+Este projeto adota o [Semantic Versioning (SemVer)](https://semver.org/).
+O fluxo de trabalho inclui:
+1. Desenvolvimento (Sprint)
+2. Commit das alterações
+3. Push para o repositório
+4. Deploy automático (Vercel)
+5. Validação no ambiente de homologação
