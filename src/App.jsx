@@ -420,7 +420,18 @@ function App() {
   });
   const [criteria, setCriteria] = useState(() => {
     const saved = localStorage.getItem('pm2_criteria');
-    return saved ? JSON.parse(saved) : INITIAL_CRITERIA;
+    if (saved) {
+      let parsed = JSON.parse(saved);
+      if (parsed.some(c => c.minExpectedScore <= 10 && c.minExpectedScore > 0)) {
+        parsed = parsed.map(c => ({
+          ...c,
+          minExpectedScore: c.minExpectedScore <= 10 ? c.minExpectedScore * 10 : c.minExpectedScore
+        }));
+        localStorage.setItem('pm2_criteria', JSON.stringify(parsed));
+      }
+      return parsed;
+    }
+    return INITIAL_CRITERIA;
   });
   const [allocations, setAllocations] = useState(() => {
     const saved = localStorage.getItem('pm2_allocations');
@@ -440,7 +451,23 @@ function App() {
   });
   const [monitorings, setMonitorings] = useState(() => {
     const saved = localStorage.getItem('pm2_monitorings');
-    return saved ? JSON.parse(saved) : INITIAL_MONITORINGS;
+    if (saved) {
+      let parsed = JSON.parse(saved);
+      if (parsed.some(m => m.finalScore <= 10 && m.finalScore > 0)) {
+        parsed = parsed.map(m => {
+          if (m.finalScore <= 10) {
+            m.finalScore = m.finalScore * 10;
+            if (m.scores) {
+              m.scores = m.scores.map(s => ({ ...s, score: s.score <= 10 ? s.score * 10 : s.score }));
+            }
+          }
+          return m;
+        });
+        localStorage.setItem('pm2_monitorings', JSON.stringify(parsed));
+      }
+      return parsed;
+    }
+    return INITIAL_MONITORINGS;
   });
 // eslint-disable-next-line no-unused-vars
   const [holidays, setHolidays] = useState(() => {

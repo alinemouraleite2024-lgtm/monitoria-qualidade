@@ -303,7 +303,7 @@ export const MonitoringForm = ({
                       className="form-control"
                       value={formData.tempo}
                       onChange={(e) => setFormData({...formData, tempo: e.target.value})}
-                      step="1"
+                      step="0.01"
                     />
                   </div>
                 </div>
@@ -390,7 +390,7 @@ export const MonitoringForm = ({
                           style={{ fontSize: '1.1rem', fontWeight: '700' }}
                           min="0"
                           max="100"
-                          step="1"
+                          step="0.01"
                           value={scores[c.id]?.score ?? 100}
                           onChange={(e) => setScores({...scores, [c.id]: { ...scores[c.id], score: parseFloat(e.target.value) || 0 }})}
                         />
