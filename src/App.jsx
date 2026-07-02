@@ -545,6 +545,13 @@ const HomeMonitor = ({ currentUser, agenda, demands, monitorings, collaborators,
 
 function App() {
   // Brand Configuration & System settings
+  useEffect(() => {
+    if (!localStorage.getItem('pm2_data_v4')) {
+      localStorage.clear();
+      localStorage.setItem('pm2_data_v4', 'true');
+      window.location.reload();
+    }
+  }, []);
   const [brand, setBrand] = useState(() => {
     const saved = localStorage.getItem('pm2_brand');
     return saved ? JSON.parse(saved) : DEFAULT_BRAND_CONFIG;
@@ -569,18 +576,7 @@ function App() {
   });
   const [criteria, setCriteria] = useState(() => {
     const saved = localStorage.getItem('pm2_criteria');
-    if (saved) {
-      let parsed = JSON.parse(saved);
-      if (parsed.some(c => c.minExpectedScore <= 10 && c.minExpectedScore > 0)) {
-        parsed = parsed.map(c => ({
-          ...c,
-          minExpectedScore: c.minExpectedScore <= 10 ? c.minExpectedScore * 10 : c.minExpectedScore
-        }));
-        localStorage.setItem('pm2_criteria', JSON.stringify(parsed));
-      }
-      return parsed;
-    }
-    return INITIAL_CRITERIA;
+    return saved ? JSON.parse(saved) : INITIAL_CRITERIA;
   });
   const [allocations, setAllocations] = useState(() => {
     const saved = localStorage.getItem('pm2_allocations');

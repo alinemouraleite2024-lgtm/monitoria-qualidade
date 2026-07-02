@@ -20,21 +20,17 @@ export const INITIAL_AREAS = [
 ];
 
 export const INITIAL_USERS = [
-  { id: 'usr-1', email: 'aline@mouraleite.com.br', name: 'Aline Oliveira Verneck', role: 'GESTOR', active: true },
-  { id: 'usr-2', email: 'lucelia@mouraleite.com.br', name: 'Lucélia Mendes', role: 'MONITOR', active: true },
-  { id: 'usr-3', email: 'carlos@mouraleite.com.br', name: 'Carlos Ramos', role: 'MONITOR', active: true },
-  { id: 'usr-4', email: 'joao@mouraleite.com.br', name: 'João Silva', role: 'GESTOR', active: true },
-  { id: 'usr-5', email: 'admin@mouraleite.com.br', name: 'Admin Moura Leite', role: 'ADMIN', active: true },
-  { id: 'usr-6', email: 'marcos@mouraleite.com.br', name: 'Marcos Diretor', role: 'ADMIN', active: true },
-  { id: 'usr-7', email: 'fernanda@mouraleite.com.br', name: 'Fernanda Liderança', role: 'GESTOR', active: true }
+  { id: 'usr-1', email: 'raquel@mouraleite.com.br', name: 'Raquel Lopes', role: 'GESTOR', active: true },
+  { id: 'usr-2', email: 'aline@mouraleite.com.br', name: 'Aline Oliveira Verneck', role: 'MONITOR', active: true },
+  { id: 'usr-5', email: 'admin@mouraleite.com.br', name: 'Admin Moura Leite', role: 'ADMIN', active: true }
 ];
 
 export const INITIAL_COLLABORATORS = [
-  { id: 'ag-1', email: 'nathalia@mouraleite.com.br', name: 'Nathalia Perger Oyan', cargo: 'Assistente de Relacionamento', active: true, areaId: 'area-1' },
-  { id: 'ag-2', email: 'allanis@mouraleite.com.br', name: 'Allanis Maquea Silva', cargo: 'Assistente de Relacionamento', active: true, areaId: 'area-1' },
-  { id: 'ag-3', email: 'susana@mouraleite.com.br', name: 'Susana Nascimento', cargo: 'Auxiliar de Relacionamento', active: true, areaId: 'area-1' },
-  { id: 'ag-4', email: 'lucelia_colab@mouraleite.com.br', name: 'Lucélia Justo', cargo: 'Auxiliar de Relacionamento', active: true, areaId: 'area-1' },
-  { id: 'ag-5', email: 'raquel@mouraleite.com.br', name: 'Raquel Lopes', cargo: 'Auxiliar de Relacionamento', active: true, areaId: 'area-1' },
+  { id: 'ag-1', email: 'nathalia@mouraleite.com.br', name: 'Nathalia Perger', cargo: 'Front Office de Relacionamento', active: true, areaId: 'area-1' },
+  { id: 'ag-2', email: 'allanis@mouraleite.com.br', name: 'Allanis Maquea', cargo: 'Front Office de Relacionamento', active: true, areaId: 'area-1' },
+  { id: 'ag-3', email: 'susana@mouraleite.com.br', name: 'Susana Nascimento', cargo: 'Backoffice de Relacionamento', active: true, areaId: 'area-1' },
+  { id: 'ag-4', email: 'aline@mouraleite.com.br', name: 'Aline Oliveira Verneck', cargo: 'Backoffice de Relacionamento e Monitora da Qualidade', active: true, areaId: 'area-1' },
+  { id: 'ag-5', email: 'anacarla@mouraleite.com.br', name: 'Ana Carla', cargo: 'Assistente de Gestão de Contratos', active: true, areaId: 'area-1' }
 ];
 
 // Initial dynamic evaluation criteria (flexible configurations)
@@ -97,11 +93,11 @@ export const INITIAL_ALLOCATIONS = [
 
 // Audit logs for allocation operations
 export const INITIAL_ALLOCATION_HISTORY = [
-  { id: 'log-1', allocationId: 'alloc-1', actionType: 'INSERT', changedBy: 'usr-4', changedAt: '2026-01-01T09:00:00Z', details: 'Nathalia Perger Oyan alocada para Aline Oliveira Verneck. Vigência: 01/01/2026.' },
-  { id: 'log-2', allocationId: 'alloc-2', actionType: 'INSERT', changedBy: 'usr-4', changedAt: '2026-01-01T09:05:00Z', details: 'Allanis Maquea Silva alocada para Aline Oliveira Verneck. Vigência: 01/01/2026.' },
-  { id: 'log-3', allocationId: 'alloc-3', actionType: 'INSERT', changedBy: 'usr-4', changedAt: '2026-01-01T09:10:00Z', details: 'Susana Nascimento alocada para Aline Oliveira Verneck. Vigência: 01/01/2026.' },
-  { id: 'log-4', allocationId: 'alloc-4', actionType: 'INSERT', changedBy: 'usr-4', changedAt: '2026-01-01T09:15:00Z', details: 'Lucélia Justo alocada para Aline Oliveira Verneck. Vigência: 01/01/2026.' },
-  { id: 'log-5', allocationId: 'alloc-5', actionType: 'INSERT', changedBy: 'usr-4', changedAt: '2026-01-01T09:20:00Z', details: 'Raquel Lopes alocada para Lucélia Mendes. Vigência: 01/01/2026.' },
+  { id: 'log-1', allocationId: 'alloc-1', actionType: 'INSERT', changedBy: 'usr-4', changedAt: '2026-01-01T09:00:00Z', details: 'Nathalia Perger alocada para Raquel Lopes. Vigência: 01/01/2026.' },
+  { id: 'log-2', allocationId: 'alloc-2', actionType: 'INSERT', changedBy: 'usr-4', changedAt: '2026-01-01T09:05:00Z', details: 'Allanis Maquea alocada para Raquel Lopes. Vigência: 01/01/2026.' },
+  { id: 'log-3', allocationId: 'alloc-3', actionType: 'INSERT', changedBy: 'usr-4', changedAt: '2026-01-01T09:10:00Z', details: 'Susana Nascimento alocada para Raquel Lopes. Vigência: 01/01/2026.' },
+  { id: 'log-4', allocationId: 'alloc-4', actionType: 'INSERT', changedBy: 'usr-4', changedAt: '2026-01-01T09:15:00Z', details: 'Aline Oliveira Verneck alocada para Raquel Lopes. Vigência: 01/01/2026.' },
+  { id: 'log-5', allocationId: 'alloc-5', actionType: 'INSERT', changedBy: 'usr-4', changedAt: '2026-01-01T09:20:00Z', details: 'Raquel Lopes alocada para Raquel Lopes. Vigência: 01/01/2026.' },
 ];
 
 // Meta Nível 1: Metas Mensais por Carteira do Monitor
@@ -186,7 +182,7 @@ export const INITIAL_MONITORINGS = [
     tipo: 'Regular',
     date: '2026-06-02T16:45:00Z',
     finalScore: 85,
-    comments: 'Raquel respondeu o e-mail de forma técnica e formal, porém o tempo de envio estourou o SLA interno.',
+    comments: 'Ana Carla respondeu o e-mail de forma técnica e formal, porém o tempo de envio estourou o SLA interno.',
     strengths: 'Exatidão da resposta técnica.',
     opportunities: 'Gerenciamento da fila de emails.',
     scores: [
@@ -253,7 +249,7 @@ export const INITIAL_DEMANDS = [
   {
     id: 'dem-1',
     title: 'Revisar monitoria contestada — Allanis',
-    description: 'A colaboradora Allanis Maquea Silva contestou a nota 6.0 no critério Solução da monitoria MON-2. Alega que seguiu o roteiro corretamente.',
+    description: 'A colaboradora Allanis Maquea contestou a nota 6.0 no critério Solução da monitoria MON-2. Alega que seguiu o roteiro corretamente.',
     type: 'Revisão',
     assignedTo: 'usr-1',
     createdBy: 'usr-4',
@@ -298,7 +294,7 @@ export const INITIAL_DEMANDS = [
   {
     id: 'dem-4',
     title: 'Ação corretiva — SLA de e-mails',
-    description: 'Raquel Lopes estourou o SLA em 2 dos últimos 3 atendimentos por e-mail. Definir plano de ação com a gestão imediata.',
+    description: 'Ana Carla estourou o SLA em 2 dos últimos 3 atendimentos por e-mail. Definir plano de ação com a gestão imediata.',
     type: 'Ação Corretiva',
     assignedTo: 'usr-2',
     createdBy: 'usr-1',
@@ -361,9 +357,9 @@ export const INITIAL_AGENDA = [
   { id: 'ag-evt-2', title: 'Calibração Empatia', date: '2026-06-02', time: '14:00', assignedTo: 'usr-1', type: 'reuniao', done: true },
   { id: 'ag-evt-3', title: 'Monitoria — Allanis (Tel)', date: '2026-06-03', time: '10:00', assignedTo: 'usr-1', type: 'monitoria', done: true },
   { id: 'ag-evt-4', title: 'Feedback Susana', date: '2026-06-03', time: '15:30', assignedTo: 'usr-1', type: 'feedback', done: false },
-  { id: 'ag-evt-5', title: 'Monitoria — Lucélia J. (WA)', date: '2026-06-04', time: '09:30', assignedTo: 'usr-2', type: 'monitoria', done: false },
+  { id: 'ag-evt-5', title: 'Monitoria — Aline (WA)', date: '2026-06-04', time: '09:30', assignedTo: 'usr-2', type: 'monitoria', done: false },
   { id: 'ag-evt-6', title: 'Reunião de equipe', date: '2026-06-04', time: '11:00', assignedTo: 'usr-1', type: 'reuniao', done: false },
-  { id: 'ag-evt-7', title: 'Monitoria — Raquel (E-mail)', date: '2026-06-05', time: '08:30', assignedTo: 'usr-2', type: 'monitoria', done: false },
+  { id: 'ag-evt-7', title: 'Monitoria — Ana Carla (E-mail)', date: '2026-06-05', time: '08:30', assignedTo: 'usr-2', type: 'monitoria', done: false },
   { id: 'ag-evt-8', title: 'Revisão contestação Allanis', date: '2026-06-05', time: '14:00', assignedTo: 'usr-1', type: 'demanda', done: false },
   { id: 'ag-evt-9', title: 'Treinamento Taxas', date: '2026-06-06', time: '10:00', assignedTo: 'usr-1', type: 'treinamento', done: false },
   { id: 'ag-evt-10', title: 'Monitoria — Nathalia (WA)', date: '2026-06-06', time: '14:00', assignedTo: 'usr-1', type: 'monitoria', done: false },
