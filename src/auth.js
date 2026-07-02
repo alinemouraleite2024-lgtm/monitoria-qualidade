@@ -47,53 +47,9 @@ export const PERMISSIONS = {
 };
 
 // Usuários de Homologação Iniciais (Simulando o Banco)
-export const HOMOLOG_USERS = [
-  {
-    id: 'usr-5',
-    email: 'admin@homolog.local',
-    login: 'admin',
-    password: 'Admin@123',
-    name: 'Administrador Sistema',
-    role: ROLES.ADMIN,
-    cargo: 'Administrador',
-    area: 'TI',
-    gestor: null,
-    status: USER_STATUS.ACTIVE,
-    provider: 'INTERNAL',
-    lastAccess: '2026-06-05T08:00:00Z',
-    photoUrl: ''
-  },
-  {
-    id: 'usr-1',
-    email: 'raquel@homolog.local',
-    login: 'raquel.lopes',
-    password: 'Gestor@123',
-    name: 'Raquel Lopes',
-    role: ROLES.GESTOR,
-    cargo: 'Supervisora de Relacionamento',
-    area: 'Relacionamento',
-    gestor: 'admin',
-    status: USER_STATUS.ACTIVE,
-    provider: 'INTERNAL',
-    lastAccess: '2026-06-04T15:30:00Z',
-    photoUrl: ''
-  },
-  {
-    id: 'usr-2',
-    email: 'aline@homolog.local',
-    login: 'aline.verneck',
-    password: 'Monitor@123',
-    name: 'Aline Oliveira Verneck',
-    role: ROLES.MONITOR,
-    cargo: 'Backoffice de Relacionamento e Monitora da Qualidade',
-    area: 'Relacionamento',
-    gestor: 'raquel.lopes',
-    status: USER_STATUS.ACTIVE,
-    provider: 'INTERNAL',
-    lastAccess: '2026-06-05T09:15:00Z',
-    photoUrl: ''
-  }
-];
+import { OFFICIAL_USERS } from './teamData';
+
+export const HOMOLOG_USERS = OFFICIAL_USERS;
 
 export const getSystemUsers = () => {
   const stored = localStorage.getItem('pm2_users');
