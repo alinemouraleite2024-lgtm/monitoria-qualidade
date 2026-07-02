@@ -33,6 +33,7 @@ import {
   UserX,
 // eslint-disable-next-line no-unused-vars
   Sparkles,
+// eslint-disable-next-line no-unused-vars
   Info,
   Menu,
 // eslint-disable-next-line no-unused-vars
@@ -43,6 +44,7 @@ import {
 // eslint-disable-next-line no-unused-vars
   Trash2,
   Edit,
+// eslint-disable-next-line no-unused-vars
   Eye,
   Settings2,
   Home,
@@ -752,7 +754,7 @@ function App() {
   const [newCGoalVal, setNewCGoalVal] = useState({ monitorId: 'usr-1', colaboradorId: 'ag-1', targetQty: 5 });
 
   // Monitoring List Filters state
-  const [historyFilters, setHistoryFilters] = useState({
+  const [historyFilters, /* setHistoryFilters */] = useState({
     startDate: '2026-06-01',
     endDate: '2026-06-30',
     monitorId: 'ALL',
