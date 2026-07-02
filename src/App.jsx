@@ -1,5 +1,6 @@
 // eslint-disable-next-line no-unused-vars
 import React, { useState, useEffect } from 'react';
+import { OFFICIAL_USERS, OFFICIAL_COLLABORATORS } from './teamData';
 import {
   LayoutDashboard,
   Users,
@@ -62,9 +63,7 @@ import {
   DEFAULT_BRAND_CONFIG,
   INITIAL_SYSTEM_SETTINGS,
   INITIAL_AREAS,
-  INITIAL_USERS,
-  INITIAL_COLLABORATORS,
-  INITIAL_CRITERIA,
+    INITIAL_CRITERIA,
   INITIAL_ALLOCATIONS,
   INITIAL_ALLOCATION_HISTORY,
   INITIAL_MONITOR_GOALS,
@@ -567,14 +566,8 @@ function App() {
     const saved = localStorage.getItem('pm2_areas');
     return saved ? JSON.parse(saved) : INITIAL_AREAS;
   });
-  const [collaborators, setCollaborators] = useState(() => {
-    const saved = localStorage.getItem('pm2_collaborators');
-    return saved ? JSON.parse(saved) : INITIAL_COLLABORATORS;
-  });
-  const [users, setUsers] = useState(() => {
-    const saved = localStorage.getItem('pm2_users');
-    return saved ? JSON.parse(saved) : INITIAL_USERS;
-  });
+  const collaborators = OFFICIAL_COLLABORATORS;
+  const users = OFFICIAL_USERS;
   const [criteria, setCriteria] = useState(() => {
     const saved = localStorage.getItem('pm2_criteria');
     return saved ? JSON.parse(saved) : INITIAL_CRITERIA;
@@ -1072,9 +1065,9 @@ function App() {
     e.preventDefault();
     if (!newCollaborator.name || !newCollaborator.areaId) return alert('Nome e Área são obrigatórios.');
     if (newCollaborator.id) {
-      setCollaborators(collaborators.map(c => c.id === newCollaborator.id ? newCollaborator : c));
+      console.warn('Cannot setCollaborators: ' + collaborators.map(c => c.id === newCollaborator.id ? newCollaborator : c));
     } else {
-      setCollaborators([...collaborators, { ...newCollaborator, id: `ag-${Date.now()}` }]);
+      console.warn('Cannot setCollaborators: ' + [...collaborators, { ...newCollaborator, id: `ag-${Date.now()}` }]);
     }
     setShowCollaboratorModal(false);
     setNewCollaborator({ id: '', email: '', name: '', cargo: '', areaId: '', active: true });
@@ -3005,7 +2998,7 @@ function App() {
                 alert('Preencha os campos obrigatórios.');
                 return;
               }
-              setUsers([...users, {
+              console.warn('Cannot setUsers: ' + [...users, {
                 id: `usr-${Date.now()}`,
                 name: newUser.name,
                 email: newUser.email,

@@ -52,14 +52,11 @@ import { OFFICIAL_USERS } from './teamData';
 export const HOMOLOG_USERS = OFFICIAL_USERS;
 
 export const getSystemUsers = () => {
-  const stored = localStorage.getItem('pm2_users');
-  if (stored) return JSON.parse(stored);
-  localStorage.setItem('pm2_users', JSON.stringify(HOMOLOG_USERS));
   return HOMOLOG_USERS;
 };
 
-export const saveSystemUsers = (users) => {
-  localStorage.setItem('pm2_users', JSON.stringify(users));
+export const saveSystemUsers = () => {
+  console.warn('saveSystemUsers desativado: teamData.js é a única fonte da verdade.');
 };
 
 // Helper para verificar permissão

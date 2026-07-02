@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Plus, Edit, Lock, Unlock, Search } from 'lucide-react';
-import { getSystemUsers, saveSystemUsers, logAuthEvent, USER_STATUS, ROLES } from '../../auth';
+import { getSystemUsers, USER_STATUS, ROLES } from '../../auth';
 
-export const UserManagement = ({ currentUser }) => {
-  const [users, setUsers] = useState([]);
+export const UserManagement = () => {
+  const users = getSystemUsers();
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -13,44 +13,16 @@ export const UserManagement = ({ currentUser }) => {
     photoUrl: '', observacoes: ''
   });
 
-  useEffect(() => {
-    setUsers(getSystemUsers());
-  }, []);
+  
 
   const handleSave = (e) => {
     e.preventDefault();
-    if (formData.password !== formData.confirmPassword) {
-      alert("As senhas não coincidem!");
-      return;
-    }
-    
-    let newUsers = [...users];
-    if (editingUser) {
-      newUsers = newUsers.map(u => u.id === editingUser.id ? { ...u, ...formData, id: editingUser.id } : u);
-      logAuthEvent('EDIT_USER', currentUser, `Editou o usuário: ${formData.login}`);
-    } else {
-      const newUser = {
-        ...formData,
-        id: `usr-${Date.now()}`,
-        provider: 'INTERNAL',
-        lastAccess: null
-      };
-      newUsers.push(newUser);
-      logAuthEvent('CREATE_USER', currentUser, `Criou o usuário: ${formData.login}`);
-    }
-    
-    setUsers(newUsers);
-    saveSystemUsers(newUsers);
+    alert('Gestão de usuários desativada na Homologação. Utilize teamData.js.');
     setShowModal(false);
   };
 
-  const handleToggleBlock = (user) => {
-    const isBlocked = user.status === USER_STATUS.BLOCKED;
-    const newStatus = isBlocked ? USER_STATUS.ACTIVE : USER_STATUS.BLOCKED;
-    const newUsers = users.map(u => u.id === user.id ? { ...u, status: newStatus } : u);
-    setUsers(newUsers);
-    saveSystemUsers(newUsers);
-    logAuthEvent(isBlocked ? 'UNBLOCK_USER' : 'BLOCK_USER', currentUser, `Usuário ${user.login} ${isBlocked ? 'desbloqueado' : 'bloqueado'}`);
+  const handleToggleBlock = () => {
+    alert('Edição de status desativada na Homologação. Utilize teamData.js.');
   };
 
   const filteredUsers = users.filter(u => 
