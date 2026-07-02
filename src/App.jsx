@@ -86,6 +86,10 @@ import { RolesManagement } from './modules/admin/RolesManagement';
 import { AuditLogs } from './modules/admin/AuditLogs';
 import { MyProfile } from './modules/profile/MyProfile';
 
+import { MonitoringList } from './modules/monitoring/MonitoringList';
+import { MonitoringForm } from './modules/monitoring/MonitoringForm';
+import { MonitoringHistory } from './modules/monitoring/MonitoringHistory';
+
 // Simulated current system date
 const SYSTEM_TODAY = '2026-06-05';
 
@@ -521,6 +525,7 @@ function App() {
 
   // Modals & Dynamic Wizards
   const [showWizardModal, setShowWizardModal] = useState(false);
+  const [editingMonitoring, setEditingMonitoring] = useState(null);
  
 // eslint-disable-next-line no-unused-vars
   const [showHolidayModal, setShowHolidayModal] = useState(false);
@@ -530,21 +535,6 @@ function App() {
   const [showCollaboratorModal, setShowCollaboratorModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedMonitoringDetail, setSelectedMonitoringDetail] = useState(null);
-
-  // Wizard States (Nova Monitoria Multietapas)
-  const [wizardStep, setWizardStep] = useState(1);
-  // Etapa 1 form state
-  const [wColaboradorId, setWColaboradorId] = useState('');
-  const [wCanal, setWCanal] = useState('Chat');
-  const [wTipo, setWTipo] = useState('Regular');
-  const [wDate, setWDate] = useState(SYSTEM_TODAY);
-  // Etapa 2: Dynamic scores map { criterionId: { score: 10, lowScoreReason: "" } }
-  const [wScores, setWScores] = useState({});
-  // Etapa 3 state
-  const [wComments, setWComments] = useState('');
-  const [wStrengths, setWStrengths] = useState('');
-  const [wOpportunities, setWOpportunities] = useState('');
-  const [wStatus, setWStatus] = useState('Concluída'); // Options: Rascunho, Concluída
 
   // Administration view sub-tabs
   const [adminSubTab, setAdminSubTab] = useState('criteria');
@@ -722,113 +712,50 @@ function App() {
     return criteria.filter(c => c.active && c.channels.includes(channel));
   };
 
-  // Setup scores map state when channel changes in Wizard
-  useEffect(() => {
-    if (showWizardModal && wCanal) {
-      const applicable = getCriteriaForChannel(wCanal);
-      const initialScores = {};
-      applicable.forEach(c => {
-        initialScores[c.id] = { score: 10.0, lowScoreReason: '' };
-      });
-      setWScores(initialScores);
-    }
-  }, [showWizardModal, wCanal]);
+  // Create or save monitoring form entry
+  const handleSaveFormMonitoring = (formData, formScores) => {
+    const { monitor } = getActiveMonitorForColab(formData.colaboradorId, formData.date);
 
-  // Navigate between wizard steps
-  const handleNextStep = () => {
-    if (wizardStep === 1) {
-      if (!wColaboradorId) {
-        alert('Por favor, selecione um Colaborador.');
-        return;
-      }
-      setWizardStep(2);
-    } else if (wizardStep === 2) {
-      const applicable = getCriteriaForChannel(wCanal);
-      let isValid = true;
-      applicable.forEach(c => {
-        const item = wScores[c.id];
-        if (!item || item.score === undefined || item.score === '') {
-          isValid = false;
-        } else if (item.score < c.minExpectedScore && !item.lowScoreReason.trim()) {
-          isValid = false;
-        }
-      });
-      if (!isValid) {
-        alert('Por favor, preencha todas as notas e insira a justificativa para qualquer nota abaixo da esperada.');
-        return;
-      }
-      setWizardStep(3);
-    }
-  };
-
-  const handlePrevStep = () => {
-    setWizardStep(wizardStep - 1);
-  };
-
-  // Calculate wizard final score dynamically
-  const calculateWizardFinalScore = () => {
-    const applicable = getCriteriaForChannel(wCanal);
-    if (applicable.length === 0) return 0;
-    
-    let weightedSum = 0;
-    let weightTotal = 0;
-    
-    applicable.forEach(c => {
-      const item = wScores[c.id];
-      const val = item ? parseFloat(item.score) : 10;
-      weightedSum += val * c.weight;
-      weightTotal += c.weight;
-    });
-
-    return weightTotal > 0 ? parseFloat((weightedSum / weightTotal).toFixed(2)) : 0;
-  };
-
-  // Create or save monitoring wizard entry
-  const handleSaveMonitoring = (e) => {
-    e.preventDefault();
-
-    const { monitor } = getActiveMonitorForColab(wColaboradorId, wDate);
-    const finalCalculated = calculateWizardFinalScore();
-
-    let resolvedStatus = wStatus;
+    let resolvedStatus = formData.status;
     if (resolvedStatus === 'Concluída') {
       if (!settings.requireGestorValidation || currentUser.role === 'GESTOR' || currentUser.role === 'ADMIN') {
         resolvedStatus = 'Validada';
       }
     }
 
+    const applicable = getCriteriaForChannel(formData.canal);
+    let weightedSum = 0;
+    let weightTotal = 0;
+    applicable.forEach(c => {
+      const item = formScores[c.id];
+      const val = item ? parseFloat(item.score) : 10;
+      weightedSum += val * c.weight;
+      weightTotal += c.weight;
+    });
+    const finalCalculated = weightTotal > 0 ? parseFloat((weightedSum / weightTotal).toFixed(2)) : 0;
+
     const monitoringObj = {
-      id: `mon-${Date.now()}`,
-      monitorId: monitor ? monitor.id : currentUser.id,
-      colaboradorId: wColaboradorId,
-      canal: wCanal,
-      tipo: wTipo,
+      ...formData,
+      id: formData.id || `mon-${Date.now()}`,
+      monitorId: monitor && !formData.id ? monitor.id : (formData.id ? formData.monitorId : currentUser.id),
       status: resolvedStatus,
-      date: new Date(wDate).toISOString(),
+      date: new Date(formData.date).toISOString(),
       finalScore: finalCalculated,
-      comments: wComments,
-      strengths: wStrengths,
-      opportunities: wOpportunities,
-      scores: Object.keys(wScores).map(cid => ({
+      scores: Object.keys(formScores).map(cid => ({
         criterionId: cid,
-        score: parseFloat(wScores[cid].score),
-        lowScoreReason: wScores[cid].lowScoreReason
+        score: parseFloat(formScores[cid].score),
+        lowScoreReason: formScores[cid].lowScoreReason
       }))
     };
 
-    setMonitorings([monitoringObj, ...monitorings]);
+    if (formData.id) {
+      setMonitorings(monitorings.map(m => m.id === formData.id ? monitoringObj : m));
+    } else {
+      setMonitorings([monitoringObj, ...monitorings]);
+    }
+    
     setShowWizardModal(false);
-
-    setWizardStep(1);
-    setWColaboradorId('');
-    setWCanal('Chat');
-    setWTipo('Regular');
-    setWDate(SYSTEM_TODAY);
-    setWScores({});
-    setWComments('');
-    setWStrengths('');
-    setWOpportunities('');
-    setWStatus('Concluída');
+    setEditingMonitoring(null);
   };
 
   // Handle allocations adjustments (Vigência V2)
@@ -2172,287 +2099,26 @@ function App() {
                 </div>
               )}
 
-              {/* TAB: MONITORIAS (Histórico, Fila de aprovação V2) */}
+              {/* TAB: MONITORIAS (Central de Monitorias) */}
               {activeTab === 'monitorings' && (
-                <div className="animate-fade-in">
-                  <div className="page-header" style={{ marginBottom: '1.5rem' }}>
-                    <div>
-                      <h1 className="page-title">Histórico Geral de Monitorias</h1>
-                      <p className="page-subtitle">Exibindo avaliações concluídas e processos em andamento.</p>
-                    </div>
-                    <button className="btn btn-primary" onClick={() => {
-                      setWizardStep(1);
-                      setShowWizardModal(true);
-                    }}>
-                      <PlusCircle size={15} /> Nova Monitoria
-                    </button>
-                  </div>
-
-                  {/* Fila de aprovações inline para gestores se workflow exigir */}
-                  {settings.requireGestorValidation && (currentUser.role === 'GESTOR' || currentUser.role === 'ADMIN') && monitorings.some(m => m.status === 'Concluída') && (
-                    <div className="section-card animate-fade-in" style={{ marginBottom: '2rem', borderColor: 'var(--primary)' }}>
-                      <h3 className="section-card-title">
-                        <CheckCircle2 size={18} /> Avaliações Aguardando Validação
-                      </h3>
-
-                      <div className="table-responsive">
-                        <table className="table-premium">
-                          <thead>
-                            <tr>
-                              <th>Data</th>
-                              <th>Monitor</th>
-                              <th>Colaborador</th>
-                              <th>Canal</th>
-                              <th>Nota Final</th>
-                              <th>Ações</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {monitorings.filter(m => m.status === 'Concluída').map(m => {
-                              const monName = users.find(u => u.id === m.monitorId)?.name || 'N/A';
-                              const colName = users.find(u => u.id === m.colaboradorId)?.name || 'N/A';
-
-                              return (
-                                <tr key={m.id}>
-                                  <td>{new Date(m.date).toLocaleDateString('pt-BR')}</td>
-                                  <td>
-                                    <div className="user-cell-wrapper">
-                                      {renderUserAvatar(monName)}
-                                      <span>{monName}</span>
-                                    </div>
-                                  </td>
-                                  <td>
-                                    <div className="user-cell-wrapper">
-                                      {renderUserAvatar(colName)}
-                                      <span>{colName}</span>
-                                    </div>
-                                  </td>
-                                  <td>{m.canal} ({m.tipo})</td>
-                                  <td style={{ fontWeight: 'bold' }}>{m.finalScore.toFixed(2)}</td>
-                                  <td>
-                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                      <button className="btn btn-secondary btn-sm" onClick={() => {
-                                        setSelectedMonitoringDetail(m);
-                                        setShowDetailModal(true);
-                                      }}>
-                                        <Eye size={12} /> Detalhes
-                                      </button>
-                                      <button className="btn btn-primary btn-sm" style={{ backgroundColor: '#10b981' }} onClick={() => handleApproveMonitoring(m.id)}>
-                                        Aprovar
-                                      </button>
-                                      <button className="btn btn-danger btn-sm" onClick={() => handleCancelMonitoring(m.id)}>
-                                        Cancelar
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Filters search */}
-                  <div className="section-card" style={{ marginBottom: '2rem' }}>
-                    <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1rem', marginBottom: '1.25rem', fontWeight: 'bold' }}>
-                      Filtros Dinâmicos
-                    </h3>
-
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label className="form-label">Data Início</label>
-                        <input 
-                          type="date" 
-                          className="form-control"
-                          value={historyFilters.startDate}
-                          onChange={(e) => setHistoryFilters({ ...historyFilters, startDate: e.target.value })}
-                        />
-                      </div>
-
-                      <div className="form-group">
-                        <label className="form-label">Data Fim</label>
-                        <input 
-                          type="date" 
-                          className="form-control"
-                          value={historyFilters.endDate}
-                          onChange={(e) => setHistoryFilters({ ...historyFilters, endDate: e.target.value })}
-                        />
-                      </div>
-
-                      <div className="form-group">
-                        <label className="form-label">Área</label>
-                        <select 
-                          className="form-control"
-                          value={historyFilters.areaId}
-                          onChange={(e) => setHistoryFilters({ ...historyFilters, areaId: e.target.value })}
-                        >
-                          <option value="ALL">Todas as Áreas</option>
-                          {areas.map(a => (
-                            <option key={a.id} value={a.id}>{a.name}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="form-group">
-                        <label className="form-label">Colaborador</label>
-                        <select 
-                          className="form-control"
-                          value={historyFilters.colaboradorId}
-                          onChange={(e) => setHistoryFilters({ ...historyFilters, colaboradorId: e.target.value })}
-                        >
-                          <option value="ALL">Todos os Colaboradores</option>
-                          {getCollaborators().map(c => (
-                            <option key={c.id} value={c.id}>{c.name}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="form-group">
-                        <label className="form-label">Canal</label>
-                        <select 
-                          className="form-control"
-                          value={historyFilters.canal}
-                          onChange={(e) => setHistoryFilters({ ...historyFilters, canal: e.target.value })}
-                        >
-                          <option value="ALL">Todos os Canais</option>
-                          <option value="Chat">Chat</option>
-                          <option value="WhatsApp">WhatsApp</option>
-                          <option value="E-mail">E-mail</option>
-                          <option value="Telefone">Telefone</option>
-                          <option value="Presencial">Presencial</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label className="form-label">Status da Monitoria</label>
-                        <select 
-                          className="form-control"
-                          value={historyFilters.status}
-                          onChange={(e) => setHistoryFilters({ ...historyFilters, status: e.target.value })}
-                        >
-                          <option value="ALL">Todos os Status</option>
-                          <option value="Rascunho">Rascunho</option>
-                          <option value="Concluída">Concluída</option>
-                          <option value="Validada">Validada</option>
-                          <option value="Cancelada">Cancelada</option>
-                        </select>
-                      </div>
-
-                      <div className="form-group">
-                        <label className="form-label">Notas</label>
-                        <select 
-                          className="form-control"
-                          value={historyFilters.scoreFilter}
-                          onChange={(e) => setHistoryFilters({ ...historyFilters, scoreFilter: e.target.value })}
-                        >
-                          <option value="ALL">Todas</option>
-                          <option value="LOW">Notas Baixas (&lt; 7.5)</option>
-                          <option value="MID">Notas Médias (7.5 a 9.0)</option>
-                          <option value="HIGH">Notas Altas (&gt;= 9.0)</option>
-                        </select>
-                      </div>
-
-                      {(currentUser.role === 'GESTOR' || currentUser.role === 'ADMIN') && (
-                        <div className="form-group">
-                          <label className="form-label">Monitor Responsável</label>
-                          <select 
-                            className="form-control"
-                            value={historyFilters.monitorId}
-                            onChange={(e) => setHistoryFilters({ ...historyFilters, monitorId: e.target.value })}
-                          >
-                            <option value="ALL">Todos os Monitores</option>
-                            {getMonitors().filter(m => m.role === 'MONITOR').map(m => (
-                              <option key={m.id} value={m.id}>{m.name}</option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Results table */}
-                  <div className="section-card">
-                    <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1rem', marginBottom: '1.25rem', fontWeight: 'bold' }}>
-                      Linha de Tempo ({getFilteredMonitorings().length} monitorias filtradas)
-                    </h3>
-
-                    <div className="table-responsive">
-                      <table className="table-premium">
-                        <thead>
-                          <tr>
-                            <th>Data</th>
-                            <th>Monitor</th>
-                            <th>Colaborador</th>
-                            <th>Canal (Tipo)</th>
-                            <th>Nota Final</th>
-                            <th>Status</th>
-                            <th>Ações</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {getFilteredMonitorings().map(m => {
-                            const mon = users.find(u => u.id === m.monitorId)?.name || 'N/A';
-                            const col = users.find(u => u.id === m.colaboradorId)?.name || 'N/A';
-
-                            return (
-                              <tr key={m.id}>
-                                <td>{new Date(m.date).toLocaleDateString('pt-BR')}</td>
-                                <td>
-                                  <div className="user-cell-wrapper">
-                                    {renderUserAvatar(mon)}
-                                    <span>{mon}</span>
-                                  </div>
-                                </td>
-                                <td>
-                                  <div className="user-cell-wrapper">
-                                    {renderUserAvatar(col)}
-                                    <span>{col}</span>
-                                  </div>
-                                </td>
-                                <td>{m.canal} ({m.tipo})</td>
-                                <td style={{ 
-                                  fontWeight: 'bold', 
-                                  color: m.finalScore >= 9.0 ? 'var(--primary)' : m.finalScore >= 7.5 ? 'var(--warning)' : 'var(--danger)' 
-                                }}>
-                                  {m.finalScore.toFixed(2)}
-                                </td>
-                                <td>
-                                  <span className={`badge-pill ${
-                                    m.status === 'Validada' ? 'badge-success' :
-                                    m.status === 'Concluída' ? 'badge-info' :
-                                    m.status === 'Rascunho' ? 'badge-warning' : 'badge-danger'
-                                  }`}>
-                                    {m.status}
-                                  </span>
-                                </td>
-                                <td>
-                                  <button className="btn btn-secondary btn-sm" onClick={() => {
-                                    setSelectedMonitoringDetail(m);
-                                    setShowDetailModal(true);
-                                  }}>
-                                    <Eye size={12} /> Detalhes
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                          })}
-
-                          {getFilteredMonitorings().length === 0 && (
-                            <tr>
-                              <td colSpan="7" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-                                Nenhuma avaliação atende aos filtros de busca selecionados.
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
+                <MonitoringList 
+                  monitorings={monitorings}
+                  users={users}
+                  collaborators={getCollaborators()}
+                  onNewMonitoring={() => {
+                    setEditingMonitoring(null);
+                    setShowWizardModal(true);
+                  }}
+                  onView={(m) => {
+                    setSelectedMonitoringDetail(m);
+                    setShowDetailModal(true);
+                  }}
+                  onEdit={(m) => {
+                    setEditingMonitoring(m);
+                    setShowWizardModal(true);
+                  }}
+                  onDelete={handleCancelMonitoring}
+                />
               )}
 
               {/* TAB: RELATÓRIOS */}
@@ -3014,356 +2680,33 @@ function App() {
 
       {/* 3. WIZARDS AND MODALS IN V2 */}
 
-      {/* MODAL: Wizard Nova Monitoria Multietapas (SLIDE-OVER PANEL DIRETRIZ SaaS STYLE) */}
+      {/* MODALS */}
       {showWizardModal && (
-        <div className="slide-over-overlay" onClick={() => setShowWizardModal(false)}>
-          <div className="slide-over-panel" onClick={(e) => e.stopPropagation()}>
-            <div className="slide-over-header">
-              <h3 className="modal-title">Lançamento de Avaliação</h3>
-              <button className="modal-close" onClick={() => setShowWizardModal(false)}>&times;</button>
-            </div>
-
-            {/* Steps Visual Indicator */}
-            <div style={{ padding: '1.25rem 1.5rem 0.5rem' }}>
-              <div className="stepper-container">
-                <div className={`step-item ${wizardStep === 1 ? 'active' : ''} ${wizardStep > 1 ? 'completed' : ''}`}>
-                  <div className="step-badge">1</div>
-                  <div className="step-label">Identificação</div>
-                </div>
-                <div className={`step-item ${wizardStep === 2 ? 'active' : ''} ${wizardStep > 2 ? 'completed' : ''}`}>
-                  <div className="step-badge">2</div>
-                  <div className="step-label">Critérios</div>
-                </div>
-                <div className={`step-item ${wizardStep === 3 ? 'active' : ''}`}>
-                  <div className="step-badge">3</div>
-                  <div className="step-label">Conclusão</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="slide-over-body">
-              <form onSubmit={handleSaveMonitoring}>
-                
-                {/* ETAPA 1: IDENTIFICAÇÃO */}
-                {wizardStep === 1 && (
-                  <div className="animate-fade-in">
-                    <div className="form-group">
-                      <label className="form-label">Colaborador (Agente)*</label>
-                      <select 
-                        className="form-control"
-                        value={wColaboradorId}
-                        onChange={(e) => setWColaboradorId(e.target.value)}
-                        required
-                      >
-                        <option value="">Selecione...</option>
-                        {getCollaborators().map(c => (
-                          <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="form-group">
-                      <label className="form-label">Canal do Atendimento*</label>
-                      <select 
-                        className="form-control"
-                        value={wCanal}
-                        onChange={(e) => setWCanal(e.target.value)}
-                        required
-                      >
-                        <option value="Chat">Chat</option>
-                        <option value="WhatsApp">WhatsApp</option>
-                        <option value="E-mail">E-mail</option>
-                        <option value="Telefone">Telefone</option>
-                        <option value="Presencial">Presencial</option>
-                      </select>
-                    </div>
-
-                    <div className="form-group">
-                      <label className="form-label">Tipo de Monitoria*</label>
-                      <select 
-                        className="form-control"
-                        value={wTipo}
-                        onChange={(e) => setWTipo(e.target.value)}
-                        required
-                      >
-                        <option value="Regular">Regular</option>
-                        <option value="Direcionada">Direcionada</option>
-                        <option value="Calibração">Calibração</option>
-                        <option value="Reciclagem">Reciclagem</option>
-                        <option value="Extraordinária">Extraordinária</option>
-                      </select>
-                    </div>
-
-                    <div className="form-group">
-                      <label className="form-label">Data do Atendimento*</label>
-                      <input 
-                        type="date" 
-                        className="form-control"
-                        value={wDate}
-                        onChange={(e) => setWDate(e.target.value)}
-                        required
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* ETAPA 2: CRITÉRIOS DINÂMICOS */}
-                {wizardStep === 2 && (
-                  <div className="animate-fade-in">
-                    <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
-                      Atribua a pontuação para cada item abaixo para o canal <strong>{wCanal}</strong>:
-                    </p>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      {getCriteriaForChannel(wCanal).map(c => {
-                        const item = wScores[c.id] || { score: 10.0, lowScoreReason: '' };
-                        const belowExpected = item.score < c.minExpectedScore;
-
-                        return (
-                          <div key={c.id} className="criteria-card">
-                            <div className="criteria-header">
-                              <div>
-                                <span className="criteria-title">{c.name}</span>
-                                <div className="criteria-desc">{c.description}</div>
-                              </div>
-                              <span style={{ fontSize: '0.72rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>
-                                Esperado: &gt;= {c.minExpectedScore}
-                              </span>
-                            </div>
-
-                            <div className="criteria-score-input-wrapper">
-                              <input 
-                                type="range" 
-                                min="0" 
-                                max="10" 
-                                step="0.5" 
-                                className="slider-input"
-                                value={item.score}
-                                onChange={(e) => {
-                                  setWScores({
-                                    ...wScores,
-                                    [c.id]: { ...item, score: parseFloat(e.target.value) }
-                                  });
-                                }}
-                              />
-                              <span className="slider-val-badge">{parseFloat(item.score).toFixed(1)}</span>
-                            </div>
-
-                            {belowExpected && (
-                              <div className="occurrence-warning animate-fade-in">
-                                <label className="form-label" style={{ color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                  <AlertTriangle size={13} /> Ocorrência: Justificar Nota Baixa*
-                                </label>
-                                <textarea 
-                                  rows="2" 
-                                  className="form-control"
-                                  placeholder="Justifique a pontuação obtida..."
-                                  value={item.lowScoreReason}
-                                  onChange={(e) => {
-                                    setWScores({
-                                      ...wScores,
-                                      [c.id]: { ...item, lowScoreReason: e.target.value }
-                                    });
-                                  }}
-                                  required
-                                />
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* ETAPA 3: CONCLUSAO */}
-                {wizardStep === 3 && (
-                  <div className="animate-fade-in">
-                    <div style={{ padding: '1rem', borderRadius: '8px', backgroundColor: 'var(--primary-light)', border: '1px solid rgba(0, 132, 67, 0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                      <div>
-                        <span style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>Nota Final Calculada:</span>
-                        <h2 style={{ fontSize: '1.8rem', fontWeight: '800', color: 'var(--primary)' }}>
-                          {calculateWizardFinalScore()} / 10.00
-                        </h2>
-                      </div>
-                      <span className="badge-pill badge-success" style={{ padding: '0.35rem 0.65rem' }}>Médias Padrão</span>
-                    </div>
-
-                    <div className="form-group">
-                      <label className="form-label">Comentários Gerais</label>
-                      <textarea 
-                        rows="3" 
-                        className="form-control"
-                        placeholder="Insira as observações gerais..."
-                        value={wComments}
-                        onChange={(e) => setWComments(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label className="form-label">Pontos Fortes</label>
-                      <textarea 
-                        rows="2" 
-                        className="form-control"
-                        placeholder="Observações positivas..."
-                        value={wStrengths}
-                        onChange={(e) => setWStrengths(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label className="form-label">Oportunidades de Melhoria</label>
-                      <textarea 
-                        rows="2" 
-                        className="form-control"
-                        placeholder="Pontos a corrigir..."
-                        value={wOpportunities}
-                        onChange={(e) => setWOpportunities(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="form-group" style={{ marginTop: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
-                      <label className="form-label">Salvar com o Status</label>
-                      <select 
-                        className="form-control"
-                        value={wStatus}
-                        onChange={(e) => setWStatus(e.target.value)}
-                      >
-                        <option value="Concluída">Concluída (Pronta)</option>
-                        <option value="Rascunho">Rascunho</option>
-                      </select>
-                    </div>
-
-                    {settings.requireGestorValidation && wStatus === 'Concluída' && currentUser.role === 'MONITOR' && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', color: '#b45309', backgroundColor: '#fffbeb', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #fde68a', marginBottom: '1rem' }}>
-                        <Info size={14} />
-                        <span>Requer validação do gestor após o salvamento.</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-              </form>
-            </div>
-
-            {/* Slide-over Footer navigation */}
-            <div className="slide-over-footer">
-              <div>
-                {wizardStep > 1 && (
-                  <button type="button" className="btn btn-secondary" onClick={handlePrevStep}>
-                    Voltar
-                  </button>
-                )}
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setShowWizardModal(false)}>
-                  Cancelar
-                </button>
-                {wizardStep < 3 ? (
-                  <button type="button" className="btn btn-primary" onClick={handleNextStep}>
-                    Avançar
-                  </button>
-                ) : (
-                  <button type="button" className="btn btn-primary" onClick={handleSaveMonitoring}>
-                    Salvar Avaliação
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
+        <MonitoringForm
+          initialData={editingMonitoring}
+          users={users}
+          collaborators={getCollaborators()}
+          criteria={criteria}
+          currentUser={currentUser}
+          onClose={() => {
+            setShowWizardModal(false);
+            setEditingMonitoring(null);
+          }}
+          onSave={handleSaveFormMonitoring}
+        />
       )}
 
-      {/* MODAL: Visualizar Detalhes Completo da Monitoria */}
       {showDetailModal && selectedMonitoringDetail && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '600px' }}>
-            <div className="modal-header">
-              <h3 className="modal-title">Resumo da Monitoria</h3>
-              <button className="modal-close" onClick={() => setShowDetailModal(false)}>&times;</button>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
-                <div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>COLABORADOR</div>
-                  <div style={{ fontWeight: '700' }}>
-                    {users.find(u => u.id === selectedMonitoringDetail.colaboradorId)?.name}
-                  </div>
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>MONITOR AVALIADOR</div>
-                  <div style={{ fontWeight: '700' }}>
-                    {users.find(u => u.id === selectedMonitoringDetail.monitorId)?.name}
-                  </div>
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>CANAL (TIPO)</div>
-                  <div style={{ fontWeight: '600' }}>
-                    {selectedMonitoringDetail.canal} ({selectedMonitoringDetail.tipo})
-                  </div>
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>DATA DA AVALIAÇÃO</div>
-                  <div style={{ fontWeight: '600' }}>
-                    {new Date(selectedMonitoringDetail.date).toLocaleString('pt-BR')}
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h4 style={{ fontFamily: 'var(--font-heading)', fontSize: '0.95rem', fontWeight: '700', marginBottom: '0.75rem' }}>
-                  Pontuações Obtidas
-                </h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {selectedMonitoringDetail.scores.map(s => {
-                    const critObj = criteria.find(c => c.id === s.criterionId);
-                    if (!critObj) return null;
-
-                    return (
-                      <div key={s.criterionId} style={{ padding: '0.65rem 0.85rem', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: '#f9fafb' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontWeight: '600', fontSize: '0.85rem' }}>{critObj.name}</span>
-                          <span style={{ fontWeight: 'bold', fontSize: '0.95rem', color: s.score >= critObj.minExpectedScore ? 'var(--primary)' : 'var(--danger)' }}>
-                            {s.score.toFixed(1)} (Esperado: &gt;= {critObj.minExpectedScore})
-                          </span>
-                        </div>
-                        {s.lowScoreReason && (
-                          <div style={{ marginTop: '0.4rem', padding: '0.4rem', backgroundColor: 'var(--danger-light)', borderLeft: '3px solid var(--danger)', fontSize: '0.72rem' }}>
-                            <strong>Ocorrência:</strong> {s.lowScoreReason}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
-                <div style={{ marginBottom: '0.75rem' }}>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>COMENTÁRIOS GERAIS</div>
-                  <div style={{ fontSize: '0.82rem' }}>{selectedMonitoringDetail.comments || 'Nenhum comentário cadastrado.'}</div>
-                </div>
-                <div style={{ marginBottom: '0.75rem' }}>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>PONTOS FORTES</div>
-                  <div style={{ fontSize: '0.82rem' }}>{selectedMonitoringDetail.strengths || 'Nenhum ponto forte registrado.'}</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>OPORTUNIDADES DE MELHORIA</div>
-                  <div style={{ fontSize: '0.82rem' }}>{selectedMonitoringDetail.opportunities || 'Nenhuma oportunidade de melhoria registrada.'}</div>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
-                <button className="btn btn-secondary btn-sm" onClick={() => setShowDetailModal(false)}>
-                  Fechar Resumo
-                </button>
-              </div>
-
-            </div>
-          </div>
-        </div>
+        <MonitoringHistory
+          monitoring={selectedMonitoringDetail}
+          users={users}
+          collaborators={getCollaborators()}
+          criteria={criteria}
+          currentUser={currentUser}
+          onClose={() => setShowDetailModal(false)}
+          onApprove={handleApproveMonitoring}
+          onCancel={handleCancelMonitoring}
+        />
       )}
 
       {/* MODAL: Criar / Editar Critério Dinâmico */}
