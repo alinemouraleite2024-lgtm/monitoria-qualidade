@@ -545,10 +545,15 @@ const HomeMonitor = ({ currentUser, agenda, demands, monitorings, collaborators,
 function App() {
   // Brand Configuration & System settings
   useEffect(() => {
-    if (!localStorage.getItem('pm2_data_v6')) {
-      localStorage.clear();
+    if (!localStorage.getItem('pm2_data_v7')) {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('pm2_')) {
+          localStorage.removeItem(key);
+        }
+      }
       sessionStorage.clear();
-      localStorage.setItem('pm2_data_v6', 'true');
+      localStorage.setItem('pm2_data_v7', 'true');
       window.location.reload();
     }
   }, []);
@@ -566,8 +571,14 @@ function App() {
     const saved = localStorage.getItem('pm2_areas');
     return saved ? JSON.parse(saved) : INITIAL_AREAS;
   });
-  const collaborators = OFFICIAL_COLLABORATORS;
-  const users = OFFICIAL_USERS;
+  const [collaborators, setCollaborators] = useState(() => {
+    const saved = localStorage.getItem('pm2_collaborators');
+    return saved ? JSON.parse(saved) : OFFICIAL_COLLABORATORS;
+  });
+  const [users, setUsers] = useState(() => {
+    const saved = localStorage.getItem('pm2_users');
+    return saved ? JSON.parse(saved) : OFFICIAL_USERS;
+  });
   const [criteria, setCriteria] = useState(() => {
     const saved = localStorage.getItem('pm2_criteria');
     return saved ? JSON.parse(saved) : INITIAL_CRITERIA;
@@ -760,6 +771,8 @@ function App() {
     localStorage.setItem('pm2_brand', JSON.stringify(brand));
     localStorage.setItem('pm2_settings', JSON.stringify(settings));
     localStorage.setItem('pm2_areas', JSON.stringify(areas));
+    localStorage.setItem('pm2_users', JSON.stringify(users));
+    localStorage.setItem('pm2_collaborators', JSON.stringify(collaborators));
     localStorage.setItem('pm2_collaborators', JSON.stringify(collaborators));
     localStorage.setItem('pm2_users', JSON.stringify(users));
     localStorage.setItem('pm2_criteria', JSON.stringify(criteria));
@@ -1065,9 +1078,9 @@ function App() {
     e.preventDefault();
     if (!newCollaborator.name || !newCollaborator.areaId) return alert('Nome e Área são obrigatórios.');
     if (newCollaborator.id) {
-      console.warn('Cannot setCollaborators: ' + collaborators.map(c => c.id === newCollaborator.id ? newCollaborator : c));
+      setCollaborators(collaborators.map(c => c.id === newCollaborator.id ? newCollaborator : c));
     } else {
-      console.warn('Cannot setCollaborators: ' + [...collaborators, { ...newCollaborator, id: `ag-${Date.now()}` }]);
+      setCollaborators([...collaborators, { ...newCollaborator, id: `ag-${Date.now()}` }]);
     }
     setShowCollaboratorModal(false);
     setNewCollaborator({ id: '', email: '', name: '', cargo: '', areaId: '', active: true });
@@ -2998,7 +3011,7 @@ function App() {
                 alert('Preencha os campos obrigatórios.');
                 return;
               }
-              console.warn('Cannot setUsers: ' + [...users, {
+              setUsers([...users, {
                 id: `usr-${Date.now()}`,
                 name: newUser.name,
                 email: newUser.email,

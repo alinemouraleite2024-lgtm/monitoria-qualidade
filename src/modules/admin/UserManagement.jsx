@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Plus, Edit, Lock, Unlock, Search } from 'lucide-react';
-import { getSystemUsers, USER_STATUS, ROLES } from '../../auth';
+import { getSystemUsers, saveSystemUsers, logAuthEvent, USER_STATUS, ROLES } from '../../auth';
 
 export const UserManagement = () => {
   const users = getSystemUsers();
@@ -17,12 +17,34 @@ export const UserManagement = () => {
 
   const handleSave = (e) => {
     e.preventDefault();
-    alert('Gestão de usuários desativada na Homologação. Utilize teamData.js.');
+    if (formData.password !== formData.confirmPassword) {
+      alert("As senhas não coincidem!");
+      return;
+    }
+    
+    let newUsers = [...users];
+    if (editingUser) {
+      newUsers = users.map(u => u.id === editingUser.id ? { ...u, ...formData } : u);
+      logAuthEvent('EDIT_USER', null, `Usuário ${formData.login} atualizado`);
+    } else {
+      const newUser = {
+        ...formData,
+        id: `usr-${Date.now()}`,
+      };
+      newUsers.push(newUser);
+      logAuthEvent('CREATE_USER', null, `Usuário ${formData.login} criado`);
+    }
+    
+    saveSystemUsers(newUsers);
     setShowModal(false);
   };
 
-  const handleToggleBlock = () => {
-    alert('Edição de status desativada na Homologação. Utilize teamData.js.');
+  const handleToggleBlock = (user) => {
+    const isBlocked = user.status === USER_STATUS.BLOCKED;
+    const newStatus = isBlocked ? USER_STATUS.ACTIVE : USER_STATUS.BLOCKED;
+    const newUsers = users.map(u => u.id === user.id ? { ...u, status: newStatus } : u);
+    saveSystemUsers(newUsers);
+    logAuthEvent(isBlocked ? 'UNBLOCK_USER' : 'BLOCK_USER', null, `Usuário ${user.login} ${isBlocked ? 'desbloqueado' : 'bloqueado'}`);
   };
 
   const filteredUsers = users.filter(u => 
