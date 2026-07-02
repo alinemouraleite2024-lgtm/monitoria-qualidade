@@ -308,7 +308,7 @@ const HomeGestor = ({ currentUser, demands, users }) => (
           <div className="executive-card" style={{ padding: '1rem', flexDirection: 'row', alignItems: 'center', gap: '1rem' }}>
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: '600' }}>Revisão de Monitoria - Atendente João</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Solicitado por Lucélia - Prazo: Hoje</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Solicitado por Nathalia - Prazo: Hoje</div>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button className="btn btn-outline btn-sm" style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}>Recusar</button>
@@ -546,9 +546,10 @@ const HomeMonitor = ({ currentUser, agenda, demands, monitorings, collaborators,
 function App() {
   // Brand Configuration & System settings
   useEffect(() => {
-    if (!localStorage.getItem('pm2_data_v4')) {
+    if (!localStorage.getItem('pm2_data_v5')) {
       localStorage.clear();
-      localStorage.setItem('pm2_data_v4', 'true');
+      sessionStorage.clear();
+      localStorage.setItem('pm2_data_v5', 'true');
       window.location.reload();
     }
   }, []);
@@ -1451,8 +1452,8 @@ function App() {
               {showDevTools && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1rem', padding: '1rem', backgroundColor: 'var(--bg-app)', borderRadius: '8px' }}>
                   <button className="btn btn-outline btn-sm" onClick={() => { setLoginEmail('admin@homolog.local'); setLoginPassword('Admin@123'); }}>Preencher Admin</button>
-                  <button className="btn btn-outline btn-sm" onClick={() => { setLoginEmail('aline@homolog.local'); setLoginPassword('Gestor@123'); }}>Preencher Gestor (Aline)</button>
-                  <button className="btn btn-outline btn-sm" onClick={() => { setLoginEmail('lucelia@homolog.local'); setLoginPassword('Monitor@123'); }}>Preencher Monitor (Lucélia)</button>
+                  <button className="btn btn-outline btn-sm" onClick={() => { setLoginEmail('raquel@homolog.local'); setLoginPassword('Gestor@123'); }}>Preencher Gestor (Raquel)</button>
+                  <button className="btn btn-outline btn-sm" onClick={() => { setLoginEmail('aline@homolog.local'); setLoginPassword('Monitor@123'); }}>Preencher Monitor (Aline)</button>
                 </div>
               )}
             </div>
