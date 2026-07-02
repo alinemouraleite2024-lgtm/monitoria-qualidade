@@ -26,8 +26,8 @@ export const INITIAL_USERS = [
 ];
 
 export const INITIAL_COLLABORATORS = [
-  { id: 'ag-1', email: 'nathalia@mouraleite.com.br', name: 'Nathalia Perger', cargo: 'Front Office de Relacionamento', active: true, areaId: 'area-1' },
-  { id: 'ag-2', email: 'allanis@mouraleite.com.br', name: 'Allanis Maquea', cargo: 'Front Office de Relacionamento', active: true, areaId: 'area-1' },
+  { id: 'ag-1', email: 'nathalia@mouraleite.com.br', name: 'Nathalia Perger Oyan', cargo: 'Front Office de Relacionamento', active: true, areaId: 'area-1' },
+  { id: 'ag-2', email: 'allanis@mouraleite.com.br', name: 'Allanis Maquea Silva', cargo: 'Front Office de Relacionamento', active: true, areaId: 'area-1' },
   { id: 'ag-3', email: 'susana@mouraleite.com.br', name: 'Susana Nascimento', cargo: 'Backoffice de Relacionamento', active: true, areaId: 'area-1' },
   { id: 'ag-4', email: 'aline@mouraleite.com.br', name: 'Aline Oliveira Verneck', cargo: 'Backoffice de Relacionamento e Monitora da Qualidade', active: true, areaId: 'area-1' },
   { id: 'ag-5', email: 'anacarla@mouraleite.com.br', name: 'Ana Carla', cargo: 'Assistente de Gestão de Contratos', active: true, areaId: 'area-1' }

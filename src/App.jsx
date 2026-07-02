@@ -307,7 +307,7 @@ const HomeGestor = ({ currentUser, demands, users }) => (
         <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           <div className="executive-card" style={{ padding: '1rem', flexDirection: 'row', alignItems: 'center', gap: '1rem' }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: '600' }}>Revisão de Monitoria - Atendente João</div>
+              <div style={{ fontWeight: '600' }}>Revisão de Monitoria - Atendente Allanis</div>
               <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Solicitado por Nathalia - Prazo: Hoje</div>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
