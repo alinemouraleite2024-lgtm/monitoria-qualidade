@@ -60,10 +60,11 @@ export const MonitoringList = ({
   };
 
   const getScoreConcept = (score) => {
-    if (score >= 9) return 'Excelente';
-    if (score >= 7.5) return 'Bom';
-    if (score >= 5) return 'Regular';
-    return 'Necessita melhoria';
+    if (score >= 95) return 'Excelente';
+    if (score >= 85) return 'Muito Bom';
+    if (score >= 75) return 'Bom';
+    if (score >= 50) return 'Atenção';
+    return 'Crítico';
   };
 
   return (
@@ -181,8 +182,8 @@ export const MonitoringList = ({
                   <td>
                     {m.status !== 'Rascunho' ? (
                       <div>
-                        <div style={{ fontWeight: '700', color: m.finalScore >= 7.5 ? 'var(--primary)' : 'var(--danger)' }}>
-                          {m.finalScore.toFixed(2)}
+                        <div style={{ fontWeight: '700', color: m.finalScore >= 75 ? 'var(--primary)' : 'var(--danger)' }}>
+                          {m.finalScore.toFixed(2)}%
                         </div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{getScoreConcept(m.finalScore)}</div>
                       </div>

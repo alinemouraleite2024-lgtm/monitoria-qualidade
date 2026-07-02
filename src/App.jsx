@@ -983,11 +983,11 @@ function App() {
       
       let scoreMatch = true;
       if (historyFilters.scoreFilter === 'LOW') {
-        scoreMatch = m.finalScore < 7.5;
+        scoreMatch = m.finalScore < 75;
       } else if (historyFilters.scoreFilter === 'HIGH') {
-        scoreMatch = m.finalScore >= 9.0;
+        scoreMatch = m.finalScore >= 95;
       } else if (historyFilters.scoreFilter === 'MID') {
-        scoreMatch = m.finalScore >= 7.5 && m.finalScore < 9.0;
+        scoreMatch = m.finalScore >= 75 && m.finalScore < 95;
       }
 
       const mDate = new Date(m.date);
@@ -1082,7 +1082,7 @@ function App() {
       const col = users.find(u => u.id === m.colaboradorId)?.name || 'N/A';
       const formattedDate = new Date(m.date).toLocaleDateString('pt-BR');
       const cleanComments = m.comments.replace(/"/g, '""');
-      csvContent += `"${m.id}","${formattedDate}","${mon}","${col}","${m.canal}","${m.tipo}","${m.status}",${m.finalScore},"${cleanComments}"\n`;
+      csvContent += `"${m.id}","${formattedDate}","${mon}","${col}","${m.canal}","${m.tipo}","${m.status}","${m.finalScore.toFixed(2)}%","${cleanComments}"\n`;
     });
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
@@ -1107,7 +1107,7 @@ function App() {
           <td>${col}</td>
           <td>${m.canal} (${m.tipo})</td>
           <td>${m.status}</td>
-          <td style="font-weight: bold; color: ${m.finalScore >= 9 ? '#008443' : m.finalScore >= 7.5 ? '#f59e0b' : '#ef4444'}">${m.finalScore}</td>
+          <td style="font-weight: bold; color: ${m.finalScore >= 95 ? '#008443' : m.finalScore >= 75 ? '#f59e0b' : '#ef4444'}">${m.finalScore.toFixed(2)}%</td>
           <td>${m.comments}</td>
         </tr>
       `;
@@ -1799,8 +1799,8 @@ function App() {
                                   
                                   return recentMon.slice(0, 5).map(m => {
                                     const colName = users.find(u => u.id === m.colaboradorId)?.name || 'N/A';
-                                    const isHigh = m.finalScore >= 9.0;
-                                    const isLow = m.finalScore < 7.5;
+                                    const isHigh = m.finalScore >= 95;
+                                    const isLow = m.finalScore < 75;
                                     const nodeClass = isHigh ? 'success' : (isLow ? 'danger' : 'warning');
                                     
                                     return (
@@ -1813,7 +1813,7 @@ function App() {
                                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                             <div style={{ fontWeight: '700', fontSize: '0.85rem' }}>{colName}</div>
                                             <div style={{ fontWeight: '800', color: isHigh ? 'var(--primary)' : (isLow ? 'var(--danger)' : 'var(--warning)') }}>
-                                              {m.finalScore.toFixed(2)}
+                                              {m.finalScore.toFixed(2)}%
                                             </div>
                                           </div>
                                           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
@@ -2081,7 +2081,7 @@ function App() {
                                 const initials = users.find(u => u.id === dm.colaboradorId)?.name.split(' ').map(n => n[0]).join('') || 'N/A';
                                 return (
                                   <span key={dm.id} className="calendar-mini-badge" style={{ backgroundColor: 'var(--primary)', color: 'white' }}>
-                                    {initials}: {dm.finalScore.toFixed(1)}
+                                    {initials}: {dm.finalScore.toFixed(2)}%
                                   </span>
                                 );
                               })}

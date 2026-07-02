@@ -76,12 +76,12 @@ export const MonitoringHistory = ({
           <div>
             <h3 style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Resumo da Avaliação</h3>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-              <div style={{ fontSize: '2.5rem', fontWeight: '800', color: monitoring.finalScore >= 7.5 ? 'var(--primary)' : 'var(--danger)', lineHeight: 1 }}>
-                {monitoring.finalScore?.toFixed(2)}
+              <div style={{ fontSize: '2.5rem', fontWeight: '800', color: monitoring.finalScore >= 75 ? 'var(--primary)' : 'var(--danger)', lineHeight: 1 }}>
+                {monitoring.finalScore?.toFixed(2)}%
               </div>
               <div>
                 <div style={{ fontWeight: '600' }}>Nota Final</div>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{monitoring.finalScore >= 9 ? 'Excelente' : monitoring.finalScore >= 7.5 ? 'Bom' : monitoring.finalScore >= 5 ? 'Regular' : 'Necessita melhoria'}</div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{getScoreConcept(monitoring.finalScore)}</div>
               </div>
             </div>
 

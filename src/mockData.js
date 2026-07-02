@@ -44,7 +44,7 @@ export const INITIAL_CRITERIA = [
     name: 'Comunicação',
     description: 'Clareza, tom de voz, uso correto da gramática e vocabulário adequado.',
     weight: 1.0,
-    minExpectedScore: 7.5,
+    minExpectedScore: 75,
     active: true,
     channels: ['Chat', 'WhatsApp', 'E-mail', 'Telefone']
   },
@@ -53,7 +53,7 @@ export const INITIAL_CRITERIA = [
     name: 'Empatia',
     description: 'Escuta ativa, acolhimento, cordialidade e tratamento personalizado.',
     weight: 1.0,
-    minExpectedScore: 8.0,
+    minExpectedScore: 80,
     active: true,
     channels: ['Chat', 'WhatsApp', 'Telefone', 'Presencial']
   },
@@ -62,7 +62,7 @@ export const INITIAL_CRITERIA = [
     name: 'Didática',
     description: 'Capacidade de transmitir a informação de forma compreensível e ritmada.',
     weight: 1.0,
-    minExpectedScore: 7.0,
+    minExpectedScore: 70,
     active: true,
     channels: ['Telefone', 'Presencial']
   },
@@ -71,7 +71,7 @@ export const INITIAL_CRITERIA = [
     name: 'Solução',
     description: 'Assertividade na resposta, resolução do problema e conformidade técnica.',
     weight: 1.0,
-    minExpectedScore: 8.0,
+    minExpectedScore: 80,
     active: true,
     channels: ['Chat', 'WhatsApp', 'E-mail', 'Telefone', 'Presencial']
   },
@@ -80,7 +80,7 @@ export const INITIAL_CRITERIA = [
     name: 'Tempo de Resposta',
     description: 'Agilidade na interação e cumprimento do SLA estabelecido.',
     weight: 1.0,
-    minExpectedScore: 7.5,
+    minExpectedScore: 75,
     active: true,
     channels: ['Chat', 'WhatsApp', 'E-mail']
   }
@@ -129,14 +129,14 @@ export const INITIAL_MONITORINGS = [
     status: 'Validada',
     tipo: 'Regular',
     date: '2026-06-01T10:30:00Z',
-    finalScore: 9.25,
+    finalScore: 92.5,
     comments: 'Nathalia demonstrou excelente cordialidade e agilidade na resolução da dúvida técnica do cliente.',
     strengths: 'Rapidez na consulta à base de conhecimento e empatia.',
     opportunities: 'Reduzir levemente o uso de gerúndios.',
     scores: [
-      { criterionId: 'crit-2', score: 8.5, lowScoreReason: '' },
-      { criterionId: 'crit-4', score: 7.0, lowScoreReason: 'Problemas de sistema afetaram o tempo, mas não justificam a falta de contorno da situação.' },
-      { criterionId: 'crit-5', score: 6.0, lowScoreReason: 'SLA não cumprido.' },
+      { criterionId: 'crit-2', score: 85, lowScoreReason: '' },
+      { criterionId: 'crit-4', score: 70, lowScoreReason: 'Problemas de sistema afetaram o tempo, mas não justificam a falta de contorno da situação.' },
+      { criterionId: 'crit-5', score: 60, lowScoreReason: 'SLA não cumprido.' },
     ]
   },
   {
@@ -147,15 +147,15 @@ export const INITIAL_MONITORINGS = [
     status: 'Validada',
     tipo: 'Regular',
     date: '2026-06-02T14:15:00Z',
-    finalScore: 7.25,
+    finalScore: 72.5,
     comments: 'Allanis foi atenciosa, mas falhou no cumprimento do roteiro de segurança da conta.',
     strengths: 'Tom de voz firme, clareza e empatia demonstrada.',
     opportunities: 'Realizar todas as perguntas obrigatórias de confirmação cadastral.',
     scores: [
-      { criterionId: 'crit-1', score: 8.0, lowScoreReason: '' },
-      { criterionId: 'crit-2', score: 8.5, lowScoreReason: '' },
-      { criterionId: 'crit-3', score: 6.5, lowScoreReason: 'Apresentou dificuldades em explicar as taxas tarifárias de forma didática.' },
-      { criterionId: 'crit-4', score: 6.0, lowScoreReason: 'Não confirmou os três dados de segurança previstos em script.' },
+      { criterionId: 'crit-1', score: 80, lowScoreReason: '' },
+      { criterionId: 'crit-2', score: 85, lowScoreReason: '' },
+      { criterionId: 'crit-3', score: 65, lowScoreReason: 'Apresentou dificuldades em explicar as taxas tarifárias de forma didática.' },
+      { criterionId: 'crit-4', score: 60, lowScoreReason: 'Não confirmou os três dados de segurança previstos em script.' },
     ]
   },
   {
@@ -166,15 +166,15 @@ export const INITIAL_MONITORINGS = [
     status: 'Concluída',
     tipo: 'Direcionada',
     date: '2026-06-03T09:00:00Z',
-    finalScore: 9.38,
+    finalScore: 93.80000000000001,
     comments: 'Avaliação excelente. Resposta rápida e alinhada às expectativas corporativas.',
     strengths: 'Escrita impecável, uso correto de negritos e emojis moderados.',
     opportunities: 'Nenhuma crítica identificada. Continuar com essa excelência de fluxo.',
     scores: [
-      { criterionId: 'crit-1', score: 9.5, lowScoreReason: '' },
-      { criterionId: 'crit-2', score: 9.5, lowScoreReason: '' },
-      { criterionId: 'crit-4', score: 9.5, lowScoreReason: '' },
-      { criterionId: 'crit-5', score: 9.0, lowScoreReason: '' },
+      { criterionId: 'crit-1', score: 95, lowScoreReason: '' },
+      { criterionId: 'crit-2', score: 95, lowScoreReason: '' },
+      { criterionId: 'crit-4', score: 95, lowScoreReason: '' },
+      { criterionId: 'crit-5', score: 90, lowScoreReason: '' },
     ]
   },
   {
@@ -185,14 +185,14 @@ export const INITIAL_MONITORINGS = [
     status: 'Validada',
     tipo: 'Regular',
     date: '2026-06-02T16:45:00Z',
-    finalScore: 8.5,
+    finalScore: 85,
     comments: 'Raquel respondeu o e-mail de forma técnica e formal, porém o tempo de envio estourou o SLA interno.',
     strengths: 'Exatidão da resposta técnica.',
     opportunities: 'Gerenciamento da fila de emails.',
     scores: [
-      { criterionId: 'crit-1', score: 9.0, lowScoreReason: '' },
-      { criterionId: 'crit-4', score: 9.0, lowScoreReason: '' },
-      { criterionId: 'crit-5', score: 7.5, lowScoreReason: '' },
+      { criterionId: 'crit-1', score: 90, lowScoreReason: '' },
+      { criterionId: 'crit-4', score: 90, lowScoreReason: '' },
+      { criterionId: 'crit-5', score: 75, lowScoreReason: '' },
     ]
   },
   {
@@ -217,24 +217,24 @@ export const INITIAL_MONITORINGS = [
     status: 'Pendente',
     tipo: 'Regular',
     date: '2026-06-10T11:00:00Z',
-    finalScore: 8.5,
+    finalScore: 85,
     comments: 'Bom atendimento no geral, pendente validação do gestor sobre o procedimento técnico.',
     strengths: 'Comunicação muito clara.',
     opportunities: 'Melhorar a didática.',
     scores: [
-      { criterionId: 'crit-1', score: 10, lowScoreReason: '' },
-      { criterionId: 'crit-3', score: 7.0, lowScoreReason: 'Faltou explicar o passo a passo de forma simplificada.' }
+      { criterionId: 'crit-1', score: 100, lowScoreReason: '' },
+      { criterionId: 'crit-3', score: 70, lowScoreReason: 'Faltou explicar o passo a passo de forma simplificada.' }
     ]
   }
 ];
 
 // Pesquisas de Satisfação (Mock)
 export const INITIAL_SURVEYS = [
-  { id: 'surv-1', type: 'NPS', date: '2026-06-01', score: 10, comment: 'Excelente atendimento, rápido e prático.', collaboratorId: 'ag-1' },
-  { id: 'surv-2', type: 'NPS', date: '2026-06-02', score: 6, comment: 'Demorou muito para me transferir.', collaboratorId: 'ag-2' },
-  { id: 'surv-3', type: 'CSAT', date: '2026-06-03', score: 5, comment: 'Problema resolvido na hora.', collaboratorId: 'ag-1' },
-  { id: 'surv-4', type: 'SAT', date: '2026-06-05', score: 4, comment: 'Atendente muito educada, mas o sistema estava fora do ar.', collaboratorId: 'ag-4' },
-  { id: 'surv-5', type: 'NPS', date: '2026-06-10', score: 9, comment: '', collaboratorId: 'ag-3' }
+  { id: 'surv-1', type: 'NPS', date: '2026-06-01', score: 100, comment: 'Excelente atendimento, rápido e prático.', collaboratorId: 'ag-1' },
+  { id: 'surv-2', type: 'NPS', date: '2026-06-02', score: 60, comment: 'Demorou muito para me transferir.', collaboratorId: 'ag-2' },
+  { id: 'surv-3', type: 'CSAT', date: '2026-06-03', score: 50, comment: 'Problema resolvido na hora.', collaboratorId: 'ag-1' },
+  { id: 'surv-4', type: 'SAT', date: '2026-06-05', score: 40, comment: 'Atendente muito educada, mas o sistema estava fora do ar.', collaboratorId: 'ag-4' },
+  { id: 'surv-5', type: 'NPS', date: '2026-06-10', score: 90, comment: '', collaboratorId: 'ag-3' }
 ];
 
 export const INITIAL_HOLIDAYS = [

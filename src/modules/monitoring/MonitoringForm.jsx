@@ -76,7 +76,7 @@ export const MonitoringForm = ({
     if (!initialData) {
       const initialScores = {};
       applicableCriteria.forEach(c => {
-        initialScores[c.id] = { score: 10, lowScoreReason: '' };
+        initialScores[c.id] = { score: 100, lowScoreReason: '' };
       });
       setScores(initialScores);
     }
@@ -89,7 +89,7 @@ export const MonitoringForm = ({
     
     applicableCriteria.forEach(c => {
       const item = scores[c.id];
-      const val = item && item.score !== undefined ? parseFloat(item.score) : 10;
+      const val = item && item.score !== undefined ? parseFloat(item.score) : 100;
       weightedSum += val * c.weight;
       weightTotal += c.weight;
     });
@@ -98,13 +98,12 @@ export const MonitoringForm = ({
   };
 
   const finalScore = calculateFinalScore();
-  const percentual = finalScore * 10;
-  
   const getScoreConcept = (score) => {
-    if (score >= 9) return 'Excelente';
-    if (score >= 7.5) return 'Bom';
-    if (score >= 5) return 'Regular';
-    return 'Necessita melhoria';
+    if (score >= 95) return 'Excelente';
+    if (score >= 85) return 'Muito Bom';
+    if (score >= 75) return 'Bom';
+    if (score >= 50) return 'Atenção';
+    return 'Crítico';
   };
   const conceito = getScoreConcept(finalScore);
 
@@ -366,7 +365,7 @@ export const MonitoringForm = ({
                 <div style={{ backgroundColor: 'var(--primary-light)', padding: '1rem', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: '700', textTransform: 'uppercase' }}>Nota Parcial</div>
-                    <div style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--text-main)', lineHeight: 1 }}>{finalScore.toFixed(2)}</div>
+                    <div style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--text-main)', lineHeight: 1 }}>{finalScore.toFixed(2)}%</div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: '600' }}>Conceito</div>
@@ -385,20 +384,16 @@ export const MonitoringForm = ({
                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
                       <div style={{ width: '120px' }}>
                         <label className="form-label">Nota</label>
-                        <select 
+                        <input 
+                          type="number"
                           className="form-control"
                           style={{ fontSize: '1.1rem', fontWeight: '700' }}
-                          value={scores[c.id]?.score ?? 10}
-                          onChange={(e) => setScores({...scores, [c.id]: { ...scores[c.id], score: parseFloat(e.target.value) }})}
-                        >
-                          <option value="10">10</option>
-                          <option value="9">9.0</option>
-                          <option value="8">8.0</option>
-                          <option value="7">7.0</option>
-                          <option value="6">6.0</option>
-                          <option value="5">5.0</option>
-                          <option value="0">0.0</option>
-                        </select>
+                          min="0"
+                          max="100"
+                          step="1"
+                          value={scores[c.id]?.score ?? 100}
+                          onChange={(e) => setScores({...scores, [c.id]: { ...scores[c.id], score: parseFloat(e.target.value) || 0 }})}
+                        />
                       </div>
                       
                       <div style={{ flex: 1 }}>
