@@ -76,12 +76,13 @@ import {
 } from './mockData';
 
 import {
-  HOMOLOG_USERS,
   logAuthEvent,
   hasPermission,
 // eslint-disable-next-line no-unused-vars
   ROLES
 } from './auth';
+
+import { HOMOLOG_USERS } from './teamData';
 
 import { UserManagement } from './modules/admin/UserManagement';
 import { RolesManagement } from './modules/admin/RolesManagement';

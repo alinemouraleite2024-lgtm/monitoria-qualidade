@@ -1,66 +1,8 @@
 // Estrutura de Autenticação Preparada para Integração Futura (Homologação)
 
-export const ROLES = {
-  ADMIN: 'ADMIN',
-  GESTOR: 'GESTOR',
-  MONITOR: 'MONITOR'
-};
+import { ROLES, USER_STATUS, PERMISSIONS } from './constants/auth';
 
-export const USER_STATUS = {
-  ACTIVE: 'ACTIVE',
-  INACTIVE: 'INACTIVE',
-  BLOCKED: 'BLOCKED'
-};
-
-export const PERMISSIONS = {
-  // Módulos principais
-  VIEW_DASHBOARD: ['ADMIN', 'GESTOR'],
-  VIEW_PLANNING: ['ADMIN', 'GESTOR'],
-  VIEW_CENTRAL_DEMANDS: ['ADMIN', 'GESTOR'],
-  VIEW_MONITORINGS: ['ADMIN', 'GESTOR', 'MONITOR'],
-  VIEW_SURVEYS: ['ADMIN', 'GESTOR', 'MONITOR'],
-  VIEW_REPORTS: ['ADMIN', 'GESTOR', 'MONITOR'],
-  VIEW_COLLABORATORS: ['ADMIN', 'GESTOR'],
-  VIEW_MY_DEMANDS: ['MONITOR'],
-  VIEW_MY_MONITORINGS: ['MONITOR'],
-  VIEW_CALENDAR: ['MONITOR'],
-  VIEW_OPERATIONAL_CALENDAR: ['GESTOR'],
-  VIEW_MY_PROFILE: ['MONITOR', 'GESTOR', 'ADMIN'],
-
-  // Módulos Administrativos (Novo)
-  VIEW_USERS: ['ADMIN'],
-  VIEW_ADMINISTRATION: ['ADMIN'],
-  VIEW_ROLES: ['ADMIN'],
-  VIEW_AUDIT_LOGS: ['ADMIN'],
-  VIEW_SETTINGS: ['ADMIN'],
-  VIEW_INTEGRATIONS: ['ADMIN'],
-  VIEW_VERSION_HISTORY: ['ADMIN'],
-
-  // Permissões Granulares (Exemplos)
-  CREATE_MONITORING: ['MONITOR', 'ADMIN'],
-  EDIT_MONITORING: ['MONITOR', 'ADMIN'],
-  DELETE_MONITORING: ['ADMIN'],
-  APPROVE_MONITORING: ['GESTOR', 'ADMIN'],
-  EXPORT_REPORTS: ['GESTOR', 'MONITOR', 'ADMIN'],
-  MANAGE_USERS: ['ADMIN'],
-  MANAGE_INTEGRATIONS: ['ADMIN'],
-};
-
-// Usuários de Homologação Iniciais (Simulando o Banco)
-import { OFFICIAL_USERS } from './teamData';
-
-export const HOMOLOG_USERS = OFFICIAL_USERS;
-
-export const getSystemUsers = () => {
-  const stored = localStorage.getItem('pm2_users');
-  if (stored) return JSON.parse(stored);
-  localStorage.setItem('pm2_users', JSON.stringify(HOMOLOG_USERS));
-  return HOMOLOG_USERS;
-};
-
-export const saveSystemUsers = (users) => {
-  localStorage.setItem('pm2_users', JSON.stringify(users));
-};
+export { ROLES, USER_STATUS, PERMISSIONS };
 
 // Helper para verificar permissão
 export const hasPermission = (userRole, permissionKey) => {

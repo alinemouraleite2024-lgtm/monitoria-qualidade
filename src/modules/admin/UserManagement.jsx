@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus, Edit, Lock, Unlock, Search } from 'lucide-react';
-import { getSystemUsers, saveSystemUsers, logAuthEvent, USER_STATUS, ROLES } from '../../auth';
+import { logAuthEvent, USER_STATUS, ROLES } from '../../auth';
+import { getSystemUsers, saveSystemUsers } from '../../teamData';
 
 export const UserManagement = () => {
   const users = getSystemUsers();

@@ -1,4 +1,4 @@
-import { ROLES, USER_STATUS } from './auth';
+import { ROLES, USER_STATUS } from './constants/auth';
 
 // Base oficial da Equipe de Relacionamento (Single Source of Truth)
 export const OFFICIAL_USERS = [
@@ -101,3 +101,16 @@ export const OFFICIAL_COLLABORATORS = [
   { id: 'usr-5', email: 'susana@mouraleite.com.br', name: 'Susana Nascimento', cargo: 'Backoffice de Relacionamento', active: true, areaId: 'area-1' },
   { id: 'usr-6', email: 'anacarla@mouraleite.com.br', name: 'Ana Carla', cargo: 'Assistente de Gestão de Contratos', active: true, areaId: 'area-1' }
 ];
+
+export const HOMOLOG_USERS = OFFICIAL_USERS;
+
+export const getSystemUsers = () => {
+  const stored = localStorage.getItem('pm2_users');
+  if (stored) return JSON.parse(stored);
+  localStorage.setItem('pm2_users', JSON.stringify(HOMOLOG_USERS));
+  return HOMOLOG_USERS;
+};
+
+export const saveSystemUsers = (users) => {
+  localStorage.setItem('pm2_users', JSON.stringify(users));
+};
