@@ -83,6 +83,24 @@ import {
 } from './auth';
 
 import { HOMOLOG_USERS } from './teamData';
+import { DATABASE_VERSION } from './config';
+
+const initializeDatabase = () => {
+  const currentVersion = localStorage.getItem('pm2_database_version');
+  if (currentVersion !== String(DATABASE_VERSION)) {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('pm2_')) {
+        localStorage.removeItem(key);
+      }
+    }
+    sessionStorage.clear();
+    localStorage.setItem('pm2_database_version', String(DATABASE_VERSION));
+    window.location.reload();
+    return true;
+  }
+  return false;
+};
 
 import { UserManagement } from './modules/admin/UserManagement';
 import { RolesManagement } from './modules/admin/RolesManagement';
@@ -544,20 +562,11 @@ const HomeMonitor = ({ currentUser, agenda, demands, monitorings, collaborators,
 };
 
 function App() {
+  const isMigrating = React.useMemo(() => initializeDatabase(), []);
+
+  if (isMigrating) return null;
+
   // Brand Configuration & System settings
-  useEffect(() => {
-    if (!localStorage.getItem('pm2_data_v7')) {
-      for (let i = localStorage.length - 1; i >= 0; i--) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('pm2_')) {
-          localStorage.removeItem(key);
-        }
-      }
-      sessionStorage.clear();
-      localStorage.setItem('pm2_data_v7', 'true');
-      window.location.reload();
-    }
-  }, []);
   const [brand, setBrand] = useState(() => {
     const saved = localStorage.getItem('pm2_brand');
     return saved ? JSON.parse(saved) : DEFAULT_BRAND_CONFIG;
