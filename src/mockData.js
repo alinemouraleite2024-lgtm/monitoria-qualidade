@@ -27,51 +27,25 @@ export const INITIAL_COLLABORATORS = OFFICIAL_COLLABORATORS;
 
 // Initial dynamic evaluation criteria (flexible configurations)
 export const INITIAL_CRITERIA = [
-  {
-    id: 'crit-1',
-    name: 'Comunicação',
-    description: 'Clareza, tom de voz, uso correto da gramática e vocabulário adequado.',
-    weight: 1.0,
-    minExpectedScore: 75,
-    active: true,
-    channels: ['Chat', 'WhatsApp', 'E-mail', 'Telefone']
-  },
-  {
-    id: 'crit-2',
-    name: 'Empatia',
-    description: 'Escuta ativa, acolhimento, cordialidade e tratamento personalizado.',
-    weight: 1.0,
-    minExpectedScore: 80,
-    active: true,
-    channels: ['Chat', 'WhatsApp', 'Telefone', 'Presencial']
-  },
-  {
-    id: 'crit-3',
-    name: 'Didática',
-    description: 'Capacidade de transmitir a informação de forma compreensível e ritmada.',
-    weight: 1.0,
-    minExpectedScore: 70,
-    active: true,
-    channels: ['Telefone', 'Presencial']
-  },
-  {
-    id: 'crit-4',
-    name: 'Solução',
-    description: 'Assertividade na resposta, resolução do problema e conformidade técnica.',
-    weight: 1.0,
-    minExpectedScore: 80,
-    active: true,
-    channels: ['Chat', 'WhatsApp', 'E-mail', 'Telefone', 'Presencial']
-  },
-  {
-    id: 'crit-5',
-    name: 'Tempo de Resposta',
-    description: 'Agilidade na interação e cumprimento do SLA estabelecido.',
-    weight: 1.0,
-    minExpectedScore: 75,
-    active: true,
-    channels: ['Chat', 'WhatsApp', 'E-mail']
-  }
+  // COMUNICAÇÃO
+  { id: 'crit-com-1', category: 'COMUNICAÇÃO', name: 'Saudação', description: 'Realizou a saudação inicial corretamente.', weight: 1.0, minExpectedScore: 2, active: true, channels: ['Chat', 'WhatsApp', 'E-mail', 'Telefone', 'Presencial', 'Teams'] },
+  { id: 'crit-com-2', category: 'COMUNICAÇÃO', name: 'Clareza', description: 'Foi claro e objetivo na comunicação.', weight: 1.0, minExpectedScore: 2, active: true, channels: ['Chat', 'WhatsApp', 'E-mail', 'Telefone', 'Presencial', 'Teams'] },
+  { id: 'crit-com-3', category: 'COMUNICAÇÃO', name: 'Linguagem adequada', description: 'Utilizou vocabulário e tom de voz adequados.', weight: 1.0, minExpectedScore: 2, active: true, channels: ['Chat', 'WhatsApp', 'E-mail', 'Telefone', 'Presencial', 'Teams'] },
+  
+  // ATENDIMENTO
+  { id: 'crit-atd-1', category: 'ATENDIMENTO', name: 'Escuta ativa', description: 'Demonstrou atenção plena ao relato do cliente.', weight: 1.0, minExpectedScore: 2, active: true, channels: ['Chat', 'WhatsApp', 'Telefone', 'Presencial', 'Teams'] },
+  { id: 'crit-atd-2', category: 'ATENDIMENTO', name: 'Empatia', description: 'Acolheu a dor ou necessidade do cliente com empatia.', weight: 1.0, minExpectedScore: 2, active: true, channels: ['Chat', 'WhatsApp', 'E-mail', 'Telefone', 'Presencial', 'Teams'] },
+  { id: 'crit-atd-3', category: 'ATENDIMENTO', name: 'Personalização', description: 'Tratou o cliente de forma única e personalizada.', weight: 1.0, minExpectedScore: 2, active: true, channels: ['Chat', 'WhatsApp', 'E-mail', 'Telefone', 'Presencial', 'Teams'] },
+
+  // PROCESSO
+  { id: 'crit-pro-1', category: 'PROCESSO', name: 'Seguiu procedimento', description: 'Adotou as regras e POPs exigidos para a tratativa.', weight: 1.0, minExpectedScore: 2, active: true, channels: ['Chat', 'WhatsApp', 'E-mail', 'Telefone', 'Presencial', 'Teams'] },
+  { id: 'crit-pro-2', category: 'PROCESSO', name: 'Validou informações', description: 'Realizou validação de dados de segurança/cadastro.', weight: 1.0, minExpectedScore: 2, active: true, channels: ['Chat', 'WhatsApp', 'Telefone', 'Presencial', 'Teams'] },
+  { id: 'crit-pro-3', category: 'PROCESSO', name: 'Registrou corretamente', description: 'Tabulou ou registrou o atendimento no sistema corretamente.', weight: 1.0, minExpectedScore: 2, active: true, channels: ['Chat', 'WhatsApp', 'E-mail', 'Telefone', 'Presencial', 'Teams'] },
+
+  // ENCERRAMENTO
+  { id: 'crit-enc-1', category: 'ENCERRAMENTO', name: 'Confirmou resolução', description: 'Confirmou se a dúvida/problema foi resolvido.', weight: 1.0, minExpectedScore: 2, active: true, channels: ['Chat', 'WhatsApp', 'E-mail', 'Telefone', 'Presencial', 'Teams'] },
+  { id: 'crit-enc-2', category: 'ENCERRAMENTO', name: 'Informou próximos passos', description: 'Deixou claro as próximas etapas, prazos ou SLA.', weight: 1.0, minExpectedScore: 2, active: true, channels: ['Chat', 'WhatsApp', 'E-mail', 'Telefone', 'Presencial', 'Teams'] },
+  { id: 'crit-enc-3', category: 'ENCERRAMENTO', name: 'Finalizou adequadamente', description: 'Despediu-se cordialmente e finalizou o contato.', weight: 1.0, minExpectedScore: 2, active: true, channels: ['Chat', 'WhatsApp', 'E-mail', 'Telefone', 'Presencial', 'Teams'] }
 ];
 
 // Allocations with Start and End Dates (Vigência)
@@ -107,114 +81,8 @@ export const INITIAL_COLABORADOR_GOALS = [
   { id: 'cgoal-5', monitorId: 'usr-1', colaboradorId: 'usr-6', year: 2026, month: 5, targetQty: 5 },
 ];
 
-// Evaluation records (Seeded)
-export const INITIAL_MONITORINGS = [
-  {
-    id: 'mon-1',
-    monitorId: 'usr-2',
-    colaboradorId: 'usr-3',
-    canal: 'Chat',
-    status: 'Validada',
-    tipo: 'Regular',
-    date: '2026-06-01T10:30:00Z',
-    finalScore: 92.5,
-    comments: 'Nathalia demonstrou excelente cordialidade e agilidade na resolução da dúvida técnica do cliente.',
-    strengths: 'Rapidez na consulta à base de conhecimento e empatia.',
-    opportunities: 'Reduzir levemente o uso de gerúndios.',
-    scores: [
-      { criterionId: 'crit-2', score: 85, lowScoreReason: '' },
-      { criterionId: 'crit-4', score: 70, lowScoreReason: 'Problemas de sistema afetaram o tempo, mas não justificam a falta de contorno da situação.' },
-      { criterionId: 'crit-5', score: 60, lowScoreReason: 'SLA não cumprido.' },
-    ]
-  },
-  {
-    id: 'mon-2',
-    monitorId: 'usr-2',
-    colaboradorId: 'usr-4',
-    canal: 'Telefone',
-    status: 'Validada',
-    tipo: 'Regular',
-    date: '2026-06-02T14:15:00Z',
-    finalScore: 72.5,
-    comments: 'Allanis foi atenciosa, mas falhou no cumprimento do roteiro de segurança da conta.',
-    strengths: 'Tom de voz firme, clareza e empatia demonstrada.',
-    opportunities: 'Realizar todas as perguntas obrigatórias de confirmação cadastral.',
-    scores: [
-      { criterionId: 'crit-1', score: 80, lowScoreReason: '' },
-      { criterionId: 'crit-2', score: 85, lowScoreReason: '' },
-      { criterionId: 'crit-3', score: 65, lowScoreReason: 'Apresentou dificuldades em explicar as taxas tarifárias de forma didática.' },
-      { criterionId: 'crit-4', score: 60, lowScoreReason: 'Não confirmou os três dados de segurança previstos em script.' },
-    ]
-  },
-  {
-    id: 'mon-3',
-    monitorId: 'usr-2',
-    colaboradorId: 'usr-5',
-    canal: 'WhatsApp',
-    status: 'Concluída',
-    tipo: 'Direcionada',
-    date: '2026-06-03T09:00:00Z',
-    finalScore: 93.80000000000001,
-    comments: 'Avaliação excelente. Resposta rápida e alinhada às expectativas corporativas.',
-    strengths: 'Escrita impecável, uso correto de negritos e emojis moderados.',
-    opportunities: 'Nenhuma crítica identificada. Continuar com essa excelência de fluxo.',
-    scores: [
-      { criterionId: 'crit-1', score: 95, lowScoreReason: '' },
-      { criterionId: 'crit-2', score: 95, lowScoreReason: '' },
-      { criterionId: 'crit-4', score: 95, lowScoreReason: '' },
-      { criterionId: 'crit-5', score: 90, lowScoreReason: '' },
-    ]
-  },
-  {
-    id: 'mon-4',
-    monitorId: 'usr-1',
-    colaboradorId: 'usr-6',
-    canal: 'E-mail',
-    status: 'Validada',
-    tipo: 'Regular',
-    date: '2026-06-02T16:45:00Z',
-    finalScore: 85,
-    comments: 'Ana Carla respondeu o e-mail de forma técnica e formal, porém o tempo de envio estourou o SLA interno.',
-    strengths: 'Exatidão da resposta técnica.',
-    opportunities: 'Gerenciamento da fila de emails.',
-    scores: [
-      { criterionId: 'crit-1', score: 90, lowScoreReason: '' },
-      { criterionId: 'crit-4', score: 90, lowScoreReason: '' },
-      { criterionId: 'crit-5', score: 75, lowScoreReason: '' },
-    ]
-  },
-  {
-    id: 'mon-5',
-    monitorId: 'usr-2',
-    colaboradorId: 'usr-3',
-    canal: 'E-mail',
-    status: 'Rascunho',
-    tipo: 'Fluxo',
-    date: '2026-06-15T09:00:00Z',
-    finalScore: 0,
-    comments: '',
-    strengths: '',
-    opportunities: '',
-    scores: []
-  },
-  {
-    id: 'mon-6',
-    monitorId: 'usr-1',
-    colaboradorId: 'usr-5',
-    canal: 'Chat',
-    status: 'Pendente',
-    tipo: 'Regular',
-    date: '2026-06-10T11:00:00Z',
-    finalScore: 85,
-    comments: 'Bom atendimento no geral, pendente validação do gestor sobre o procedimento técnico.',
-    strengths: 'Comunicação muito clara.',
-    opportunities: 'Melhorar a didática.',
-    scores: [
-      { criterionId: 'crit-1', score: 100, lowScoreReason: '' },
-      { criterionId: 'crit-3', score: 70, lowScoreReason: 'Faltou explicar o passo a passo de forma simplificada.' }
-    ]
-  }
-];
+// Evaluation records (Seeded - limpo para evitar inconsistência com novos critérios)
+export const INITIAL_MONITORINGS = [];
 
 // Pesquisas de Satisfação (Mock)
 export const INITIAL_SURVEYS = [

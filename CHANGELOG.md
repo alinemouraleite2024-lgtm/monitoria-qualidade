@@ -5,8 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.2] - 2026-07-06
+## [0.4.0] - 2026-07-06
 
+### Added
+- **Formulário Oficial de Monitoria (Sprint 2)**: Reescrita completa do componente de formulário para um Wizard interativo de 5 etapas.
+- Novas Categorias de Avaliação: COMUNICAÇÃO, ATENDIMENTO, PROCESSO e ENCERRAMENTO.
+- Nova lógica de cálculo de pontuação (0, 1, 2, N/A).
+- Novos campos no formulário: Empreendimento, Categoria do Atendimento e Protocolo.
+- Adicionado sistema de "Auto-Save" como rascunho para prevenção de perda de dados.
+- Adicionado suporte a exportação do formulário de monitoria em PDF via impressão.
+
+### Changed
+- `DATABASE_VERSION` atualizado para 9 (Forçando limpeza de mock local obsoleto).
+- Limpeza dos dados de monitoria mock (`INITIAL_MONITORINGS`) para suportar a nova matriz de critérios limpa.
+
+## [0.3.2] - 2026-07-06
 ### Added
 - **Feature:** Implementação de controle de versão permanente e mecanismo de migração para o banco de dados local (`localStorage`).
 - Inclusão da constante global `DATABASE_VERSION` no `config.js` e da função `initializeDatabase` para limpar estados estagnados automaticamente após deployments.
