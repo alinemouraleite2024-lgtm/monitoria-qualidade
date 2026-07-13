@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, CheckCircle2, ChevronRight, ChevronLeft, UploadCloud, File, Image, FileText, Video, Link as LinkIcon, Trash2, AlertTriangle, Save, Download } from 'lucide-react';
+import { 
+  X, CheckCircle2, ChevronRight, ChevronLeft, UploadCloud, File, Image, 
+  FileText, Video, Link as LinkIcon, Trash2, AlertTriangle, Save, Download,
+  Lightbulb, Target, BookOpen, ChevronDown, ChevronUp 
+} from 'lucide-react';
+import { OFFICIAL_EMPREENDIMENTOS, OFFICIAL_CATEGORIAS } from '../../mockData';
 
 export const MonitoringForm = ({
   initialData = null,
@@ -20,7 +25,7 @@ export const MonitoringForm = ({
     monitorId: currentUser?.id || '',
     gestorId: '',
     date: new Date().toISOString().split('T')[0],
-    canal: 'WhatsApp',
+    canal: '',
     empreendimento: '',
     categoriaAtendimento: '',
     protocolo: '',
@@ -41,11 +46,19 @@ export const MonitoringForm = ({
     status: 'Rascunho'
   });
 
-  // Scores State: { critId: { score: 0|1|2|'N/A', lowScoreReason: string } }
   const [scores, setScores] = useState({});
-
-  // Auto-save control
   const [lastSaved, setLastSaved] = useState(null);
+  const [expandedGroups, setExpandedGroups] = useState({
+    COMUNICAÇÃO: true,
+    ATENDIMENTO: false,
+    PROCESSO: false,
+    ENCERRAMENTO: false
+  });
+  
+  // Validation attempts
+  const [hasAttemptedNext, setHasAttemptedNext] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   useEffect(() => {
     if (initialData) {
@@ -72,6 +85,7 @@ export const MonitoringForm = ({
 
   // Derived
   const applicableCriteria = useMemo(() => {
+    if (!formData.canal) return criteria.filter(c => c.active);
     return criteria.filter(c => c.active && c.channels.includes(formData.canal));
   }, [criteria, formData.canal]);
 
@@ -89,57 +103,76 @@ export const MonitoringForm = ({
     if (!initialData) {
       const initialScores = {};
       applicableCriteria.forEach(c => {
-        // Initialize as empty or N/A? Let's leave empty so user has to fill
         initialScores[c.id] = { score: '', lowScoreReason: '' };
       });
       setScores(initialScores);
     }
   }, [formData.canal, initialData, applicableCriteria]);
 
-  const { finalScore, totalObtained, totalPossible, qtdAvaliados, qtdNA } = useMemo(() => {
+  const { finalScore, totalObtained, totalPossible, qtdAvaliados, qtdNA, categoryScores } = useMemo(() => {
     let obtained = 0;
     let possible = 0;
     let avaliados = 0;
     let naCount = 0;
+    let catScores = {};
+
+    Object.keys(groupedCriteria).forEach(cat => {
+      catScores[cat] = { obtained: 0, possible: 0, totalCriteria: groupedCriteria[cat].length, evaluated: 0 };
+    });
 
     applicableCriteria.forEach(c => {
       const item = scores[c.id];
       if (item && item.score !== '' && item.score !== 'N/A') {
         const val = parseInt(item.score, 10);
         obtained += val;
-        possible += 2; // Maximum score per item is 2
+        possible += 2;
         avaliados++;
+        if (catScores[c.category]) {
+          catScores[c.category].obtained += val;
+          catScores[c.category].possible += 2;
+          catScores[c.category].evaluated++;
+        }
       } else if (item && item.score === 'N/A') {
         naCount++;
+        if (catScores[c.category]) {
+          catScores[c.category].evaluated++;
+        }
       }
     });
 
     const percent = possible > 0 ? (obtained / possible) * 100 : 0;
     
+    // Calc percentage per category
+    Object.keys(catScores).forEach(cat => {
+      catScores[cat].percent = catScores[cat].possible > 0 ? (catScores[cat].obtained / catScores[cat].possible) * 100 : 100;
+    });
+
     return {
       finalScore: parseFloat(percent.toFixed(2)),
       totalObtained: obtained,
       totalPossible: possible,
       qtdAvaliados: avaliados,
-      qtdNA: naCount
+      qtdNA: naCount,
+      categoryScores: catScores
     };
-  }, [scores, applicableCriteria]);
+  }, [scores, applicableCriteria, groupedCriteria]);
 
   const getScoreConcept = (score) => {
-    if (score >= 95) return { label: 'Excelente', color: 'var(--success)' };
-    if (score >= 85) return { label: 'Muito Bom', color: '#10b981' };
-    if (score >= 75) return { label: 'Bom', color: '#3b82f6' };
-    if (score >= 50) return { label: 'Atenção', color: 'var(--warning)' };
-    return { label: 'Crítico', color: 'var(--danger)' };
+    if (score >= 95) return { label: 'Excelente', color: '#10b981' }; // Emerald 500
+    if (score >= 85) return { label: 'Muito Bom', color: '#059669' }; // Emerald 600
+    if (score >= 75) return { label: 'Bom', color: '#3b82f6' }; // Blue 500
+    if (score >= 50) return { label: 'Atenção', color: '#f59e0b' }; // Amber 500
+    return { label: 'Crítico', color: '#ef4444' }; // Red 500
   };
   
   const conceito = getScoreConcept(finalScore);
 
   const validateStep1 = () => {
     if (!formData.colaboradorId) return 'Por favor, selecione o Colaborador Avaliado.';
-    if (!formData.date) return 'A Data do Atendimento é obrigatória.';
     if (!formData.empreendimento) return 'O Empreendimento é obrigatório.';
     if (!formData.categoriaAtendimento) return 'A Categoria do Atendimento é obrigatória.';
+    if (!formData.canal) return 'O Canal é obrigatório.';
+    if (!formData.date) return 'A Data é obrigatória.';
     return null;
   };
 
@@ -150,30 +183,36 @@ export const MonitoringForm = ({
       if (!item || item.score === '') {
         error = 'Por favor, avalie todos os critérios antes de avançar.';
       } else if (item.score !== 'N/A' && item.score < 2 && !item.lowScoreReason.trim()) {
-        error = 'Justificativa obrigatória para notas menores que 2.';
+        error = 'Justificativa obrigatória para notas menores que a máxima.';
       }
     });
     return error;
   };
 
   const handleNext = () => {
+    setHasAttemptedNext(true);
     if (step === 1) {
       const error = validateStep1();
-      if (error) return alert(error);
+      if (error) return; // UI reflects it
     }
     if (step === 3) {
       const error = validateStep3();
-      if (error) return alert(error);
+      if (error) {
+        alert(error);
+        return;
+      }
     }
+    setHasAttemptedNext(false);
     setStep(s => Math.min(s + 1, totalSteps));
   };
 
   const handlePrev = () => {
+    setHasAttemptedNext(false);
     setStep(s => Math.max(s - 1, 1));
   };
 
   const buildFinalData = (isDraft) => {
-    const id = formData.id || `mon-${Math.floor(Math.random() * 10000)}`;
+    const id = formData.id || `MON-${Math.floor(Math.random() * 90000) + 10000}`;
     const formattedScores = applicableCriteria.map(c => ({
       criterionId: c.id,
       score: scores[c.id]?.score || 0,
@@ -195,39 +234,44 @@ export const MonitoringForm = ({
     const data = buildFinalData(true);
     onSave(data);
     setLastSaved(new Date().toLocaleTimeString());
-    // Auto-save is stealthy, so we don't alert. But if clicked manually:
     alert('Rascunho salvo com sucesso!');
   };
 
   const handleSaveFinal = (e) => {
     e.preventDefault();
-    const data = buildFinalData(false);
-    onSave(data);
-  };
-
-  // Auto-save logic
-  useEffect(() => {
-    if (formData.colaboradorId && formData.empreendimento) {
-      const timer = setTimeout(() => {
-        const data = buildFinalData(true);
-        onSave(data);
-        setLastSaved(new Date().toLocaleTimeString());
-      }, 30000); // Auto-save every 30s if valid data exists
-      return () => clearTimeout(timer);
+    if (window.confirm("Deseja concluir esta monitoria? Após salvar ela seguirá para validação.")) {
+      const data = buildFinalData(false);
+      onSave(data);
+      alert(`Monitoria salva com sucesso!\nCódigo: ${data.id}\nNota: ${data.finalScore}% (${getScoreConcept(data.finalScore).label})`);
     }
-  }, [formData, scores]); // eslint-disable-line react-hooks/exhaustive-deps
+  };
 
   // Evidencias Upload
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      const newEvidencia = {
-        id: `evd-${Math.floor(Math.random() * 1000)}`,
-        name: file.name,
-        type: file.type,
-        size: file.size
-      };
-      setFormData(prev => ({ ...prev, evidencias: [...prev.evidencias, newEvidencia] }));
+      setIsUploading(true);
+      setUploadProgress(0);
+      
+      // Simulate progress
+      const interval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(interval);
+            setIsUploading(false);
+            const newEvidencia = {
+              id: `evd-${Math.floor(Math.random() * 1000)}`,
+              name: file.name,
+              type: file.type,
+              size: (file.size / 1024 / 1024).toFixed(2) + ' MB',
+              date: new Date().toLocaleDateString('pt-BR')
+            };
+            setFormData(prevForm => ({ ...prevForm, evidencias: [...prevForm.evidencias, newEvidencia] }));
+            return 0;
+          }
+          return prev + 25;
+        });
+      }, 300);
     }
   };
 
@@ -239,11 +283,24 @@ export const MonitoringForm = ({
   };
 
   const getFileIcon = (type) => {
-    if (type.includes('image')) return <Image size={18} />;
-    if (type.includes('pdf')) return <FileText size={18} />;
-    if (type.includes('video')) return <Video size={18} />;
-    if (type.includes('audio')) return <File size={18} />;
-    return <File size={18} />;
+    if (type.includes('image')) return <Image size={24} style={{color: '#3b82f6'}} />;
+    if (type.includes('pdf')) return <FileText size={24} style={{color: '#ef4444'}} />;
+    if (type.includes('video')) return <Video size={24} style={{color: '#8b5cf6'}} />;
+    if (type.includes('audio')) return <File size={24} style={{color: '#10b981'}} />;
+    return <File size={24} style={{color: '#6b7280'}} />;
+  };
+
+  const toggleAccordion = (cat) => {
+    setExpandedGroups(prev => ({ ...prev, [cat]: !prev[cat] }));
+  };
+
+  // Status de grupo da barra lateral
+  const getGroupStatus = (cat) => {
+    const data = categoryScores[cat];
+    if (!data) return null;
+    if (data.evaluated === 0) return <span style={{ color: '#9ca3af', fontSize: '0.75rem' }}>Não iniciado</span>;
+    if (data.evaluated === data.totalCriteria) return <span style={{ color: '#10b981', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}><CheckCircle2 size={12}/> Concluído</span>;
+    return <span style={{ color: '#3b82f6', fontSize: '0.75rem' }}>{data.evaluated} de {data.totalCriteria}</span>;
   };
 
   const exportPDF = () => {
@@ -251,415 +308,556 @@ export const MonitoringForm = ({
   };
 
   return (
-    <div className="slide-over-overlay" style={{ zIndex: 1050 }}>
-      <div className="slide-over-panel" style={{ width: '800px' }}>
-        <div className="slide-over-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div className="slide-over-overlay" style={{ zIndex: 1050, backgroundColor: 'rgba(0,0,0,0.5)' }}>
+      <div className="slide-over-panel" style={{ width: '900px', backgroundColor: '#f9fafb' }}>
+        <div className="slide-over-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', borderBottom: '1px solid #e5e7eb' }}>
           <div>
-            <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', margin: 0 }}>
+            <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', margin: 0, fontWeight: '700', color: '#111827' }}>
               {initialData ? 'Editar Monitoria' : 'Nova Monitoria'}
             </h2>
-            {lastSaved && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Salvo automaticamente às {lastSaved}</span>}
+            {lastSaved && <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Salvo automaticamente às {lastSaved}</span>}
           </div>
           <button type="button" className="btn-sidebar-logout" onClick={onClose}><X size={20} /></button>
         </div>
 
         {/* Progress Bar Header */}
-        <div style={{ padding: '1rem 1.5rem', backgroundColor: '#f9fafb', borderBottom: '1px solid var(--border-color)' }}>
+        <div style={{ padding: '1.5rem', backgroundColor: '#fff', borderBottom: '1px solid #e5e7eb' }}>
           <div className="stepper-container" style={{ margin: 0, padding: 0 }}>
-            <div className={`step-item ${step >= 1 ? 'active' : ''} ${step > 1 ? 'completed' : ''}`}>
-              <div className="step-badge">{step > 1 ? <CheckCircle2 size={16} /> : 1}</div>
-              <div className="step-label">Info Gerais</div>
-            </div>
-            <div className={`step-item ${step >= 2 ? 'active' : ''} ${step > 2 ? 'completed' : ''}`}>
-              <div className="step-badge">{step > 2 ? <CheckCircle2 size={16} /> : 2}</div>
-              <div className="step-label">Evidências</div>
-            </div>
-            <div className={`step-item ${step >= 3 ? 'active' : ''} ${step > 3 ? 'completed' : ''}`}>
-              <div className="step-badge">{step > 3 ? <CheckCircle2 size={16} /> : 3}</div>
-              <div className="step-label">Avaliação</div>
-            </div>
-            <div className={`step-item ${step >= 4 ? 'active' : ''} ${step > 4 ? 'completed' : ''}`}>
-              <div className="step-badge">{step > 4 ? <CheckCircle2 size={16} /> : 4}</div>
-              <div className="step-label">Observações</div>
-            </div>
-            <div className={`step-item ${step >= 5 ? 'active' : ''}`}>
-              <div className="step-badge">5</div>
-              <div className="step-label">Conclusão</div>
-            </div>
+            {['Info Gerais', 'Evidências', 'Avaliação', 'Observações', 'Conclusão'].map((label, i) => {
+              const num = i + 1;
+              const isActive = step >= num;
+              const isCompleted = step > num;
+              return (
+                <div key={label} className={`step-item ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}`}>
+                  <div className="step-badge" style={{
+                    backgroundColor: isCompleted ? '#10b981' : (isActive ? '#008443' : '#e5e7eb'),
+                    color: (isActive || isCompleted) ? '#fff' : '#6b7280',
+                    border: 'none',
+                    width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', fontWeight: '600'
+                  }}>
+                    {isCompleted ? <CheckCircle2 size={16} /> : num}
+                  </div>
+                  <div className="step-label" style={{ fontWeight: isActive ? '600' : '400', color: isActive ? '#111827' : '#6b7280' }}>{label}</div>
+                </div>
+              );
+            })}
           </div>
-          {/* Visual Progress Line */}
-          <div style={{ height: '4px', backgroundColor: 'var(--border-color)', borderRadius: '2px', marginTop: '1rem', overflow: 'hidden' }}>
-            <div style={{ height: '100%', backgroundColor: 'var(--primary)', width: `${((step - 1) / (totalSteps - 1)) * 100}%`, transition: 'width 0.3s ease' }}></div>
+          <div style={{ height: '4px', backgroundColor: '#e5e7eb', borderRadius: '2px', marginTop: '1rem', overflow: 'hidden' }}>
+            <div style={{ height: '100%', backgroundColor: '#008443', width: `${((step - 1) / (totalSteps - 1)) * 100}%`, transition: 'width 0.3s ease' }}></div>
           </div>
         </div>
 
-        <div className="slide-over-body" style={{ padding: '1.5rem', overflowY: 'auto', backgroundColor: '#fff' }}>
-          <form id="monitoring-form" onSubmit={handleSaveFinal} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            
-            {/* ETAPA 1: Informações Gerais */}
-            {step === 1 && (
-              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group">
-                    <label className="form-label">Colaborador Avaliado *</label>
-                    <select 
-                      className="form-control"
-                      value={formData.colaboradorId}
-                      onChange={(e) => setFormData({...formData, colaboradorId: e.target.value})}
-                    >
-                      <option value="">Selecione...</option>
-                      {collaborators.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                  </div>
-                  
-                  <div className="form-group">
-                    <label className="form-label">Monitor Responsável</label>
-                    <select 
-                      className="form-control"
-                      value={formData.monitorId}
-                      onChange={(e) => setFormData({...formData, monitorId: e.target.value})}
-                      disabled
-                    >
-                      <option value="">Selecione...</option>
-                      {users.filter(u => u.role === 'MONITOR' || u.role === 'GESTOR').map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                    </select>
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group">
-                    <label className="form-label">Empreendimento *</label>
-                    <input 
-                      type="text" 
-                      className="form-control"
-                      placeholder="Ex: Reserva Moura Leite"
-                      value={formData.empreendimento}
-                      onChange={(e) => setFormData({...formData, empreendimento: e.target.value})}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Categoria do Atendimento *</label>
-                    <input 
-                      type="text" 
-                      className="form-control"
-                      placeholder="Ex: 2ª Via de Boleto"
-                      value={formData.categoriaAtendimento}
-                      onChange={(e) => setFormData({...formData, categoriaAtendimento: e.target.value})}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Nº Protocolo (Opcional)</label>
-                    <input 
-                      type="text" 
-                      className="form-control"
-                      placeholder="Ex: 20261234"
-                      value={formData.protocolo}
-                      onChange={(e) => setFormData({...formData, protocolo: e.target.value})}
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group">
-                    <label className="form-label">Canal *</label>
-                    <select 
-                      className="form-control"
-                      value={formData.canal}
-                      onChange={(e) => setFormData({...formData, canal: e.target.value})}
-                    >
-                      <option value="WhatsApp">WhatsApp</option>
-                      <option value="Telefone">Telefone</option>
-                      <option value="Teams">Teams</option>
-                      <option value="Presencial">Presencial</option>
-                      <option value="E-mail">E-mail</option>
-                      <option value="Chat">Chat</option>
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Data *</label>
-                    <input 
-                      type="date" 
-                      className="form-control"
-                      value={formData.date}
-                      onChange={(e) => setFormData({...formData, date: e.target.value})}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Tempo</label>
-                    <input 
-                      type="time" 
-                      className="form-control"
-                      value={formData.tempo}
-                      onChange={(e) => setFormData({...formData, tempo: e.target.value})}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Tipo</label>
-                    <select 
-                      className="form-control"
-                      value={formData.tipo}
-                      onChange={(e) => setFormData({...formData, tipo: e.target.value})}
-                    >
-                      <option value="Regular">Regular</option>
-                      <option value="Direcionada">Direcionada</option>
-                      <option value="Fluxo">Fluxo/Processo</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ETAPA 2: Evidências */}
-            {step === 2 && (
-              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <label className="form-label">Link do Atendimento</label>
-                  <input 
-                    type="url" 
-                    className="form-control" 
-                    placeholder="URL para o áudio, ticket ou conversa..." 
-                    value={formData.links[0] || ''}
-                    onChange={(e) => setFormData({...formData, links: [e.target.value]})}
-                  />
-                </div>
-
-                <div style={{ border: '2px dashed var(--border-color)', borderRadius: '12px', padding: '1.5rem', textAlign: 'center', backgroundColor: '#fafbfc' }}>
-                  <UploadCloud size={32} style={{ color: 'var(--primary)', opacity: 0.8, margin: '0 auto 0.5rem auto' }} />
-                  <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '0.25rem' }}>Upload de Evidências</h3>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>Suporta Áudio, PDF, e Imagens (Máx 50MB)</p>
-                  
-                  <div style={{ position: 'relative', display: 'inline-block' }}>
-                    <button type="button" className="btn btn-secondary btn-sm">Selecionar Arquivo</button>
-                    <input 
-                      type="file" 
-                      style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
-                      onChange={handleFileUpload}
-                    />
-                  </div>
-                </div>
-
-                {formData.evidencias.length > 0 && (
-                  <div>
-                    <label className="form-label">Arquivos Anexados</label>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      {formData.evidencias.map(evd => (
-                        <div key={evd.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 1rem', border: '1px solid var(--border-color)', borderRadius: '8px', backgroundColor: '#fff' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            {getFileIcon(evd.type)}
-                            <span style={{ fontSize: '0.85rem' }}>{evd.name}</span>
-                          </div>
-                          <button type="button" className="btn-sidebar-logout" onClick={() => removeEvidencia(evd.id)}>
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="form-group">
-                  <label className="form-label">Observações sobre a Evidência</label>
-                  <textarea 
-                    className="form-control"
-                    rows="3"
-                    placeholder="Descreva algum contexto sobre os arquivos ou links enviados..."
-                    value={formData.evidenciaObservacoes}
-                    onChange={(e) => setFormData({...formData, evidenciaObservacoes: e.target.value})}
-                  ></textarea>
-                </div>
-              </div>
-            )}
-
-            {/* ETAPA 3: Avaliação */}
-            {step === 3 && (
-              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                <div style={{ backgroundColor: 'var(--primary-light)', padding: '1rem 1.5rem', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: '-1.5rem', zIndex: 10, border: '1px solid rgba(0,0,0,0.05)' }}>
-                  <div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: '700', textTransform: 'uppercase' }}>Desempenho Atual</div>
-                    <div style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--text-main)', lineHeight: 1 }}>{finalScore}%</div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: '600' }}>Classificação Parcial</div>
-                    <div style={{ fontSize: '1.25rem', fontWeight: '700', color: conceito.color }}>{conceito.label}</div>
-                  </div>
-                </div>
-
-                {Object.keys(groupedCriteria).map(category => (
-                  <div key={category} style={{ marginBottom: '1rem' }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--text-main)', borderBottom: '2px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem' }}>
-                      {category}
+        <div className="slide-over-body" style={{ display: 'flex', overflow: 'hidden', padding: 0 }}>
+          
+          {/* Formulário Principal */}
+          <div style={{ flex: 1, padding: '2rem', overflowY: 'auto' }}>
+            <form id="monitoring-form" onSubmit={handleSaveFinal} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+              
+              {/* ETAPA 1: Informações Gerais */}
+              {step === 1 && (
+                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  <div style={{ backgroundColor: '#fff', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                    <h3 style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '1.5rem', borderBottom: '1px solid #f3f4f6', paddingBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      INFORMAÇÕES DO ATENDIMENTO
                     </h3>
                     
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      {groupedCriteria[category].map(c => (
-                        <div key={c.id} style={{ border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1rem', backgroundColor: '#fff', transition: 'border-color 0.2s' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                            <h4 style={{ fontWeight: '600', fontSize: '0.95rem' }}>{c.name}</h4>
-                          </div>
-                          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>{c.description}</p>
-                          
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem', alignItems: 'start' }}>
-                            <div>
-                              <label className="form-label">Avaliação</label>
-                              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                {[2, 1, 0, 'N/A'].map(val => (
-                                  <button
-                                    key={val}
-                                    type="button"
-                                    onClick={() => setScores({...scores, [c.id]: { ...scores[c.id], score: val }})}
-                                    style={{
-                                      flex: 1, padding: '0.5rem', borderRadius: '6px', fontWeight: '600', fontSize: '0.9rem', cursor: 'pointer',
-                                      border: `1px solid ${scores[c.id]?.score === val ? 'var(--primary)' : 'var(--border-color)'}`,
-                                      backgroundColor: scores[c.id]?.score === val ? 'var(--primary)' : '#fff',
-                                      color: scores[c.id]?.score === val ? '#fff' : 'var(--text-main)',
-                                      transition: 'all 0.2s'
-                                    }}
-                                  >
-                                    {val}
-                                  </button>
-                                ))}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>👤 Colaborador *</label>
+                        <select 
+                          className="form-control"
+                          value={formData.colaboradorId}
+                          onChange={(e) => setFormData({...formData, colaboradorId: e.target.value})}
+                          style={{ borderColor: (hasAttemptedNext && !formData.colaboradorId) ? '#ef4444' : '#d1d5db', backgroundColor: '#f9fafb' }}
+                        >
+                          <option value="">Selecione na lista...</option>
+                          {collaborators.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                      </div>
+                      
+                      <div className="form-group">
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>👨 Monitor</label>
+                        <select 
+                          className="form-control"
+                          value={formData.monitorId}
+                          onChange={(e) => setFormData({...formData, monitorId: e.target.value})}
+                          disabled
+                          style={{ backgroundColor: '#f3f4f6', cursor: 'not-allowed' }}
+                        >
+                          <option value="">Automático...</option>
+                          {users.filter(u => u.role === 'MONITOR' || u.role === 'GESTOR').map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginTop: '1.5rem' }}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>🏘 Empreendimento *</label>
+                        <select 
+                          className="form-control"
+                          value={formData.empreendimento}
+                          onChange={(e) => setFormData({...formData, empreendimento: e.target.value})}
+                          style={{ borderColor: (hasAttemptedNext && !formData.empreendimento) ? '#ef4444' : '#d1d5db', backgroundColor: '#f9fafb' }}
+                        >
+                          <option value="">Selecione na lista...</option>
+                          {OFFICIAL_EMPREENDIMENTOS.map(emp => <option key={emp} value={emp}>{emp}</option>)}
+                        </select>
+                      </div>
+                      
+                      <div className="form-group">
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>📂 Categoria *</label>
+                        <select 
+                          className="form-control"
+                          value={formData.categoriaAtendimento}
+                          onChange={(e) => setFormData({...formData, categoriaAtendimento: e.target.value})}
+                          style={{ borderColor: (hasAttemptedNext && !formData.categoriaAtendimento) ? '#ef4444' : '#d1d5db', backgroundColor: '#f9fafb' }}
+                        >
+                          <option value="">Selecione na lista...</option>
+                          {OFFICIAL_CATEGORIAS.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ backgroundColor: '#fff', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.5rem' }}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>📞 Canal *</label>
+                        <select 
+                          className="form-control"
+                          value={formData.canal}
+                          onChange={(e) => setFormData({...formData, canal: e.target.value})}
+                          style={{ borderColor: (hasAttemptedNext && !formData.canal) ? '#ef4444' : '#d1d5db', backgroundColor: '#f9fafb' }}
+                        >
+                          <option value="">Selecione...</option>
+                          <option value="WhatsApp">WhatsApp</option>
+                          <option value="Telefone">Telefone</option>
+                          <option value="Teams">Teams</option>
+                          <option value="Presencial">Presencial</option>
+                          <option value="E-mail">E-mail</option>
+                          <option value="Chat">Chat</option>
+                        </select>
+                      </div>
+                      
+                      <div className="form-group">
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>🔖 Tipo de Monitoria *</label>
+                        <select 
+                          className="form-control"
+                          value={formData.tipo}
+                          onChange={(e) => setFormData({...formData, tipo: e.target.value})}
+                          style={{ backgroundColor: '#f9fafb' }}
+                        >
+                          <option value="Regular">Regular</option>
+                          <option value="Direcionada">Direcionada</option>
+                          <option value="Fluxo">Fluxo / Processo</option>
+                        </select>
+                      </div>
+                      
+                      <div className="form-group">
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>📝 Nº do Protocolo</label>
+                        <input 
+                          type="text" 
+                          className="form-control"
+                          placeholder="Opcional..."
+                          value={formData.protocolo}
+                          onChange={(e) => setFormData({...formData, protocolo: e.target.value})}
+                          style={{ backgroundColor: '#f9fafb' }}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.5rem', marginTop: '1.5rem' }}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>📅 Data *</label>
+                        <input 
+                          type="date" 
+                          className="form-control"
+                          value={formData.date}
+                          onChange={(e) => setFormData({...formData, date: e.target.value})}
+                          style={{ borderColor: (hasAttemptedNext && !formData.date) ? '#ef4444' : '#d1d5db', backgroundColor: '#f9fafb' }}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>⏱ Tempo *</label>
+                        <input 
+                          type="time" 
+                          className="form-control"
+                          value={formData.tempo}
+                          onChange={(e) => setFormData({...formData, tempo: e.target.value})}
+                          style={{ backgroundColor: '#f9fafb' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ETAPA 2: Evidências */}
+              {step === 2 && (
+                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  
+                  <div style={{ backgroundColor: '#fff', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                    <h3 style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <LinkIcon size={18} style={{ color: '#008443' }} /> Link do Atendimento
+                    </h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <input 
+                        type="url" 
+                        className="form-control" 
+                        placeholder="Cole aqui a URL para o áudio, ticket ou histórico de conversa..." 
+                        value={formData.links[0] || ''}
+                        onChange={(e) => setFormData({...formData, links: [e.target.value]})}
+                        style={{ padding: '0.75rem', backgroundColor: '#f9fafb' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ backgroundColor: '#fff', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                      <h3 style={{ fontSize: '1rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                        <UploadCloud size={18} style={{ color: '#008443' }} /> Arquivos de Evidência
+                      </h3>
+                      {formData.evidencias.length > 0 && (
+                        <span style={{ fontSize: '0.85rem', color: '#6b7280', fontWeight: '500', backgroundColor: '#f3f4f6', padding: '2px 8px', borderRadius: '12px' }}>
+                          {formData.evidencias.length} evidência{formData.evidencias.length !== 1 ? 's' : ''} anexada{formData.evidencias.length !== 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+
+                    <div style={{ border: '2px dashed #d1d5db', borderRadius: '12px', padding: '2rem', textAlign: 'center', backgroundColor: '#f9fafb', transition: 'all 0.2s', cursor: 'pointer', position: 'relative' }}>
+                      <input 
+                        type="file" 
+                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', zIndex: 10 }}
+                        onChange={handleFileUpload}
+                      />
+                      <UploadCloud size={36} style={{ color: '#9ca3af', margin: '0 auto 1rem auto' }} />
+                      <h4 style={{ fontSize: '1.1rem', fontWeight: '600', color: '#374151', margin: 0 }}>Clique ou arraste arquivos aqui</h4>
+                      <p style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.5rem' }}>Suporta Áudio, PDF, Imagens e Vídeos (Máx 50MB)</p>
+                    </div>
+
+                    {isUploading && (
+                      <div style={{ marginTop: '1rem', backgroundColor: '#f3f4f6', borderRadius: '8px', padding: '1rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.5rem', color: '#374151', fontWeight: '500' }}>
+                          <span>Enviando arquivo...</span>
+                          <span>{uploadProgress}%</span>
+                        </div>
+                        <div style={{ height: '6px', backgroundColor: '#e5e7eb', borderRadius: '3px', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${uploadProgress}%`, backgroundColor: '#008443', transition: 'width 0.2s' }}></div>
+                        </div>
+                      </div>
+                    )}
+
+                    {formData.evidencias.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1.5rem' }}>
+                        {formData.evidencias.map(evd => (
+                          <div key={evd.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: '#fff', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                              <div style={{ backgroundColor: '#f3f4f6', padding: '0.75rem', borderRadius: '8px' }}>
+                                {getFileIcon(evd.type)}
+                              </div>
+                              <div>
+                                <div style={{ fontWeight: '600', color: '#111827', fontSize: '0.9rem' }}>{evd.name}</div>
+                                <div style={{ fontSize: '0.75rem', color: '#6b7280', display: 'flex', gap: '0.5rem' }}>
+                                  <span>{evd.size}</span> • <span>{evd.date}</span>
+                                </div>
                               </div>
                             </div>
-                            
-                            <div>
-                              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                Justificativa
-                                {scores[c.id]?.score !== 'N/A' && scores[c.id]?.score < 2 && scores[c.id]?.score !== '' && (
-                                  <span style={{ color: 'var(--danger)', fontSize: '0.75rem' }}>*Obrigatória</span>
-                                )}
-                              </label>
-                              <textarea 
-                                className="form-control"
-                                rows="2"
-                                placeholder="Comente sobre o desempenho..."
-                                value={scores[c.id]?.lowScoreReason || ''}
-                                onChange={(e) => setScores({...scores, [c.id]: { ...scores[c.id], lowScoreReason: e.target.value }})}
-                                style={{ 
-                                  borderColor: scores[c.id]?.score !== 'N/A' && scores[c.id]?.score < 2 && scores[c.id]?.score !== '' && !scores[c.id]?.lowScoreReason.trim() ? 'var(--danger)' : 'var(--border-color)'
-                                }}
-                              ></textarea>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                              <button type="button" className="btn btn-outline btn-sm" style={{ padding: '0.4rem 0.6rem' }}><Download size={14} /></button>
+                              <button type="button" className="btn btn-outline btn-sm" style={{ padding: '0.4rem 0.6rem', color: '#ef4444', borderColor: '#fee2e2' }} onClick={() => removeEvidencia(evd.id)}>
+                                <Trash2 size={14} />
+                              </button>
                             </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                ))}
-              </div>
-            )}
-
-            {/* ETAPA 4: Feedback */}
-            {step === 4 && (
-              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Pontos Fortes</label>
-                  <textarea 
-                    className="form-control"
-                    rows="4"
-                    placeholder="Descreva o que o colaborador fez de melhor..."
-                    value={formData.strengths}
-                    onChange={(e) => setFormData({...formData, strengths: e.target.value})}
-                  ></textarea>
                 </div>
+              )}
 
-                <div className="form-group">
-                  <label className="form-label">Oportunidades de Melhoria</label>
-                  <textarea 
-                    className="form-control"
-                    rows="4"
-                    placeholder="Pontos onde o colaborador pode evoluir..."
-                    value={formData.opportunities}
-                    onChange={(e) => setFormData({...formData, opportunities: e.target.value})}
-                  ></textarea>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Observações Gerais</label>
-                  <textarea 
-                    className="form-control"
-                    rows="3"
-                    placeholder="Comentários adicionais sobre a monitoria..."
-                    value={formData.comments}
-                    onChange={(e) => setFormData({...formData, comments: e.target.value})}
-                  ></textarea>
-                </div>
-              </div>
-            )}
-
-            {/* ETAPA 5: Conclusão */}
-            {step === 5 && (
-              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
-                  <h3 style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--text-main)', marginBottom: '0.25rem' }}>Resumo da Monitoria</h3>
-                  <p style={{ color: 'var(--text-muted)' }}>Revise os dados antes de finalizar o processo.</p>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+              {/* ETAPA 3: Avaliação */}
+              {step === 3 && (
+                <div className="animate-fade-in" style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
                   
-                  {/* Bloco 1: Infos */}
-                  <div style={{ border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1.5rem', backgroundColor: '#fafbfc' }}>
-                    <h4 style={{ fontSize: '0.9rem', fontWeight: '700', textTransform: 'uppercase', color: 'var(--text-muted)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem' }}>Dados do Atendimento</h4>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-muted)' }}>Colaborador:</span> <span style={{ fontWeight: '600' }}>{collaborators.find(c => c.id === formData.colaboradorId)?.name || '-'}</span></div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-muted)' }}>Monitor:</span> <span style={{ fontWeight: '600' }}>{users.find(u => u.id === formData.monitorId)?.name || '-'}</span></div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-muted)' }}>Canal:</span> <span style={{ fontWeight: '600' }}>{formData.canal}</span></div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-muted)' }}>Data:</span> <span style={{ fontWeight: '600' }}>{new Date(formData.date).toLocaleDateString('pt-BR')}</span></div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-muted)' }}>Empreendimento:</span> <span style={{ fontWeight: '600' }}>{formData.empreendimento || '-'}</span></div>
+                  {/* Area Principal - Accordions */}
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {Object.keys(groupedCriteria).map(category => (
+                      <div key={category} style={{ border: '1px solid #e5e7eb', borderRadius: '12px', backgroundColor: '#fff', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                        <button 
+                          type="button"
+                          onClick={() => toggleAccordion(category)}
+                          style={{ width: '100%', padding: '1.25rem 1.5rem', backgroundColor: expandedGroups[category] ? '#f8fafc' : '#fff', borderBottom: expandedGroups[category] ? '1px solid #e5e7eb' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', textAlign: 'left', transition: 'background-color 0.2s' }}
+                        >
+                          <span style={{ fontSize: '1rem', fontWeight: '700', color: '#111827' }}>▼ {category}</span>
+                          {expandedGroups[category] ? <ChevronUp size={20} style={{color: '#6b7280'}}/> : <ChevronDown size={20} style={{color: '#6b7280'}}/>}
+                        </button>
+                        
+                        {expandedGroups[category] && (
+                          <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            {groupedCriteria[category].map(c => (
+                              <div key={c.id} style={{ borderBottom: '1px solid #f3f4f6', paddingBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                <div>
+                                  <h4 style={{ fontWeight: '600', fontSize: '1rem', color: '#111827', marginBottom: '0.25rem' }}>{c.name}</h4>
+                                  <p style={{ fontSize: '0.85rem', color: '#6b7280' }}>{c.description}</p>
+                                </div>
+                                
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                    {[
+                                      { val: 2, label: 'Excelente', color: '#10b981', bg: '#d1fae5' },
+                                      { val: 1, label: 'Parcial', color: '#f59e0b', bg: '#fef3c7' },
+                                      { val: 0, label: 'Não realizou', color: '#ef4444', bg: '#fee2e2' },
+                                      { val: 'N/A', label: 'Não se aplica', color: '#6b7280', bg: '#f3f4f6' }
+                                    ].map(opt => {
+                                      const isSelected = scores[c.id]?.score === opt.val;
+                                      return (
+                                        <button
+                                          key={opt.val}
+                                          type="button"
+                                          onClick={() => setScores({...scores, [c.id]: { ...scores[c.id], score: opt.val }})}
+                                          style={{
+                                            flex: 1, padding: '0.75rem 0.5rem', borderRadius: '8px', fontWeight: '600', fontSize: '0.85rem', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
+                                            border: `2px solid ${isSelected ? opt.color : '#e5e7eb'}`,
+                                            backgroundColor: isSelected ? opt.bg : '#fff',
+                                            color: isSelected ? opt.color : '#374151',
+                                            transition: 'all 0.15s'
+                                          }}
+                                        >
+                                          <span style={{ fontSize: '1.1rem' }}>{opt.val}</span>
+                                          <span style={{ fontSize: '0.7rem', opacity: 0.8 }}>{opt.label}</span>
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                  
+                                  {/* Mostrar Justificativa somente se < 2 ou N/A */}
+                                  {(scores[c.id]?.score !== '' && scores[c.id]?.score !== 2) && (
+                                    <div className="animate-fade-in">
+                                      <label className="form-label" style={{ fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between' }}>
+                                        <span>Justificativa / Comentário</span>
+                                        {scores[c.id]?.score !== 'N/A' && <span style={{ color: '#ef4444' }}>*Obrigatória</span>}
+                                      </label>
+                                      <textarea 
+                                        className="form-control"
+                                        rows="2"
+                                        placeholder="Por que esta nota foi atribuída?"
+                                        value={scores[c.id]?.lowScoreReason || ''}
+                                        onChange={(e) => setScores({...scores, [c.id]: { ...scores[c.id], lowScoreReason: e.target.value }})}
+                                        style={{ 
+                                          borderColor: (hasAttemptedNext && scores[c.id]?.score !== 'N/A' && !scores[c.id]?.lowScoreReason.trim()) ? '#ef4444' : '#d1d5db',
+                                          backgroundColor: '#f9fafb'
+                                        }}
+                                      ></textarea>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Barra Lateral Fixa */}
+                  <div style={{ width: '280px', position: 'sticky', top: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '1.5rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+                      <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+                        <div style={{ fontSize: '0.85rem', color: '#6b7280', fontWeight: '600', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Monitoria</div>
+                        
+                        {/* Progress Bar simulada */}
+                        <div style={{ display: 'flex', height: '12px', backgroundColor: '#f3f4f6', borderRadius: '6px', overflow: 'hidden', marginBottom: '1rem' }}>
+                          <div style={{ width: `${finalScore}%`, backgroundColor: conceito.color, transition: 'width 0.5s ease, background-color 0.5s ease' }}></div>
+                        </div>
+
+                        <div style={{ fontSize: '3rem', fontWeight: '800', color: conceito.color, lineHeight: 1, marginBottom: '0.25rem' }}>{finalScore}%</div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: '700', color: '#374151' }}>{conceito.label}</div>
+                      </div>
+
+                      <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                          <span style={{ color: '#6b7280' }}>Critérios avaliados</span>
+                          <span style={{ fontWeight: '600', color: '#111827' }}>{qtdAvaliados + qtdNA} de {applicableCriteria.length}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                          <span style={{ color: '#6b7280' }}>Tempo de análise</span>
+                          <span style={{ fontWeight: '600', color: '#111827' }}>{formData.tempo}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '1.25rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                      <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#374151', marginBottom: '1rem' }}>Progresso por Grupo</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {Object.keys(groupedCriteria).map(cat => (
+                          <div key={cat} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.85rem', color: '#4b5563' }}>{cat.substring(0, 15)}...</span>
+                            {getGroupStatus(cat)}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Bloco 2: Resultado */}
-                  <div style={{ border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1.5rem', backgroundColor: '#fafbfc', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-                    <div style={{ fontSize: '0.9rem', fontWeight: '700', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Resultado Final</div>
-                    <div style={{ fontSize: '3rem', fontWeight: '800', color: conceito.color, lineHeight: 1 }}>{finalScore}%</div>
-                    <div className="badge-pill" style={{ marginTop: '0.5rem', backgroundColor: conceito.color, color: '#fff', padding: '0.25rem 1rem', fontSize: '0.9rem' }}>{conceito.label}</div>
-                    
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1.5rem', width: '100%' }}>
-                      <div style={{ textAlign: 'center', backgroundColor: '#fff', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Pontos Obtidos</div>
-                        <div style={{ fontSize: '1.1rem', fontWeight: '700' }}>{totalObtained} / {totalPossible}</div>
-                      </div>
-                      <div style={{ textAlign: 'center', backgroundColor: '#fff', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Critérios Avaliados</div>
-                        <div style={{ fontSize: '1.1rem', fontWeight: '700' }}>{qtdAvaliados} <span style={{fontSize: '0.75rem', fontWeight:'normal'}}>({qtdNA} N/A)</span></div>
-                      </div>
-                    </div>
-                  </div>
                 </div>
+              )}
 
-              </div>
-            )}
+              {/* ETAPA 4: Observações */}
+              {step === 4 && (
+                <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
+                  
+                  <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '1.5rem', boxShadow: '0 2px 4px rgba(22, 163, 74, 0.05)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                      <div style={{ backgroundColor: '#22c55e', color: '#fff', padding: '0.5rem', borderRadius: '8px' }}><Target size={20} /></div>
+                      <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: '#166534', margin: 0 }}>Pontos Fortes</h3>
+                    </div>
+                    <textarea 
+                      className="form-control"
+                      rows="3"
+                      placeholder="Descreva o que o colaborador fez de melhor neste atendimento..."
+                      value={formData.strengths}
+                      onChange={(e) => setFormData({...formData, strengths: e.target.value})}
+                      style={{ backgroundColor: '#fff', borderColor: '#bbf7d0' }}
+                    ></textarea>
+                    <div style={{ textAlign: 'right', fontSize: '0.75rem', color: '#15803d', marginTop: '0.25rem' }}>{formData.strengths.length} caracteres</div>
+                  </div>
 
-          </form>
+                  <div style={{ backgroundColor: '#fefce8', border: '1px solid #fef08a', borderRadius: '12px', padding: '1.5rem', boxShadow: '0 2px 4px rgba(234, 179, 8, 0.05)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                      <div style={{ backgroundColor: '#eab308', color: '#fff', padding: '0.5rem', borderRadius: '8px' }}><Lightbulb size={20} /></div>
+                      <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: '#854d0e', margin: 0 }}>Oportunidades de Melhoria</h3>
+                    </div>
+                    <textarea 
+                      className="form-control"
+                      rows="3"
+                      placeholder="Pontos onde o colaborador precisa ter atenção ou evoluir..."
+                      value={formData.opportunities}
+                      onChange={(e) => setFormData({...formData, opportunities: e.target.value})}
+                      style={{ backgroundColor: '#fff', borderColor: '#fef08a' }}
+                    ></textarea>
+                    <div style={{ textAlign: 'right', fontSize: '0.75rem', color: '#a16207', marginTop: '0.25rem' }}>{formData.opportunities.length} caracteres</div>
+                  </div>
+
+                  <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '12px', padding: '1.5rem', boxShadow: '0 2px 4px rgba(59, 130, 246, 0.05)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                      <div style={{ backgroundColor: '#3b82f6', color: '#fff', padding: '0.5rem', borderRadius: '8px' }}><BookOpen size={20} /></div>
+                      <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: '#1e40af', margin: 0 }}>Plano de Desenvolvimento</h3>
+                    </div>
+                    <textarea 
+                      className="form-control"
+                      rows="3"
+                      placeholder="Ações práticas, treinamentos ou combinados para o próximo ciclo..."
+                      value={formData.comments}
+                      onChange={(e) => setFormData({...formData, comments: e.target.value})}
+                      style={{ backgroundColor: '#fff', borderColor: '#bfdbfe' }}
+                    ></textarea>
+                    <div style={{ textAlign: 'right', fontSize: '0.75rem', color: '#1d4ed8', marginTop: '0.25rem' }}>{formData.comments.length} caracteres</div>
+                  </div>
+
+                </div>
+              )}
+
+              {/* ETAPA 5: Conclusão */}
+              {step === 5 && (
+                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                  
+                  <div style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
+                    <h2 style={{ fontSize: '1.8rem', fontWeight: '800', color: '#111827', margin: 0 }}>Resumo Executivo</h2>
+                    <p style={{ color: '#6b7280', marginTop: '0.5rem' }}>Revise os dados abaixo. Após salvar, o documento será travado para validação.</p>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                    
+                    {/* Bloco 1: Identificação */}
+                    <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', padding: '1.5rem', backgroundColor: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                      <h4 style={{ fontSize: '0.9rem', fontWeight: '700', color: '#4b5563', borderBottom: '1px solid #e5e7eb', paddingBottom: '0.75rem', marginBottom: '1rem' }}>IDENTIFICAÇÃO</h4>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Colaborador:</span> <span style={{ fontWeight: '600', color: '#111827' }}>{collaborators.find(c => c.id === formData.colaboradorId)?.name || '-'}</span></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Monitor:</span> <span style={{ fontWeight: '600', color: '#111827' }}>{users.find(u => u.id === formData.monitorId)?.name || '-'}</span></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Empreendimento:</span> <span style={{ fontWeight: '600', color: '#111827' }}>{formData.empreendimento || '-'}</span></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Canal / Data:</span> <span style={{ fontWeight: '600', color: '#111827' }}>{formData.canal} • {formData.date.split('-').reverse().join('/')}</span></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Evidências:</span> <span style={{ fontWeight: '600', color: '#111827' }}>{formData.evidencias.length} arquivos</span></div>
+                      </div>
+                    </div>
+
+                    {/* Bloco 2: Nota e Métricas */}
+                    <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', padding: '1.5rem', backgroundColor: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+                      <div style={{ fontSize: '0.9rem', fontWeight: '700', color: '#4b5563', marginBottom: '1rem' }}>CLASSIFICAÇÃO GERAL</div>
+                      <div style={{ fontSize: '4rem', fontWeight: '800', color: conceito.color, lineHeight: 1 }}>{finalScore}%</div>
+                      <div style={{ marginTop: '0.5rem', backgroundColor: conceito.color, color: '#fff', padding: '0.25rem 1.25rem', borderRadius: '16px', fontSize: '1rem', fontWeight: '600' }}>{conceito.label}</div>
+                      
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginTop: '1.5rem', width: '100%' }}>
+                        <div style={{ textAlign: 'center', backgroundColor: '#f9fafb', padding: '0.75rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                          <div style={{ fontSize: '1.25rem', fontWeight: '700', color: '#111827' }}>{formData.tempo}</div>
+                          <div style={{ fontSize: '0.7rem', color: '#6b7280', textTransform: 'uppercase', marginTop: '4px' }}>Tempo</div>
+                        </div>
+                        <div style={{ textAlign: 'center', backgroundColor: '#f9fafb', padding: '0.75rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                          <div style={{ fontSize: '1.25rem', fontWeight: '700', color: '#111827' }}>{qtdAvaliados}</div>
+                          <div style={{ fontSize: '0.7rem', color: '#6b7280', textTransform: 'uppercase', marginTop: '4px' }}>Avaliados</div>
+                        </div>
+                        <div style={{ textAlign: 'center', backgroundColor: '#f9fafb', padding: '0.75rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                          <div style={{ fontSize: '1.25rem', fontWeight: '700', color: '#111827' }}>{qtdNA}</div>
+                          <div style={{ fontSize: '0.7rem', color: '#6b7280', textTransform: 'uppercase', marginTop: '4px' }}>N/A</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bloco 3: Gráficos de Categoria */}
+                  <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', padding: '1.5rem', backgroundColor: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                    <h4 style={{ fontSize: '0.9rem', fontWeight: '700', color: '#4b5563', marginBottom: '1.5rem' }}>DESEMPENHO POR CATEGORIA</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                      {Object.keys(categoryScores).map(cat => {
+                        const scoreData = categoryScores[cat];
+                        const perc = scoreData.percent;
+                        const color = getScoreConcept(perc).color;
+                        return (
+                          <div key={cat} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                              <span style={{ fontWeight: '600', color: '#374151' }}>{cat}</span>
+                              <span style={{ fontWeight: '700', color }}>{perc.toFixed(1)}%</span>
+                            </div>
+                            <div style={{ height: '8px', backgroundColor: '#f3f4f6', borderRadius: '4px', overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: `${perc}%`, backgroundColor: color, borderRadius: '4px' }}></div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                </div>
+              )}
+
+            </form>
+          </div>
         </div>
 
         {/* Footer Navigation */}
-        <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', backgroundColor: '#fafbfc', borderBottomLeftRadius: '16px', borderBottomRightRadius: '16px' }}>
+        <div style={{ padding: '1.25rem 2rem', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', backgroundColor: '#fff' }}>
           {step > 1 ? (
-            <button type="button" className="btn btn-secondary" onClick={handlePrev}>
+            <button type="button" className="btn btn-secondary" onClick={handlePrev} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <ChevronLeft size={16} /> Anterior
             </button>
           ) : <div></div>}
           
           {step < totalSteps ? (
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button type="button" className="btn btn-secondary" onClick={handleSaveDraft}>
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button type="button" className="btn btn-secondary" onClick={handleSaveDraft} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Save size={16} /> Salvar Rascunho
               </button>
-              <button type="button" className="btn btn-primary" onClick={handleNext}>
+              <button type="button" className="btn btn-primary" onClick={handleNext} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 Próximo <ChevronRight size={16} />
               </button>
             </div>
           ) : (
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button type="button" className="btn btn-secondary" onClick={exportPDF}>
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button type="button" className="btn btn-secondary" onClick={exportPDF} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Download size={16} /> Exportar PDF
               </button>
-              <button type="button" className="btn btn-secondary" onClick={handleSaveDraft}>
-                <Save size={16} /> Rascunho
-              </button>
-              <button type="submit" form="monitoring-form" className="btn btn-primary" style={{ backgroundColor: 'var(--success)', borderColor: 'var(--success)' }}>
-                <CheckCircle2 size={16} /> Salvar Monitoria
+              <button type="submit" form="monitoring-form" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#10b981', borderColor: '#10b981' }}>
+                <CheckCircle2 size={16} /> Concluir Monitoria
               </button>
             </div>
           )}
