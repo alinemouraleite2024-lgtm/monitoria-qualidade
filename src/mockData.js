@@ -10,23 +10,6 @@ export const DEFAULT_BRAND_CONFIG = {
   textColor: '#1f2937'
 };
 
-export const OFFICIAL_EMPREENDIMENTOS = [
-  'Reserva Moura Leite',
-  'Jardim dos Ipês',
-  'Parque das Águas',
-  'Residencial Paineiras',
-  'Vila dos Pássaros'
-];
-
-export const OFFICIAL_CATEGORIAS = [
-  'Dúvida',
-  'Reclamação',
-  'Solicitação',
-  'Elogio',
-  '2ª Via de Boleto',
-  'Renegociação'
-];
-
 // System configurations for validation workflow
 export const INITIAL_SYSTEM_SETTINGS = {
   requireGestorValidation: true, // Se true, monitorias criadas por monitores precisam ser validadas pelo gestor

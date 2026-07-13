@@ -4,7 +4,8 @@ import {
   FileText, Video, Link as LinkIcon, Trash2, AlertTriangle, Save, Download,
   Lightbulb, Target, BookOpen, ChevronDown, ChevronUp 
 } from 'lucide-react';
-import { OFFICIAL_EMPREENDIMENTOS, OFFICIAL_CATEGORIAS } from '../../mockData';
+import { OFFICIAL_EMPREENDIMENTOS, OFFICIAL_CATEGORIAS } from '../../constants/catalogData';
+import { SearchableSelect } from '../../components/SearchableSelect';
 
 export const MonitoringForm = ({
   initialData = null,
@@ -393,28 +394,24 @@ export const MonitoringForm = ({
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginTop: '1.5rem' }}>
                       <div className="form-group">
                         <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>🏘 Empreendimento *</label>
-                        <select 
-                          className="form-control"
+                        <SearchableSelect 
+                          options={OFFICIAL_EMPREENDIMENTOS}
                           value={formData.empreendimento}
-                          onChange={(e) => setFormData({...formData, empreendimento: e.target.value})}
-                          style={{ borderColor: (hasAttemptedNext && !formData.empreendimento) ? '#ef4444' : '#d1d5db', backgroundColor: '#f9fafb' }}
-                        >
-                          <option value="">Selecione na lista...</option>
-                          {OFFICIAL_EMPREENDIMENTOS.map(emp => <option key={emp} value={emp}>{emp}</option>)}
-                        </select>
+                          onChange={(val) => setFormData({...formData, empreendimento: val})}
+                          placeholder="Pesquise o empreendimento..."
+                          hasError={hasAttemptedNext && !formData.empreendimento}
+                        />
                       </div>
                       
                       <div className="form-group">
                         <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>📂 Categoria *</label>
-                        <select 
-                          className="form-control"
+                        <SearchableSelect 
+                          options={OFFICIAL_CATEGORIAS}
                           value={formData.categoriaAtendimento}
-                          onChange={(e) => setFormData({...formData, categoriaAtendimento: e.target.value})}
-                          style={{ borderColor: (hasAttemptedNext && !formData.categoriaAtendimento) ? '#ef4444' : '#d1d5db', backgroundColor: '#f9fafb' }}
-                        >
-                          <option value="">Selecione na lista...</option>
-                          {OFFICIAL_CATEGORIAS.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                        </select>
+                          onChange={(val) => setFormData({...formData, categoriaAtendimento: val})}
+                          placeholder="Pesquise a categoria..."
+                          hasError={hasAttemptedNext && !formData.categoriaAtendimento}
+                        />
                       </div>
                     </div>
                   </div>

@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-07-13
+
+### Added
+- **Refatoração UI/UX: Componente SearchableSelect**:
+  - Implementado novo componente autoral de *Autocomplete* (SearchableSelect) para facilitar buscas em listas grandes.
+  - Refatoração dos campos "Empreendimento" e "Categoria" no formulário de monitoria para utilizar o novo componente de busca.
+  - Nova camada arquitetural: Arquivo mestre `catalogData.js` para armazenar listas e domínios independentes do mock de validação.
+
 ## [0.5.0] - 2026-07-13
 
 ### Added
