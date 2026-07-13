@@ -711,7 +711,6 @@ function App() {
   const [dashboardAreaId, setDashboardAreaId] = useState('ALL');
 
   // Modals & Dynamic Wizards
-  const [showWizardModal, setShowWizardModal] = useState(false);
   const [editingMonitoring, setEditingMonitoring] = useState(null);
  
 // eslint-disable-next-line no-unused-vars
@@ -943,7 +942,7 @@ function App() {
       setMonitorings([monitoringObj, ...monitorings]);
     }
     
-    setShowWizardModal(false);
+    setActiveTab('monitorings');
     setEditingMonitoring(null);
   };
 
@@ -2296,7 +2295,7 @@ function App() {
                   collaborators={getCollaborators()}
                   onNewMonitoring={() => {
                     setEditingMonitoring(null);
-                    setShowWizardModal(true);
+                    setActiveTab('monitoring-new');
                   }}
                   onView={(m) => {
                     setSelectedMonitoringDetail(m);
@@ -2304,10 +2303,28 @@ function App() {
                   }}
                   onEdit={(m) => {
                     setEditingMonitoring(m);
-                    setShowWizardModal(true);
+                    setActiveTab('monitoring-edit');
                   }}
                   onDelete={handleCancelMonitoring}
                 />
+              )}
+
+              {/* TAB: MONITORING FORM */}
+              {(activeTab === 'monitoring-new' || activeTab === 'monitoring-edit') && (
+                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
+                  <MonitoringForm
+                    initialData={editingMonitoring}
+                    users={users}
+                    collaborators={getCollaborators()}
+                    criteria={criteria}
+                    currentUser={currentUser}
+                    onClose={() => {
+                      setActiveTab('monitorings');
+                      setEditingMonitoring(null);
+                    }}
+                    onSave={handleSaveFormMonitoring}
+                  />
+                </div>
               )}
 
               {/* TAB: RELATÓRIOS */}
@@ -2870,20 +2887,7 @@ function App() {
       {/* 3. WIZARDS AND MODALS IN V2 */}
 
       {/* MODALS */}
-      {showWizardModal && (
-        <MonitoringForm
-          initialData={editingMonitoring}
-          users={users}
-          collaborators={getCollaborators()}
-          criteria={criteria}
-          currentUser={currentUser}
-          onClose={() => {
-            setShowWizardModal(false);
-            setEditingMonitoring(null);
-          }}
-          onSave={handleSaveFormMonitoring}
-        />
-      )}
+
 
       {showDetailModal && selectedMonitoringDetail && (
         <MonitoringHistory

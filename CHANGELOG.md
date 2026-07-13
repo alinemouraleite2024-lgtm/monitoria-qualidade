@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-07-13
+
+### Added
+- **Refatoração UI/UX: Página de Nova Monitoria**:
+  - Removido o modelo antigo de modal lateral (Slide-Over) para a criação/edição de monitorias.
+  - Implementada uma rota/página dedicada (`activeTab: monitoring-new` / `monitoring-edit`) de largura total (Full Page).
+  - Adicionado Layout CRM: Header superior fixo (Sticky) com Breadcrumb/Ações e Rodapé Inferior Fixo com as ações do formulário.
+  - Melhorada a ergonomia de uso removendo o scroll interno (duplo scroll).
+
 ## [0.5.1] - 2026-07-13
 
 ### Added

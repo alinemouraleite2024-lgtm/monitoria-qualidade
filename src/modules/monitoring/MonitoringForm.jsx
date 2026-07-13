@@ -309,21 +309,31 @@ export const MonitoringForm = ({
   };
 
   return (
-    <div className="slide-over-overlay" style={{ zIndex: 1050, backgroundColor: 'rgba(0,0,0,0.5)' }}>
-      <div className="slide-over-panel" style={{ width: '900px', backgroundColor: '#f9fafb' }}>
-        <div className="slide-over-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', borderBottom: '1px solid #e5e7eb' }}>
+    <div className="monitoring-page animate-fade-in" style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', backgroundColor: '#f9fafb' }}>
+      
+      {/* Sticky Header */}
+      <div style={{ position: 'sticky', top: 0, zIndex: 100, backgroundColor: '#fff', borderBottom: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem 2rem' }}>
           <div>
-            <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', margin: 0, fontWeight: '700', color: '#111827' }}>
+            <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.5rem', margin: 0, fontWeight: '800', color: '#111827', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', display: 'flex', alignItems: 'center', padding: 0, marginRight: '0.5rem' }} title="Voltar">
+                <ChevronLeft size={24} />
+              </button>
               {initialData ? 'Editar Monitoria' : 'Nova Monitoria'}
             </h2>
-            {lastSaved && <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Salvo automaticamente às {lastSaved}</span>}
+            {lastSaved && <span style={{ fontSize: '0.8rem', color: '#6b7280', marginLeft: '3rem', marginTop: '0.25rem', display: 'inline-block' }}>Salvo automaticamente às {lastSaved}</span>}
           </div>
-          <button type="button" className="btn-sidebar-logout" onClick={onClose}><X size={20} /></button>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <button type="button" className="btn btn-secondary" onClick={handleSaveDraft} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Save size={16} /> Salvar Rascunho
+            </button>
+            <button type="button" className="btn-sidebar-logout" onClick={onClose} title="Fechar e Voltar" style={{ marginLeft: '0.5rem' }}><X size={20} /></button>
+          </div>
         </div>
 
         {/* Progress Bar Header */}
-        <div style={{ padding: '1.5rem', backgroundColor: '#fff', borderBottom: '1px solid #e5e7eb' }}>
-          <div className="stepper-container" style={{ margin: 0, padding: 0 }}>
+        <div style={{ padding: '1rem 2rem', backgroundColor: '#fff' }}>
+          <div className="stepper-container" style={{ margin: 0, padding: 0, maxWidth: '1000px', marginInline: 'auto' }}>
             {['Info Gerais', 'Evidências', 'Avaliação', 'Observações', 'Conclusão'].map((label, i) => {
               const num = i + 1;
               const isActive = step >= num;
@@ -334,25 +344,25 @@ export const MonitoringForm = ({
                     backgroundColor: isCompleted ? '#10b981' : (isActive ? '#008443' : '#e5e7eb'),
                     color: (isActive || isCompleted) ? '#fff' : '#6b7280',
                     border: 'none',
-                    width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', fontWeight: '600'
+                    width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', fontWeight: '600', fontSize: '1.1rem'
                   }}>
-                    {isCompleted ? <CheckCircle2 size={16} /> : num}
+                    {isCompleted ? <CheckCircle2 size={18} /> : num}
                   </div>
-                  <div className="step-label" style={{ fontWeight: isActive ? '600' : '400', color: isActive ? '#111827' : '#6b7280' }}>{label}</div>
+                  <div className="step-label" style={{ fontWeight: isActive ? '600' : '400', color: isActive ? '#111827' : '#6b7280', fontSize: '0.9rem' }}>{label}</div>
                 </div>
               );
             })}
           </div>
-          <div style={{ height: '4px', backgroundColor: '#e5e7eb', borderRadius: '2px', marginTop: '1rem', overflow: 'hidden' }}>
+          <div style={{ height: '4px', backgroundColor: '#e5e7eb', borderRadius: '2px', marginTop: '1.5rem', overflow: 'hidden', maxWidth: '1000px', marginInline: 'auto' }}>
             <div style={{ height: '100%', backgroundColor: '#008443', width: `${((step - 1) / (totalSteps - 1)) * 100}%`, transition: 'width 0.3s ease' }}></div>
           </div>
         </div>
+      </div>
 
-        <div className="slide-over-body" style={{ display: 'flex', overflow: 'hidden', padding: 0 }}>
-          
-          {/* Formulário Principal */}
-          <div style={{ flex: 1, padding: '2rem', overflowY: 'auto' }}>
-            <form id="monitoring-form" onSubmit={handleSaveFinal} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+      {/* Main Body */}
+      <div style={{ flex: 1, padding: '2rem', display: 'flex', justifyContent: 'center' }}>
+        <div style={{ width: '100%', maxWidth: '1000px' }}>
+          <form id="monitoring-form" onSubmit={handleSaveFinal} style={{ display: 'flex', flexDirection: 'column', gap: '2rem', paddingBottom: '6rem' }}>
               
               {/* ETAPA 1: Informações Gerais */}
               {step === 1 && (
@@ -828,11 +838,12 @@ export const MonitoringForm = ({
               )}
 
             </form>
-          </div>
         </div>
+      </div>
 
-        {/* Footer Navigation */}
-        <div style={{ padding: '1.25rem 2rem', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', backgroundColor: '#fff' }}>
+      {/* Footer Navigation (Sticky) */}
+      <div style={{ position: 'sticky', bottom: 0, zIndex: 100, padding: '1.25rem 2rem', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'center', backgroundColor: '#fff', boxShadow: '0 -2px 10px rgba(0,0,0,0.05)' }}>
+        <div style={{ width: '100%', maxWidth: '1000px', display: 'flex', justifyContent: 'space-between' }}>
           {step > 1 ? (
             <button type="button" className="btn btn-secondary" onClick={handlePrev} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <ChevronLeft size={16} /> Anterior
@@ -859,7 +870,6 @@ export const MonitoringForm = ({
             </div>
           )}
         </div>
-
       </div>
     </div>
   );
