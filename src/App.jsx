@@ -84,6 +84,7 @@ import {
 
 import { HOMOLOG_USERS } from './teamData';
 import { DATABASE_VERSION } from './config';
+import { OFFICIAL_EMPREENDIMENTOS, OFFICIAL_CATEGORIAS } from './constants/catalogData';
 
 const initializeDatabase = () => {
   const currentVersion = localStorage.getItem('pm2_database_version');
@@ -657,6 +658,29 @@ function App() {
     const saved = localStorage.getItem('pm2_demands');
     return saved ? JSON.parse(saved) : INITIAL_DEMANDS;
   });
+
+  const [catalogEmpreendimentos, setCatalogEmpreendimentos] = useState(() => {
+    const saved = localStorage.getItem('pm2_catalog_empreendimentos');
+    return saved ? JSON.parse(saved) : OFFICIAL_EMPREENDIMENTOS;
+  });
+
+  const [catalogCategorias, setCatalogCategorias] = useState(() => {
+    const saved = localStorage.getItem('pm2_catalog_categorias');
+    return saved ? JSON.parse(saved) : OFFICIAL_CATEGORIAS;
+  });
+
+  const handleAddEmpreendimento = (novo) => {
+    const next = [...catalogEmpreendimentos, novo];
+    setCatalogEmpreendimentos(next);
+    localStorage.setItem('pm2_catalog_empreendimentos', JSON.stringify(next));
+  };
+
+  const handleAddCategoria = (nova) => {
+    const next = [...catalogCategorias, nova];
+    setCatalogCategorias(next);
+    localStorage.setItem('pm2_catalog_categorias', JSON.stringify(next));
+  };
+
 // eslint-disable-next-line no-unused-vars
   const [announcements, setAnnouncements] = useState(() => {
     const saved = localStorage.getItem('pm2_announcements');
@@ -2336,6 +2360,10 @@ function App() {
                     collaborators={getCollaborators()}
                     criteria={criteria}
                     currentUser={currentUser}
+                    catalogEmpreendimentos={catalogEmpreendimentos}
+                    catalogCategorias={catalogCategorias}
+                    onAddEmpreendimento={handleAddEmpreendimento}
+                    onAddCategoria={handleAddCategoria}
                     onClose={() => {
                       setActiveTab('monitorings');
                       setEditingMonitoring(null);

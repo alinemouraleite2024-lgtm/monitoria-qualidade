@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-07-13
+
+### Added & Changed
+- **Cadastro Inteligente de Master Data**:
+  - Refatoração dos campos Empreendimento e Categoria para não mais dependerem de listas estáticas no código base.
+  - Upgrade no componente `SearchableSelect` habilitando a criação de novas opções diretamente pelo monitor no momento da inserção.
+  - Algoritmo de Deduplicação visual que ignora acentuação, espaços extras e sensibilidade de caixa ao validar se um cadastro já existe, reduzindo dados lixo.
+  - Implementada persistência `on-the-fly` vinculada ao `localStorage` na camada mais alta da aplicação (`App.jsx`), simulando com perfeição uma futura integração de banco de dados por API sem quebrar as regras de negócio de monitorias e garantindo o provisionamento para os demais usuários da sessão.
+
 ## [0.6.1] - 2026-07-13
 
 ### Added & Changed

@@ -4,7 +4,6 @@ import {
   FileText, Video, Link as LinkIcon, Trash2, AlertTriangle, Save, Download,
   Lightbulb, Target, BookOpen, ChevronDown, ChevronUp, HelpCircle 
 } from 'lucide-react';
-import { OFFICIAL_EMPREENDIMENTOS, OFFICIAL_CATEGORIAS } from '../../constants/catalogData';
 import { SearchableSelect } from '../../components/SearchableSelect';
 
 export const MonitoringForm = ({
@@ -13,6 +12,10 @@ export const MonitoringForm = ({
   collaborators = [],
   criteria = [],
   currentUser = null,
+  catalogEmpreendimentos = [],
+  catalogCategorias = [],
+  onAddEmpreendimento = () => {},
+  onAddCategoria = () => {},
   onClose,
   onSave
 }) => {
@@ -405,22 +408,24 @@ export const MonitoringForm = ({
                       <div className="form-group">
                         <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>🏘 Empreendimento *</label>
                         <SearchableSelect 
-                          options={OFFICIAL_EMPREENDIMENTOS}
+                          options={catalogEmpreendimentos}
                           value={formData.empreendimento}
                           onChange={(val) => setFormData({...formData, empreendimento: val})}
-                          placeholder="Pesquise o empreendimento..."
                           hasError={hasAttemptedNext && !formData.empreendimento}
+                          allowCreate={true}
+                          onCreate={(novo) => onAddEmpreendimento(novo)}
                         />
                       </div>
                       
                       <div className="form-group">
                         <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>📂 Categoria *</label>
                         <SearchableSelect 
-                          options={OFFICIAL_CATEGORIAS}
+                          options={catalogCategorias}
                           value={formData.categoriaAtendimento}
                           onChange={(val) => setFormData({...formData, categoriaAtendimento: val})}
-                          placeholder="Pesquise a categoria..."
                           hasError={hasAttemptedNext && !formData.categoriaAtendimento}
+                          allowCreate={true}
+                          onCreate={(nova) => onAddCategoria(nova)}
                         />
                       </div>
                     </div>

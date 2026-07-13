@@ -1,5 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, ChevronDown } from 'lucide-react';
+import { Search, ChevronDown, PlusCircle } from 'lucide-react';
+
+const normalizeString = (str) => {
+  if (!str) return '';
+  return str
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+};
 
 export const SearchableSelect = ({ 
   options = [], 
@@ -7,7 +16,9 @@ export const SearchableSelect = ({
   onChange, 
   placeholder = "Selecione...",
   hasError = false,
-  disabled = false
+  disabled = false,
+  allowCreate = false,
+  onCreate = null
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -25,14 +36,28 @@ export const SearchableSelect = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const normalizedSearch = normalizeString(searchTerm);
   const filteredOptions = options.filter(opt => 
-    opt.toLowerCase().includes(searchTerm.toLowerCase())
+    normalizeString(opt).includes(normalizedSearch)
   );
+
+  const hasExactMatch = options.some(opt => normalizeString(opt) === normalizedSearch);
+  const showCreateOption = allowCreate && normalizedSearch.length > 0 && !hasExactMatch;
 
   const handleSelect = (opt) => {
     onChange(opt);
     setIsOpen(false);
     setSearchTerm('');
+  };
+
+  const handleCreate = () => {
+    if (onCreate) {
+      const newOpt = searchTerm.replace(/\s+/g, " ").trim();
+      onCreate(newOpt);
+      onChange(newOpt);
+      setIsOpen(false);
+      setSearchTerm('');
+    }
   };
 
   return (
@@ -116,8 +141,35 @@ export const SearchableSelect = ({
                 </div>
               ))
             ) : (
-              <div style={{ padding: '1rem', textAlign: 'center', color: '#6b7280', fontSize: '0.85rem' }}>
-                Nenhum resultado encontrado
+              !showCreateOption && (
+                <div style={{ padding: '1rem', textAlign: 'center', color: '#6b7280', fontSize: '0.85rem' }}>
+                  Nenhum resultado encontrado
+                </div>
+              )
+            )}
+            
+            {showCreateOption && (
+              <div 
+                onClick={handleCreate}
+                style={{
+                  padding: '0.6rem 0.75rem',
+                  cursor: 'pointer',
+                  fontSize: '0.85rem',
+                  color: '#fff',
+                  backgroundColor: 'var(--primary, #10b981)',
+                  borderRadius: '4px',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  marginTop: '0.25rem',
+                  transition: 'opacity 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+              >
+                <PlusCircle size={16} />
+                Cadastrar novo: "{searchTerm.replace(/\s+/g, " ").trim()}"
               </div>
             )}
           </div>
