@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] - 2026-07-13
+
+### Added & Changed
+- **Padronização dos Tipos de Monitoria**:
+  - Atualização do campo "Tipo de Monitoria" para as 4 opções oficiais: Regular, Direcionada, Processo e Calibração.
+  - Implementado Tooltip nativo interativo contendo os conceitos de cada tipo, guiando o monitor durante o preenchimento.
+  - Criado mecanismo de migração silenciosa (on-the-fly) em `App.jsx` para converter as monitorias antigas marcadas como "Fluxo" ou "Fluxo / Processo" para a nova nomenclatura oficial ("Processo"), assegurando 100% de compatibilidade sem perda de banco de dados ou histórico.
+
 ## [0.6.0] - 2026-07-13
 
 ### Added

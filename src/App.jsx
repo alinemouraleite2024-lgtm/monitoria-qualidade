@@ -613,6 +613,9 @@ function App() {
     const saved = localStorage.getItem('pm2_monitorings');
     if (saved) {
       let parsed = JSON.parse(saved);
+      let needsSave = false;
+      
+      // Migração 1: Pontuações antigas de 0-10 para 0-100
       if (parsed.some(m => m.finalScore <= 10 && m.finalScore > 0)) {
         parsed = parsed.map(m => {
           if (m.finalScore <= 10) {
@@ -623,6 +626,21 @@ function App() {
           }
           return m;
         });
+        needsSave = true;
+      }
+
+      // Migração 2: Padronização de Tipos de Monitoria (Fluxo / Processo -> Processo)
+      if (parsed.some(m => m.tipo === 'Fluxo' || m.tipo === 'Fluxo / Processo')) {
+        parsed = parsed.map(m => {
+          if (m.tipo === 'Fluxo' || m.tipo === 'Fluxo / Processo') {
+            m.tipo = 'Processo';
+          }
+          return m;
+        });
+        needsSave = true;
+      }
+
+      if (needsSave) {
         localStorage.setItem('pm2_monitorings', JSON.stringify(parsed));
       }
       return parsed;

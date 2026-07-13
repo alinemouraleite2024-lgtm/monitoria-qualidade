@@ -224,6 +224,6 @@ export const INITIAL_AGENDA = [
   { id: 'ag-evt-9', title: 'Treinamento Taxas', date: '2026-06-06', time: '10:00', assignedTo: 'usr-2', type: 'treinamento', done: false },
   { id: 'ag-evt-10', title: 'Monitoria — Nathalia (WA)', date: '2026-06-06', time: '14:00', assignedTo: 'usr-2', type: 'monitoria', done: false },
   { id: 'ag-evt-11', title: 'Comitê de Qualidade', date: '2026-06-10', time: '09:00', assignedTo: 'usr-2', type: 'reuniao', done: false },
-  { id: 'ag-evt-12', title: 'Calibração de Fluxo', date: '2026-06-12', time: '15:00', assignedTo: 'usr-1', type: 'reuniao', done: false },
+  { id: 'ag-evt-12', title: 'Calibração', date: '2026-06-12', time: '15:00', assignedTo: 'usr-1', type: 'reuniao', done: false },
   { id: 'ag-evt-13', title: 'Feedback Allanis (Trimestral)', date: '2026-06-15', time: '10:30', assignedTo: 'usr-2', type: 'feedback', done: false },
 ];

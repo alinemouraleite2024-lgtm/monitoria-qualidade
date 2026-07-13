@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   X, CheckCircle2, ChevronRight, ChevronLeft, UploadCloud, File, Image, 
   FileText, Video, Link as LinkIcon, Trash2, AlertTriangle, Save, Download,
-  Lightbulb, Target, BookOpen, ChevronDown, ChevronUp 
+  Lightbulb, Target, BookOpen, ChevronDown, ChevronUp, HelpCircle 
 } from 'lucide-react';
 import { OFFICIAL_EMPREENDIMENTOS, OFFICIAL_CATEGORIAS } from '../../constants/catalogData';
 import { SearchableSelect } from '../../components/SearchableSelect';
@@ -447,7 +447,14 @@ export const MonitoringForm = ({
                       </div>
                       
                       <div className="form-group">
-                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>🔖 Tipo de Monitoria *</label>
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          🔖 Tipo de Monitoria *
+                          <HelpCircle 
+                            size={16} 
+                            style={{ color: '#6b7280', cursor: 'help' }} 
+                            title="Regular: Monitoria prevista no cronograma mensal da equipe.&#10;&#10;Direcionada: Aberta devido a necessidade específica (reclamações, CSAT, solicitação de supervisão).&#10;&#10;Processo: Validação de um fluxo operacional específico e cumprimento de POPs.&#10;&#10;Calibração: Alinhamento de critérios entre monitores e supervisão."
+                          />
+                        </label>
                         <select 
                           className="form-control"
                           value={formData.tipo}
@@ -456,7 +463,8 @@ export const MonitoringForm = ({
                         >
                           <option value="Regular">Regular</option>
                           <option value="Direcionada">Direcionada</option>
-                          <option value="Fluxo">Fluxo / Processo</option>
+                          <option value="Processo">Processo</option>
+                          <option value="Calibração">Calibração</option>
                         </select>
                       </div>
                       
