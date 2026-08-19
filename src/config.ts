@@ -8,4 +8,4 @@
  */
 
 export const HOMOLOGATION_MODE = true;
-export const DATABASE_VERSION = 9;
+export const DATABASE_VERSION = 10;

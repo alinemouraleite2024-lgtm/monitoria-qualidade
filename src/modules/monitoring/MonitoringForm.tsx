@@ -1,10 +1,102 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import type { FormEvent } from 'react';
 import { 
   X, CheckCircle2, ChevronRight, ChevronLeft, UploadCloud, File, Image, 
   FileText, Video, Link as LinkIcon, Trash2, AlertTriangle, Save, Download,
   Lightbulb, Target, BookOpen, ChevronDown, ChevronUp, HelpCircle 
 } from 'lucide-react';
 import { SearchableSelect } from '../../components/SearchableSelect';
+import { getScoreConcept } from '../../scoreUtils';
+import type { Collaborator, Criterion, Monitoring, User } from '../../types/domain';
+
+/**
+ * Contrato do formulário de monitoria.
+ *
+ * onSave recebe UM objeto já completo. Declarar isso é precisamente o que teria impedido
+ * BUG-02, em que o formulário chamava onSave(data) e o App.jsx esperava dois argumentos —
+ * um TypeError que bloqueava 100% do salvamento e só apareceu em runtime.
+ */
+export interface MonitoringFormProps {
+  initialData?: Monitoring | null;
+  users?: User[];
+  collaborators?: Collaborator[];
+  criteria?: Criterion[];
+  currentUser?: User | null;
+  catalogEmpreendimentos?: string[];
+  catalogCategorias?: string[];
+  onAddEmpreendimento?: (novo: string) => void;
+  onAddCategoria?: (nova: string) => void;
+  onClose: () => void;
+  onSave: (monitoring: Monitoring) => void;
+}
+
+/** Estado do formulário. Espelha Monitoring, com os campos ainda soltos durante a edição. */
+interface FormDataMonitoria {
+  id: string;
+  colaboradorId: string;
+  monitorId: string;
+  gestorId?: string;
+  date: string;
+  canal: string;
+  empreendimento?: string;
+  categoriaAtendimento?: string;
+  protocolo?: string;
+  tempo?: string;
+  tipo: string;
+  evidencias: Evidencia[];
+  links: string[];
+  evidenciaObservacoes: string;
+  strengths: string;
+  opportunities: string;
+  comments: string;
+  status: string;
+}
+
+/** Arquivo de evidência anexado ao atendimento. */
+interface Evidencia {
+  id: string;
+  name: string;
+  type: string;
+  size: string;
+  date: string;
+}
+
+/** Agregado de nota por categoria, montado durante o cálculo da nota final. */
+interface CategoriaAgregada {
+  obtained: number;
+  possible: number;
+  totalCriteria: number;
+  evaluated: number;
+  percent?: number;
+}
+
+/** Resposta em edição, antes de virar MonitoringScore. */
+interface ScoreEmEdicao {
+  score: number | 'N/A' | '';
+  lowScoreReason: string;
+  subRespostas: Record<string, 'SIM' | 'NAO'>;
+}
+
+// Opções do widget de escolha única (score 0-2), por tipo de resposta.
+// FAIXA_TEMPO usa rótulos e valores próprios; qualquer outro tipo (ESCALA_4 e o fallback
+// atual para MULTIPLA_ESCOLHA/SIM_NAO, ainda não implementados) usa a escala padrão.
+const getScaleOptions = (tipoResposta: string) => {
+  if (tipoResposta === 'FAIXA_TEMPO') {
+    return [
+      { val: 2, display: '<5min', label: 'Excelente', color: '#10b981', bg: '#d1fae5' },
+      { val: 1.33, display: '5-15min', label: 'Bom', color: '#3b82f6', bg: '#dbeafe' },
+      { val: 0.67, display: '>15min', label: 'Regular', color: '#f59e0b', bg: '#fef3c7' },
+      { val: 0, display: '—', label: 'Ruim', color: '#ef4444', bg: '#fee2e2' },
+      { val: 'N/A', display: 'N/A', label: 'Não se aplica', color: '#6b7280', bg: '#f3f4f6' }
+    ];
+  }
+  return [
+    { val: 2, display: 2, label: 'Excelente', color: '#10b981', bg: '#d1fae5' },
+    { val: 1, display: 1, label: 'Parcial', color: '#f59e0b', bg: '#fef3c7' },
+    { val: 0, display: 0, label: 'Não realizou', color: '#ef4444', bg: '#fee2e2' },
+    { val: 'N/A', display: 'N/A', label: 'Não se aplica', color: '#6b7280', bg: '#f3f4f6' }
+  ];
+};
 
 export const MonitoringForm = ({
   initialData = null,
@@ -18,12 +110,12 @@ export const MonitoringForm = ({
   onAddCategoria = () => {},
   onClose,
   onSave
-}) => {
+}: MonitoringFormProps) => {
   const [step, setStep] = useState(1);
   const totalSteps = 5;
 
   // Form States
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormDataMonitoria>({
     id: '',
     colaboradorId: '',
     monitorId: currentUser?.id || '',
@@ -50,9 +142,10 @@ export const MonitoringForm = ({
     status: 'Rascunho'
   });
 
-  const [scores, setScores] = useState({});
-  const [lastSaved, setLastSaved] = useState(null);
-  const [expandedGroups, setExpandedGroups] = useState({
+  const [scores, setScores] = useState<Record<string, ScoreEmEdicao>>({});
+  const [lastSaved, setLastSaved] = useState<string | null>(null);
+  const [expandedOrientacao, setExpandedOrientacao] = useState<Record<string, boolean>>({});
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     COMUNICAÇÃO: true,
     ATENDIMENTO: false,
     PROCESSO: false,
@@ -69,18 +162,18 @@ export const MonitoringForm = ({
       setFormData({
         ...initialData,
         date: initialData.date.split('T')[0],
-        evidencias: initialData.evidencias || [],
-        links: initialData.links || [],
+        evidencias: (initialData.evidencias || []) as Evidencia[],
+        links: (initialData.links || []) as string[],
         evidenciaObservacoes: initialData.evidenciaObservacoes || '',
         strengths: initialData.strengths || '',
         opportunities: initialData.opportunities || '',
         comments: initialData.comments || ''
       });
       
-      const initialScores = {};
+      const initialScores: Record<string, ScoreEmEdicao> = {};
       if (initialData.scores) {
         initialData.scores.forEach(s => {
-          initialScores[s.criterionId] = { score: s.score, lowScoreReason: s.lowScoreReason || '' };
+          initialScores[s.criterionId] = { score: s.score, lowScoreReason: s.lowScoreReason || '', subRespostas: s.subRespostas || {} };
         });
       }
       setScores(initialScores);
@@ -90,12 +183,12 @@ export const MonitoringForm = ({
   // Derived
   const applicableCriteria = useMemo(() => {
     if (!formData.canal) return criteria.filter(c => c.active);
-    return criteria.filter(c => c.active && c.channels.includes(formData.canal));
+    return criteria.filter(c => c.active && (c.channels as string[]).includes(formData.canal));
   }, [criteria, formData.canal]);
 
   // Group criteria by category
   const groupedCriteria = useMemo(() => {
-    return applicableCriteria.reduce((acc, c) => {
+    return applicableCriteria.reduce<Record<string, Criterion[]>>((acc, c) => {
       if (!acc[c.category]) acc[c.category] = [];
       acc[c.category].push(c);
       return acc;
@@ -105,20 +198,20 @@ export const MonitoringForm = ({
   // Initialize scores when canal changes and not editing existing
   useEffect(() => {
     if (!initialData) {
-      const initialScores = {};
+      const initialScores: Record<string, ScoreEmEdicao> = {};
       applicableCriteria.forEach(c => {
-        initialScores[c.id] = { score: '', lowScoreReason: '' };
+        initialScores[c.id] = { score: '', lowScoreReason: '', subRespostas: {} };
       });
       setScores(initialScores);
     }
   }, [formData.canal, initialData, applicableCriteria]);
 
-  const { finalScore, totalObtained, totalPossible, qtdAvaliados, qtdNA, categoryScores } = useMemo(() => {
+  const { finalScore, totalObtained, totalPossible, qtdAvaliados, qtdNA, categoryScores, hasEliminatoryTrigger, triggeredEliminatoryCriteria } = useMemo(() => {
     let obtained = 0;
     let possible = 0;
     let avaliados = 0;
     let naCount = 0;
-    let catScores = {};
+    const catScores: Record<string, CategoriaAgregada> = {};
 
     Object.keys(groupedCriteria).forEach(cat => {
       catScores[cat] = { obtained: 0, possible: 0, totalCriteria: groupedCriteria[cat].length, evaluated: 0 };
@@ -126,14 +219,22 @@ export const MonitoringForm = ({
 
     applicableCriteria.forEach(c => {
       const item = scores[c.id];
+      // Critérios de peso 0 (classificação e eliminatórios) não compõem a média ponderada —
+      // ainda assim contam para o contador de "avaliados" e para o status do grupo,
+      // senão a barra de progresso nunca chegaria a 100% quando eles fossem respondidos.
+      const weight = c.weight || 0;
       if (item && item.score !== '' && item.score !== 'N/A') {
-        const val = parseInt(item.score, 10);
-        obtained += val;
-        possible += 2;
+        const val = Number(item.score);
+        if (weight > 0) {
+          obtained += val * weight;
+          possible += 2 * weight;
+          if (catScores[c.category]) {
+            catScores[c.category].obtained += val * weight;
+            catScores[c.category].possible += 2 * weight;
+          }
+        }
         avaliados++;
         if (catScores[c.category]) {
-          catScores[c.category].obtained += val;
-          catScores[c.category].possible += 2;
           catScores[c.category].evaluated++;
         }
       } else if (item && item.score === 'N/A') {
@@ -145,11 +246,15 @@ export const MonitoringForm = ({
     });
 
     const percent = possible > 0 ? (obtained / possible) * 100 : 0;
-    
+
     // Calc percentage per category
     Object.keys(catScores).forEach(cat => {
       catScores[cat].percent = catScores[cat].possible > 0 ? (catScores[cat].obtained / catScores[cat].possible) * 100 : 100;
     });
+
+    // Critérios eliminatórios marcados como "Sim, ocorreu" (score 0) — não zeram a nota aqui;
+    // apenas sinalizam a monitoria como pendente de confirmação por um Gestor/Admin (F0-08).
+    const triggered = applicableCriteria.filter(c => c.eliminatorio && scores[c.id]?.score === 0);
 
     return {
       finalScore: parseFloat(percent.toFixed(2)),
@@ -157,19 +262,30 @@ export const MonitoringForm = ({
       totalPossible: possible,
       qtdAvaliados: avaliados,
       qtdNA: naCount,
-      categoryScores: catScores
+      categoryScores: catScores,
+      hasEliminatoryTrigger: triggered.length > 0,
+      triggeredEliminatoryCriteria: triggered
     };
   }, [scores, applicableCriteria, groupedCriteria]);
 
-  const getScoreConcept = (score) => {
-    if (score >= 95) return { label: 'Excelente', color: '#10b981' }; // Emerald 500
-    if (score >= 85) return { label: 'Muito Bom', color: '#059669' }; // Emerald 600
-    if (score >= 75) return { label: 'Bom', color: '#3b82f6' }; // Blue 500
-    if (score >= 50) return { label: 'Atenção', color: '#f59e0b' }; // Amber 500
-    return { label: 'Crítico', color: '#ef4444' }; // Red 500
-  };
-  
   const conceito = getScoreConcept(finalScore);
+
+  // Registra a resposta de uma sub-pergunta de um critério do tipo CHECKLIST_SIM_NAO.
+  // O score agregado (0-2) só é calculado quando todas as sub-perguntas estiverem respondidas;
+  // enquanto incompleto, score permanece '' para que validateStep3 continue bloqueando o avanço
+  // com a mesma lógica genérica já usada pelos demais tipos de critério.
+  const handleChecklistAnswer = (criterionId: string, subPerguntaId: string, valor: 'SIM' | 'NAO') => {
+    const criterion = applicableCriteria.find(c => c.id === criterionId);
+    const subPerguntas = criterion?.subPerguntas || [];
+    const subRespostas = { ...(scores[criterionId]?.subRespostas || {}), [subPerguntaId]: valor };
+    const allAnswered = subPerguntas.length > 0 && subPerguntas.every(sp => subRespostas[sp.id]);
+    const simCount = subPerguntas.filter(sp => subRespostas[sp.id] === 'SIM').length;
+    const newScore = allAnswered ? parseFloat(((simCount / subPerguntas.length) * 2).toFixed(2)) : '';
+    setScores({
+      ...scores,
+      [criterionId]: { ...scores[criterionId], subRespostas, score: newScore }
+    });
+  };
 
   const validateStep1 = () => {
     if (!formData.colaboradorId) return 'Por favor, selecione o Colaborador Avaliado.';
@@ -215,22 +331,33 @@ export const MonitoringForm = ({
     setStep(s => Math.max(s - 1, 1));
   };
 
-  const buildFinalData = (isDraft) => {
+  const buildFinalData = (isDraft: boolean): Monitoring => {
     const id = formData.id || `MON-${Math.floor(Math.random() * 90000) + 10000}`;
     const formattedScores = applicableCriteria.map(c => ({
       criterionId: c.id,
       score: scores[c.id]?.score || 0,
-      lowScoreReason: scores[c.id]?.lowScoreReason || ''
+      lowScoreReason: scores[c.id]?.lowScoreReason || '',
+      subRespostas: scores[c.id]?.subRespostas || null
     }));
 
+    // Fronteira entre o estado de edição (strings livres) e o objeto de domínio: canal, tipo
+    // e status são uniões fechadas em Monitoring, mas campos de formulário durante a edição.
     return {
       ...formData,
+      canal: formData.canal as Monitoring['canal'],
+      tipo: formData.tipo as Monitoring['tipo'],
       id,
       date: formData.date + 'T12:00:00Z',
       finalScore,
       scores: formattedScores,
-      status: isDraft ? 'Rascunho' 
-            : (currentUser?.role === 'MONITOR' ? 'Pendente' : 'Validada')
+      status: (isDraft ? 'Rascunho'
+            : (currentUser?.role === 'MONITOR' ? 'Pendente' : 'Validada')) as Monitoring['status'],
+      // F0-08: sinalização de eliminatório é independente do status de aprovação de conteúdo.
+      // A nota (finalScore) NUNCA é zerada aqui — só a confirmação de um Gestor/Admin
+      // (handleConfirmZerada, em App.jsx) pode zerar. Nunca é reaberta a false no re-save de
+      // um rascunho: se já estava zerada, permanece zerada até decisão explícita do Gestor.
+      eliminatoryPending: initialData?.zerada ? false : (hasEliminatoryTrigger || initialData?.eliminatoryPending || false),
+      zerada: initialData?.zerada || false
     };
   };
 
@@ -241,7 +368,7 @@ export const MonitoringForm = ({
     alert('Rascunho salvo com sucesso!');
   };
 
-  const handleSaveFinal = (e) => {
+  const handleSaveFinal = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (window.confirm("Deseja concluir esta monitoria? Após salvar ela seguirá para validação.")) {
       const data = buildFinalData(false);
@@ -251,8 +378,8 @@ export const MonitoringForm = ({
   };
 
   // Evidencias Upload
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (file) {
       setIsUploading(true);
       setUploadProgress(0);
@@ -279,14 +406,14 @@ export const MonitoringForm = ({
     }
   };
 
-  const removeEvidencia = (id) => {
+  const removeEvidencia = (id: string) => {
     setFormData(prev => ({
       ...prev,
-      evidencias: prev.evidencias.filter(e => e.id !== id)
+      evidencias: prev.evidencias.filter(ev => ev.id !== id)
     }));
   };
 
-  const getFileIcon = (type) => {
+  const getFileIcon = (type: string) => {
     if (type.includes('image')) return <Image size={24} style={{color: '#3b82f6'}} />;
     if (type.includes('pdf')) return <FileText size={24} style={{color: '#ef4444'}} />;
     if (type.includes('video')) return <Video size={24} style={{color: '#8b5cf6'}} />;
@@ -294,12 +421,12 @@ export const MonitoringForm = ({
     return <File size={24} style={{color: '#6b7280'}} />;
   };
 
-  const toggleAccordion = (cat) => {
+  const toggleAccordion = (cat: string) => {
     setExpandedGroups(prev => ({ ...prev, [cat]: !prev[cat] }));
   };
 
   // Status de grupo da barra lateral
-  const getGroupStatus = (cat) => {
+  const getGroupStatus = (cat: string) => {
     const data = categoryScores[cat];
     if (!data) return null;
     if (data.evaluated === 0) return <span style={{ color: '#9ca3af', fontSize: '0.75rem' }}>Não iniciado</span>;
@@ -457,7 +584,7 @@ export const MonitoringForm = ({
                           <HelpCircle 
                             size={16} 
                             style={{ color: '#6b7280', cursor: 'help' }} 
-                            title="Regular: Monitoria prevista no cronograma mensal da equipe.&#10;&#10;Direcionada: Aberta devido a necessidade específica (reclamações, CSAT, solicitação de supervisão).&#10;&#10;Processo: Validação de um fluxo operacional específico e cumprimento de POPs.&#10;&#10;Calibração: Alinhamento de critérios entre monitores e supervisão."
+                            {...({ title: 'Regular: Monitoria prevista no cronograma mensal da equipe.\n\nDirecionada: Aberta devido a necessidade específica (reclamações, CSAT, solicitação de supervisão).\n\nProcesso: Validação de um fluxo operacional específico e cumprimento de POPs.\n\nCalibração: Alinhamento de critérios entre monitores e supervisão.' } as React.SVGProps<SVGSVGElement>)}
                           />
                         </label>
                         <select 
@@ -620,37 +747,110 @@ export const MonitoringForm = ({
                                 <div>
                                   <h4 style={{ fontWeight: '600', fontSize: '1rem', color: '#111827', marginBottom: '0.25rem' }}>{c.name}</h4>
                                   <p style={{ fontSize: '0.85rem', color: '#6b7280' }}>{c.description}</p>
+                                  {c.orientacao && (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => setExpandedOrientacao({ ...expandedOrientacao, [c.id]: !expandedOrientacao[c.id] })}
+                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '600', color: '#3b82f6' }}
+                                      >
+                                        <HelpCircle size={14} />
+                                        {expandedOrientacao[c.id] ? 'Ocultar orientação' : 'Ver orientação do critério'}
+                                      </button>
+                                      {expandedOrientacao[c.id] && (
+                                        <div className="animate-fade-in" style={{ marginTop: '0.5rem', padding: '0.75rem 1rem', backgroundColor: '#eff6ff', borderLeft: '3px solid #3b82f6', borderRadius: '6px', fontSize: '0.8rem', color: '#1e3a8a', lineHeight: '1.5' }}>
+                                          {c.orientacao}
+                                        </div>
+                                      )}
+                                    </>
+                                  )}
                                 </div>
                                 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                  <div style={{ display: 'flex', gap: '0.75rem' }}>
-                                    {[
-                                      { val: 2, label: 'Excelente', color: '#10b981', bg: '#d1fae5' },
-                                      { val: 1, label: 'Parcial', color: '#f59e0b', bg: '#fef3c7' },
-                                      { val: 0, label: 'Não realizou', color: '#ef4444', bg: '#fee2e2' },
-                                      { val: 'N/A', label: 'Não se aplica', color: '#6b7280', bg: '#f3f4f6' }
-                                    ].map(opt => {
-                                      const isSelected = scores[c.id]?.score === opt.val;
-                                      return (
-                                        <button
-                                          key={opt.val}
-                                          type="button"
-                                          onClick={() => setScores({...scores, [c.id]: { ...scores[c.id], score: opt.val }})}
-                                          style={{
-                                            flex: 1, padding: '0.75rem 0.5rem', borderRadius: '8px', fontWeight: '600', fontSize: '0.85rem', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
-                                            border: `2px solid ${isSelected ? opt.color : '#e5e7eb'}`,
-                                            backgroundColor: isSelected ? opt.bg : '#fff',
-                                            color: isSelected ? opt.color : '#374151',
-                                            transition: 'all 0.15s'
-                                          }}
-                                        >
-                                          <span style={{ fontSize: '1.1rem' }}>{opt.val}</span>
-                                          <span style={{ fontSize: '0.7rem', opacity: 0.8 }}>{opt.label}</span>
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
-                                  
+                                  {c.eliminatorio ? (
+                                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                      {[
+                                        { val: 2, label: 'Não ocorreu', color: '#10b981', bg: '#d1fae5' },
+                                        { val: 0, label: 'Sim, ocorreu', color: '#ef4444', bg: '#fee2e2' }
+                                      ].map(opt => {
+                                        const isSelected = scores[c.id]?.score === opt.val;
+                                        return (
+                                          <button
+                                            key={opt.val}
+                                            type="button"
+                                            onClick={() => setScores({...scores, [c.id]: { ...scores[c.id], score: opt.val as ScoreEmEdicao['score'] }})}
+                                            style={{
+                                              flex: 1, padding: '0.85rem 0.5rem', borderRadius: '8px', fontWeight: '700', fontSize: '0.9rem', cursor: 'pointer',
+                                              border: `2px solid ${isSelected ? opt.color : '#e5e7eb'}`,
+                                              backgroundColor: isSelected ? opt.bg : '#fff',
+                                              color: isSelected ? opt.color : '#374151',
+                                              transition: 'all 0.15s'
+                                            }}
+                                          >
+                                            {opt.label}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : c.tipoResposta === 'CHECKLIST_SIM_NAO' ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                      {(c.subPerguntas || []).map(sub => {
+                                        const respostaAtual = scores[c.id]?.subRespostas?.[sub.id];
+                                        return (
+                                          <div key={sub.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', padding: '0.6rem 0.85rem', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+                                            <span style={{ fontSize: '0.85rem', color: '#374151', flex: 1 }}>{sub.texto}</span>
+                                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                              {['SIM', 'NAO'].map(valor => {
+                                                const isSelected = respostaAtual === valor;
+                                                const color = valor === 'SIM' ? '#10b981' : '#ef4444';
+                                                const bg = valor === 'SIM' ? '#d1fae5' : '#fee2e2';
+                                                return (
+                                                  <button
+                                                    key={valor}
+                                                    type="button"
+                                                    onClick={() => handleChecklistAnswer(c.id, sub.id, valor as 'SIM' | 'NAO')}
+                                                    style={{
+                                                      padding: '0.4rem 1.1rem', borderRadius: '6px', fontWeight: '600', fontSize: '0.8rem', cursor: 'pointer',
+                                                      border: `2px solid ${isSelected ? color : '#e5e7eb'}`,
+                                                      backgroundColor: isSelected ? bg : '#fff',
+                                                      color: isSelected ? color : '#374151',
+                                                      transition: 'all 0.15s'
+                                                    }}
+                                                  >
+                                                    {valor === 'SIM' ? 'Sim' : 'Não'}
+                                                  </button>
+                                                );
+                                              })}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : (
+                                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                      {getScaleOptions(c.tipoResposta).map(opt => {
+                                        const isSelected = scores[c.id]?.score === opt.val;
+                                        return (
+                                          <button
+                                            key={opt.val}
+                                            type="button"
+                                            onClick={() => setScores({...scores, [c.id]: { ...scores[c.id], score: opt.val as ScoreEmEdicao['score'] }})}
+                                            style={{
+                                              flex: 1, padding: '0.75rem 0.5rem', borderRadius: '8px', fontWeight: '600', fontSize: '0.85rem', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
+                                              border: `2px solid ${isSelected ? opt.color : '#e5e7eb'}`,
+                                              backgroundColor: isSelected ? opt.bg : '#fff',
+                                              color: isSelected ? opt.color : '#374151',
+                                              transition: 'all 0.15s'
+                                            }}
+                                          >
+                                            <span style={{ fontSize: '1.1rem' }}>{opt.display}</span>
+                                            <span style={{ fontSize: '0.7rem', opacity: 0.8 }}>{opt.label}</span>
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+
                                   {/* Mostrar Justificativa somente se < 2 ou N/A */}
                                   {(scores[c.id]?.score !== '' && scores[c.id]?.score !== 2) && (
                                     <div className="animate-fade-in">
@@ -660,7 +860,7 @@ export const MonitoringForm = ({
                                       </label>
                                       <textarea 
                                         className="form-control"
-                                        rows="2"
+                                        rows={2}
                                         placeholder="Por que esta nota foi atribuída?"
                                         value={scores[c.id]?.lowScoreReason || ''}
                                         onChange={(e) => setScores({...scores, [c.id]: { ...scores[c.id], lowScoreReason: e.target.value }})}
@@ -734,7 +934,7 @@ export const MonitoringForm = ({
                     </div>
                     <textarea 
                       className="form-control"
-                      rows="3"
+                      rows={3}
                       placeholder="Descreva o que o colaborador fez de melhor neste atendimento..."
                       value={formData.strengths}
                       onChange={(e) => setFormData({...formData, strengths: e.target.value})}
@@ -750,7 +950,7 @@ export const MonitoringForm = ({
                     </div>
                     <textarea 
                       className="form-control"
-                      rows="3"
+                      rows={3}
                       placeholder="Pontos onde o colaborador precisa ter atenção ou evoluir..."
                       value={formData.opportunities}
                       onChange={(e) => setFormData({...formData, opportunities: e.target.value})}
@@ -766,7 +966,7 @@ export const MonitoringForm = ({
                     </div>
                     <textarea 
                       className="form-control"
-                      rows="3"
+                      rows={3}
                       placeholder="Ações práticas, treinamentos ou combinados para o próximo ciclo..."
                       value={formData.comments}
                       onChange={(e) => setFormData({...formData, comments: e.target.value})}
@@ -786,6 +986,17 @@ export const MonitoringForm = ({
                     <h2 style={{ fontSize: '1.8rem', fontWeight: '800', color: '#111827', margin: 0 }}>Resumo Executivo</h2>
                     <p style={{ color: '#6b7280', marginTop: '0.5rem' }}>Revise os dados abaixo. Após salvar, o documento será travado para validação.</p>
                   </div>
+
+                  {hasEliminatoryTrigger && (
+                    <div style={{ border: '2px solid #ef4444', backgroundColor: '#fee2e2', borderRadius: '12px', padding: '1.25rem 1.5rem' }}>
+                      <div style={{ fontWeight: '800', color: '#991b1b', fontSize: '1rem', marginBottom: '0.4rem' }}>
+                        Atenção: Critério eliminatório sinalizado
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: '#7f1d1d', lineHeight: '1.5' }}>
+                        Esta monitoria será zerada, mas apenas após confirmação de um Gestor ou Administrador. Até lá, a nota abaixo permanece a calculada normalmente. Item(ns): {triggeredEliminatoryCriteria.map(c => c.name).join(', ')}.
+                      </div>
+                    </div>
+                  )}
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
                     
@@ -830,7 +1041,7 @@ export const MonitoringForm = ({
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
                       {Object.keys(categoryScores).map(cat => {
                         const scoreData = categoryScores[cat];
-                        const perc = scoreData.percent;
+                        const perc = scoreData.percent ?? 0;
                         const color = getScoreConcept(perc).color;
                         return (
                           <div key={cat} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>

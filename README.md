@@ -15,6 +15,14 @@ A documentação principal do projeto pode ser encontrada na pasta `/docs`.
 - `npm run dev`: Inicia o servidor de desenvolvimento.
 - `npm run build`: Gera o build de produção.
 - `npm run lint`: Executa a verificação de linting.
+- `npm run typecheck`: Verifica os tipos com o TypeScript. **Obrigatório**: o empacotador
+  apaga os tipos sem conferi-los, então `build` sozinho não valida tipagem.
+- `npm run validate`: lint + typecheck + build.
+
+> **Nota de ambiente:** em caminhos que contenham `&` (como o do OneDrive desta instalação),
+> `npm run` falha porque o script é executado via `cmd`. Rode as ferramentas direto:
+> `node node_modules/eslint/bin/eslint.js .`, `node node_modules/typescript/bin/tsc --noEmit`,
+> `node node_modules/vite/bin/vite.js build`.
 
 ## Versionamento
 

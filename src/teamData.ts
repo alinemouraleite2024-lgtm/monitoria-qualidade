@@ -1,7 +1,8 @@
 import { ROLES, USER_STATUS } from './constants/auth';
+import type { Collaborator, User } from './types/domain';
 
 // Base oficial da Equipe de Relacionamento (Single Source of Truth)
-export const OFFICIAL_USERS = [
+export const OFFICIAL_USERS: User[] = [
   {
     id: 'usr-1',
     email: 'aline@mouraleite.com.br',
@@ -91,10 +92,25 @@ export const OFFICIAL_USERS = [
     provider: 'INTERNAL',
     lastAccess: '2026-06-04T10:00:00Z',
     photoUrl: ''
+  },
+  {
+    id: 'usr-7',
+    email: 'admin@mouraleite.com.br',
+    login: 'admin.homolog',
+    password: 'Admin@123',
+    name: 'Administrador (Homologação)',
+    role: ROLES.ADMIN,
+    cargo: 'Administrador do Sistema',
+    area: 'Relacionamento',
+    gestor: null,
+    status: USER_STATUS.ACTIVE,
+    provider: 'INTERNAL',
+    lastAccess: '2026-06-05T09:15:00Z',
+    photoUrl: ''
   }
 ];
 
-export const OFFICIAL_COLLABORATORS = [
+export const OFFICIAL_COLLABORATORS: Collaborator[] = [
   { id: 'usr-1', email: 'aline@mouraleite.com.br', name: 'Aline Oliveira Verneck', cargo: 'Backoffice de Relacionamento e Monitora da Qualidade', active: true, areaId: 'area-1' },
   { id: 'usr-3', email: 'nathalia@mouraleite.com.br', name: 'Nathalia Perger Oyan', cargo: 'Front Office de Relacionamento', active: true, areaId: 'area-1' },
   { id: 'usr-4', email: 'allanis@mouraleite.com.br', name: 'Allanis Maquea Silva', cargo: 'Front Office de Relacionamento', active: true, areaId: 'area-1' },
@@ -104,13 +120,6 @@ export const OFFICIAL_COLLABORATORS = [
 
 export const HOMOLOG_USERS = OFFICIAL_USERS;
 
-export const getSystemUsers = () => {
-  const stored = localStorage.getItem('pm2_users');
-  if (stored) return JSON.parse(stored);
-  localStorage.setItem('pm2_users', JSON.stringify(HOMOLOG_USERS));
-  return HOMOLOG_USERS;
-};
-
-export const saveSystemUsers = (users) => {
-  localStorage.setItem('pm2_users', JSON.stringify(users));
-};
+// getSystemUsers/saveSystemUsers foram removidos na etapa 5 da F0-12: eram o segundo dono da
+// chave pm2_users. O acesso passou a ser exclusivo de usersRepository, e este módulo voltou a
+// ser apenas a base estática oficial da equipe.

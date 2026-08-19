@@ -1,5 +1,17 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Search, Filter, Plus, Edit, Eye, Trash2, Calendar, FileSpreadsheet } from 'lucide-react';
+import { getScoreConcept } from '../../scoreUtils';
+import type { Collaborator, Monitoring, User } from '../../types/domain';
+
+interface MonitoringListProps {
+  monitorings?: Monitoring[];
+  users?: User[];
+  collaborators?: Collaborator[];
+  onNewMonitoring: () => void;
+  onView: (m: Monitoring) => void;
+  onEdit: (m: Monitoring) => void;
+  onDelete: (id: string) => void;
+}
 
 export const MonitoringList = ({
   monitorings = [],
@@ -9,7 +21,7 @@ export const MonitoringList = ({
   onView,
   onEdit,
   onDelete
-}) => {
+}: MonitoringListProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMonitor, setFilterMonitor] = useState('ALL');
   const [filterStatus, setFilterStatus] = useState('ALL');
@@ -34,17 +46,17 @@ export const MonitoringList = ({
     return true;
   });
 
-  const getUserName = (id) => {
+  const getUserName = (id: string) => {
     const u = users.find(u => u.id === id);
     return u ? u.name : 'Desconhecido';
   };
 
-  const getColabName = (id) => {
+  const getColabName = (id: string) => {
     const c = collaborators.find(c => c.id === id);
     return c ? c.name : 'Desconhecido';
   };
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case 'Rascunho': return 'badge-pill badge-info';
       case 'Pendente': return 'badge-pill badge-warning';
@@ -57,14 +69,6 @@ export const MonitoringList = ({
       case 'Cancelada': return 'badge-pill badge-danger';
       default: return 'badge-pill badge-info';
     }
-  };
-
-  const getScoreConcept = (score) => {
-    if (score >= 95) return 'Excelente';
-    if (score >= 85) return 'Muito Bom';
-    if (score >= 75) return 'Bom';
-    if (score >= 50) return 'Atenção';
-    return 'Crítico';
   };
 
   return (
@@ -185,7 +189,7 @@ export const MonitoringList = ({
                         <div style={{ fontWeight: '700', color: m.finalScore >= 75 ? 'var(--primary)' : 'var(--danger)' }}>
                           {m.finalScore.toFixed(2)}%
                         </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{getScoreConcept(m.finalScore)}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{getScoreConcept(m.finalScore).label}</div>
                       </div>
                     ) : (
                       <span style={{ color: 'var(--text-muted)' }}>N/A</span>
@@ -193,6 +197,12 @@ export const MonitoringList = ({
                   </td>
                   <td>
                     <span className={getStatusBadge(m.status)}>{m.status}</span>
+                    {m.zerada && (
+                      <span className="badge-pill badge-danger" style={{ marginLeft: '0.25rem' }}>Zerada</span>
+                    )}
+                    {!m.zerada && m.eliminatoryPending && (
+                      <span className="badge-pill badge-danger" style={{ marginLeft: '0.25rem' }}>Elim. Pendente</span>
+                    )}
                   </td>
                   <td style={{ textAlign: 'right' }}>
                     <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'flex-end' }}>
@@ -210,7 +220,7 @@ export const MonitoringList = ({
                 </tr>
               )) : (
                 <tr>
-                  <td colSpan="8" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
                     Nenhuma monitoria encontrada com os filtros atuais.
                   </td>
                 </tr>

@@ -1,27 +1,45 @@
-import React, { useState } from 'react';
-import { X, CheckCircle2, User, Clock, FileText, Check, AlertCircle } from 'lucide-react';
+import { useState } from 'react';
+import { X, CheckCircle2, User as UserIcon, Clock, FileText, Check, AlertCircle } from 'lucide-react';
+import { getScoreConcept } from '../../scoreUtils';
+import type { Collaborator, Criterion, Monitoring, User } from '../../types/domain';
+
+interface MonitoringHistoryProps {
+  monitoring: Monitoring;
+  users?: User[];
+  collaborators?: Collaborator[];
+  criteria?: Criterion[];
+  currentUser?: User | null;
+  onClose: () => void;
+  onApprove: (id: string) => void;
+  onReject: (id: string) => void;
+  /** Recebe o motivo informado pelo gestor além do id — contrato de BUG-03. */
+  onRequestAdjustments: (id: string, reason: string) => void;
+  onConfirmZerada: (id: string) => void;
+}
 
 export const MonitoringHistory = ({
   monitoring,
   users = [],
   collaborators = [],
+  criteria = [],
   currentUser = null,
   onClose,
   onApprove,
   onReject,
-  onRequestAdjustments
-}) => {
+  onRequestAdjustments,
+  onConfirmZerada
+}: MonitoringHistoryProps) => {
   const [adjustReason, setAdjustReason] = useState('');
   const [showAdjustInput, setShowAdjustInput] = useState(false);
 
   if (!monitoring) return null;
 
-  const getUserName = (id) => {
+  const getUserName = (id: string) => {
     const u = users.find(u => u.id === id);
     return u ? u.name : 'Desconhecido';
   };
 
-  const getColabName = (id) => {
+  const getColabName = (id: string) => {
     const c = collaborators.find(c => c.id === id);
     return c ? c.name : 'Desconhecido';
   };
@@ -34,6 +52,18 @@ export const MonitoringHistory = ({
 
   // Aprovação flow logic
   const canApprove = currentUser && (currentUser.role === 'GESTOR' || currentUser.role === 'ADMIN') && (monitoring.status === 'Pendente' || monitoring.status === 'Aguardando Aprovação');
+
+  // F0-08: confirmação de zerada é um fluxo independente da aprovação de conteúdo acima —
+  // só depende de haver uma sinalização pendente, não do status da monitoria.
+  const isManager = currentUser && (currentUser.role === 'GESTOR' || currentUser.role === 'ADMIN');
+  const canConfirmZerada = isManager && monitoring.eliminatoryPending === true;
+  const getCriterionName = (id: string) => criteria.find(c => c.id === id)?.name || id;
+  const triggeredCriteriaNames = (monitoring.scores || [])
+    .filter(s => {
+      const crit = criteria.find(c => c.id === s.criterionId);
+      return crit?.eliminatorio && Number(s.score) === 0;
+    })
+    .map(s => getCriterionName(s.criterionId));
 
   return (
     <div className="slide-over-overlay">
@@ -72,6 +102,31 @@ export const MonitoringHistory = ({
             </div>
           </div>
 
+          {monitoring.adjustmentReason && (
+            <div style={{ border: '1px solid var(--warning)', backgroundColor: 'rgba(234, 179, 8, 0.08)', borderRadius: '8px', padding: '1rem' }}>
+              <div style={{ fontWeight: '700', color: '#a16207' }}>Ajustes solicitados pelo gestor</div>
+              <div style={{ fontSize: '0.85rem', color: '#854d0e', marginTop: '0.25rem' }}>{monitoring.adjustmentReason}</div>
+            </div>
+          )}
+
+          {/* F0-08: sinalização de eliminatório */}
+          {monitoring.zerada && (
+            <div style={{ border: '2px solid #ef4444', backgroundColor: '#fee2e2', borderRadius: '8px', padding: '1rem' }}>
+              <div style={{ fontWeight: '800', color: '#991b1b' }}>Monitoria zerada</div>
+              <div style={{ fontSize: '0.85rem', color: '#7f1d1d', marginTop: '0.25rem' }}>
+                Critério eliminatório confirmado por {getUserName(monitoring.eliminatoryConfirmedBy ?? '')} em {monitoring.eliminatoryConfirmedAt ? new Date(monitoring.eliminatoryConfirmedAt).toLocaleString('pt-BR') : '-'}.
+              </div>
+            </div>
+          )}
+          {!monitoring.zerada && monitoring.eliminatoryPending && (
+            <div style={{ border: '2px solid #ef4444', backgroundColor: '#fee2e2', borderRadius: '8px', padding: '1rem' }}>
+              <div style={{ fontWeight: '800', color: '#991b1b' }}>Critério eliminatório pendente de confirmação</div>
+              <div style={{ fontSize: '0.85rem', color: '#7f1d1d', marginTop: '0.25rem' }}>
+                Item(ns) sinalizado(s): {triggeredCriteriaNames.join(', ') || 'não identificado'}. A nota só será zerada após confirmação de um Gestor ou Administrador.
+              </div>
+            </div>
+          )}
+
           {/* Scores Overview */}
           <div>
             <h3 style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Resumo da Avaliação</h3>
@@ -81,7 +136,7 @@ export const MonitoringHistory = ({
               </div>
               <div>
                 <div style={{ fontWeight: '600' }}>Nota Final</div>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{getScoreConcept(monitoring.finalScore)}</div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{getScoreConcept(monitoring.finalScore).label}</div>
               </div>
             </div>
 
@@ -89,7 +144,7 @@ export const MonitoringHistory = ({
               {monitoring.scores?.map((s, idx) => (
                 <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '6px' }}>
                   <div>
-                    <div style={{ fontWeight: '600', fontSize: '0.85rem' }}>Critério ID: {s.criterionId}</div>
+                    <div style={{ fontWeight: '600', fontSize: '0.85rem' }}>{getCriterionName(s.criterionId)}</div>
                     {s.lowScoreReason && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>"{s.lowScoreReason}"</div>}
                   </div>
                   <div style={{ fontWeight: '700' }}>{s.score}</div>
@@ -112,7 +167,7 @@ export const MonitoringHistory = ({
               </div>
               <div>
                 <div style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--info)' }}>Plano de Ação</div>
-                <div style={{ fontSize: '0.9rem' }}>{monitoring.actionPlan || 'Não preenchido.'}</div>
+                <div style={{ fontSize: '0.9rem' }}>{monitoring.comments || 'Não preenchido.'}</div>
               </div>
             </div>
           </div>
@@ -134,6 +189,25 @@ export const MonitoringHistory = ({
           </div>
         </div>
 
+        {/* F0-08: Footer de confirmação de zerada — independente do fluxo de aprovação de conteúdo */}
+        {canConfirmZerada && (
+          <div className="slide-over-footer" style={{ flexDirection: 'column', gap: '0.75rem', backgroundColor: '#fef2f2' }}>
+            <div style={{ fontWeight: '700', fontSize: '0.9rem', color: '#991b1b' }}>Confirmação de Critério Eliminatório</div>
+            <div style={{ fontSize: '0.8rem', color: '#7f1d1d' }}>
+              Confirme apenas se, de fato, o critério sinalizado ocorreu. Esta ação zera a nota final e não pode ser desfeita por aqui.
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                className="btn btn-primary"
+                style={{ backgroundColor: '#ef4444', borderColor: '#ef4444' }}
+                onClick={() => { if (confirm('Confirmar que o critério eliminatório realmente ocorreu? A nota desta monitoria será zerada.')) onConfirmZerada(monitoring.id); }}
+              >
+                <AlertCircle size={16} /> Confirmar Zerada
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Approval Footer for Managers */}
         {canApprove && (
           <div className="slide-over-footer" style={{ flexDirection: 'column', gap: '1rem' }}>
@@ -143,7 +217,7 @@ export const MonitoringHistory = ({
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 <textarea 
                   className="form-control" 
-                  rows="2" 
+                  rows={2} 
                   placeholder="Motivo da solicitação de ajuste..."
                   value={adjustReason}
                   onChange={e => setAdjustReason(e.target.value)}

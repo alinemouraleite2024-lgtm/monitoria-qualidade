@@ -1,7 +1,18 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
+
+interface SearchableSelectProps {
+  options?: string[];
+  value?: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  hasError?: boolean;
+  disabled?: boolean;
+  allowCreate?: boolean;
+  onCreate?: ((value: string) => void) | null;
+}
 import { Search, ChevronDown, PlusCircle } from 'lucide-react';
 
-const normalizeString = (str) => {
+const normalizeString = (str?: string): string => {
   if (!str) return '';
   return str
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
@@ -19,15 +30,15 @@ export const SearchableSelect = ({
   disabled = false,
   allowCreate = false,
   onCreate = null
-}) => {
+}: SearchableSelectProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const wrapperRef = useRef(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   
   // Close dropdown if clicked outside
   useEffect(() => {
-    function handleClickOutside(event) {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+    function handleClickOutside(event: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
         setIsOpen(false);
         setSearchTerm(''); // Reset search on close
       }
@@ -44,7 +55,7 @@ export const SearchableSelect = ({
   const hasExactMatch = options.some(opt => normalizeString(opt) === normalizedSearch);
   const showCreateOption = allowCreate && normalizedSearch.length > 0 && !hasExactMatch;
 
-  const handleSelect = (opt) => {
+  const handleSelect = (opt: string) => {
     onChange(opt);
     setIsOpen(false);
     setSearchTerm('');

@@ -1,18 +1,19 @@
 // Single Source of Truth para constantes de autenticação e permissões
+import type { Permission, Role } from '../types/domain';
 
 export const ROLES = {
   ADMIN: 'ADMIN',
   GESTOR: 'GESTOR',
   MONITOR: 'MONITOR'
-};
+} as const;
 
 export const USER_STATUS = {
   ACTIVE: 'ACTIVE',
   INACTIVE: 'INACTIVE',
   BLOCKED: 'BLOCKED'
-};
+} as const;
 
-export const PERMISSIONS = {
+export const PERMISSIONS: Record<Permission, Role[]> = {
   // Módulos principais
   VIEW_DASHBOARD: ['ADMIN', 'GESTOR'],
   VIEW_PLANNING: ['ADMIN', 'GESTOR'],
@@ -26,6 +27,11 @@ export const PERMISSIONS = {
   VIEW_CALENDAR: ['MONITOR'],
   VIEW_OPERATIONAL_CALENDAR: ['GESTOR'],
   VIEW_MY_PROFILE: ['MONITOR', 'GESTOR', 'ADMIN'],
+
+  // F0-14: as rotas do formulário de monitoria não tinham permissão declarada e passavam para
+  // qualquer papel autenticado. Esta chave reproduz exatamente quem já criava monitorias antes
+  // da história — CREATE_MONITORING não serve aqui porque exclui o GESTOR, que cria hoje.
+  VIEW_MONITORING_FORM: ['ADMIN', 'GESTOR', 'MONITOR'],
 
   // Módulos Administrativos (Novo)
   VIEW_USERS: ['ADMIN'],

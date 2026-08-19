@@ -1,10 +1,20 @@
 import { useState } from 'react';
 import { Plus, Edit, Lock, Unlock, Search } from 'lucide-react';
 import { logAuthEvent, USER_STATUS, ROLES } from '../../auth';
-import { getSystemUsers, saveSystemUsers } from '../../teamData';
 
-export const UserManagement = () => {
-  const users = getSystemUsers();
+// Fonte de verdade única (F0-12, etapa 5): a lista chega por prop do App.jsx e as alterações
+// sobem por onUsersChange. Antes este módulo lia e gravava pm2_users direto via teamData.js,
+// à revelia do estado do App.jsx — o que fazia uma das duas escritas ser perdida.
+//
+// Divergência conhecida, deliberadamente não tratada aqui: este formulário grava o registro
+// completo (login, password, status, provider, cargo, area, gestor) e registra logAuthEvent,
+// enquanto UserModal.jsx (tela Cadastros) grava apenas id/name/email/role/team/active e sem
+// log. Os dois formatos coexistem no mesmo array. Unificá-los é mudança de regra, fora do
+// escopo desta etapa.
+export const UserManagement = ({
+  users = /** @type {import('../../types/domain').User[]} */ ([]),
+  onUsersChange,
+}) => {
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -36,7 +46,7 @@ export const UserManagement = () => {
       logAuthEvent('CREATE_USER', null, `Usuário ${formData.login} criado`);
     }
     
-    saveSystemUsers(newUsers);
+    onUsersChange(newUsers);
     setShowModal(false);
   };
 
@@ -44,7 +54,7 @@ export const UserManagement = () => {
     const isBlocked = user.status === USER_STATUS.BLOCKED;
     const newStatus = isBlocked ? USER_STATUS.ACTIVE : USER_STATUS.BLOCKED;
     const newUsers = users.map(u => u.id === user.id ? { ...u, status: newStatus } : u);
-    saveSystemUsers(newUsers);
+    onUsersChange(newUsers);
     logAuthEvent(isBlocked ? 'UNBLOCK_USER' : 'BLOCK_USER', null, `Usuário ${user.login} ${isBlocked ? 'desbloqueado' : 'bloqueado'}`);
   };
 

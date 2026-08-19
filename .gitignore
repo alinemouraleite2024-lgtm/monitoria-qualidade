@@ -27,3 +27,6 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# Relatório de lint gerado (462KB, não deve ser versionado)
+lint.json
