@@ -19,7 +19,32 @@
 | **Artefato publicado** | `index-_khVWhmX.js` — hash idêntico ao build validado localmente |
 | **Commit base** | `f93b412` — *feat(monitoria): master data e cadastro inteligente de categorias* (2026-07-13) |
 | **Tempo da Sprint** | 2026-07-13 → 2026-08-19 (**37 dias**) |
-| **Próxima Sprint** | A definir — ver seção 7 |
+| **Próxima Sprint** | Nenhuma aberta — o foco passou a ser operação, ver seção 7 |
+
+### Critérios de encerramento — todos cumpridos
+
+Regra de Conclusão de Sprint de [`.agents/AGENTS.md`](../.agents/AGENTS.md):
+
+| # | Critério | |
+|---|---|---|
+| 1 | Código implementado | ✅ 15 de 15 histórias |
+| 2 | Changelog atualizado | ✅ versão 0.8.0 |
+| 3 | Commit realizado | ✅ `94386d9` |
+| 4 | Deploy concluído | ✅ 19/08/2026 |
+| 5 | URL funcionando | ✅ https://monitoria-qualidade.vercel.app |
+| 6 | Checklist de homologação | ✅ seção 4 deste documento |
+
+### Publicações posteriores ao encerramento
+
+Não abriram Sprint nova e não introduziram funcionalidade. Detalhe na seção 9 de
+[`STATUS-SPRINT-0.md`](STATUS-SPRINT-0.md).
+
+| Data | Hash | Natureza |
+|---|---|---|
+| 19/08 | `7d389b1` | Identidade visual do login |
+| 20/08 | `3756071` | Home simplificada, sem indicadores inventados |
+
+Versão em produção após esses ajustes: **0.8.1**
 
 ---
 
@@ -224,9 +249,12 @@ Lista completa e detalhada na seção 8 de [`STATUS-SPRINT-0.md`](STATUS-SPRINT-
 
 ---
 
-## 7. Próxima Sprint — recomendação
+## 7. O que vem depois
 
-Não decidida. Três candidatos naturais, em ordem de urgência técnica:
+**Nenhuma Sprint foi aberta.** A decisão tomada em 19/08 foi interromper o desenvolvimento e
+colocar o sistema em uso real — o contexto operacional está em [`OPERACAO.md`](OPERACAO.md).
+
+Quando o desenvolvimento for retomado, três candidatos naturais, em ordem de urgência técnica:
 
 1. **Autenticação real** — fecha os débitos 1, 2 e 3, hoje o único bloco de alta relevância
    ainda aberto. É também pré-requisito para qualquer uso além de homologação.
@@ -235,3 +263,6 @@ Não decidida. Três candidatos naturais, em ordem de urgência técnica:
    implementação, não de todas as telas.
 3. **Fase 1 do produto** — pipeline de IA (transcrição, diarização, avaliação assistida),
    explicitamente fora do escopo da Sprint 0.
+
+A quarta candidata surgiu depois do encerramento: a **reformulação da Home** como bancada de
+trabalho. Depende da observação dos pilotos e não foi aprovada.

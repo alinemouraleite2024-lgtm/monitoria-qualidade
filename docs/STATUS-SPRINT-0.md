@@ -1,8 +1,11 @@
 # Status da Sprint 0 — Fundamentos
 
-> **Estado:** 15 de 15 histórias concluídas. Sprint **não publicada** — conforme
-> `.agents/AGENTS.md`, a conclusão exige commit, deploy e URL de homologação.
-> **Última atualização:** após a conclusão da história F0-15 (TypeScript incremental).
+> **Estado:** Sprint 0 **concluída e publicada** em 19/08/2026 — 15 de 15 histórias.
+> **Última atualização:** 20/08/2026, com os ajustes publicados depois do fechamento.
+>
+> Para o contexto **operacional** — modelo de uso, regras diárias, pilotos e decisões de
+> produto — a fonte oficial é [`OPERACAO.md`](OPERACAO.md). Este documento cobre o **estado
+> técnico** do código.
 > **Ambiente:** Homologação (`HOMOLOGATION_MODE = true`, persistência em `localStorage`).
 
 Este documento reflete o estado **real e verificado** do código. Todas as métricas foram medidas
@@ -523,6 +526,86 @@ Detalhes na seção 3-D.
 **Bloco de autenticação** — os débitos 1, 2 e 3 são a mesma questão vista de três ângulos e
 foram deliberadamente mantidos fora das F0-12, F0-14 e F0-15. Merecem história própria:
 unificar `handleLogin` e `sessionRepository` com `usersRepository`, e revalidar a sessão ativa.
+
+---
+
+## 9. Depois do fechamento da Sprint 0
+
+A Sprint foi encerrada em 19/08/2026. O que veio depois **não abriu Sprint nova** e não
+introduziu funcionalidade: são dois ajustes de véspera, decididos para que a entrada em
+operação começasse com a tela certa.
+
+### Publicações
+
+| Data | Hash | Natureza |
+|---|---|---|
+| 19/08 | `94386d9` | Sprint 0 — 15 histórias |
+| 19/08 | `7d389b1` | Identidade visual do login |
+| 20/08 | `3756071` | Home simplificada |
+
+Ambiente: **https://monitoria-qualidade.vercel.app** · versão **0.8.1**
+
+### `7d389b1` — identidade visual do login
+
+Alinhamento ao Portal de Simulações da Moura Leite: fundo verde institucional com textura de
+grade, faixa laranja no topo do card, árvore do logo em SVG e a marca **MonitorIA** em destaque,
+que antes não aparecia na tela. Campos e botão de 48 px.
+
+A linha "Simulação Comercial: 05 de Junho, 2026" foi substituída por **"Acesso restrito a
+colaboradores Moura Leite"**. O texto "© Moura Leite Loteamentos / Uso interno" **não** foi usado
+dentro do card porque já existe no rodapé abaixo dele — repeti-lo pareceria defeito.
+
+Arquivos: `features/auth/LoginScreen.tsx`, `shared/components/MouraLeiteTree.tsx` (novo),
+`index.css` (duas classes usadas só por essa tela).
+
+**Sem alteração funcional.** Verificado em execução: login dos três perfis, credencial inválida,
+logout, formato da sessão gravada, registro de auditoria, botão Microsoft e responsividade em
+375 px.
+
+### `3756071` — Home simplificada
+
+A Home exibia **seis blocos com dados que não vinham de lugar nenhum**. Numa base zerada — o
+estado em que a monitora encontra o sistema no primeiro dia — a tela afirmava
+"Nota Média 0,00% · Crítico" ao lado de "Produtividade 95% · Dentro do SLA".
+
+**Removidos:** card de produtividade (número literal no código) · gráfico "Meu Desempenho"
+(array `[80,85,92,88,95,98]` e meses Jan–Jun fixos) · três avisos de equipe escritos à mão ·
+agenda, que lia a semente de junho e formatava `item.date` em vez de `item.time`, exibindo todo
+compromisso às 21:00 · 13 botões "Iniciar" e 1 botão "Visualizar", todos sem ação.
+
+**Corrigidos:**
+
+| Defeito | Correção |
+|---|---|
+| Fila de pendências sempre vazia: filtro usava `d.assigneeId`, campo real é `assignedTo` | nome acertado |
+| Prazo exibiria "Invalid Date": lia `d.dueDate`, campo real é `deadline` | nome acertado |
+| Nota média sem dados exibia "0,00% Crítico" | passou a exibir "—  Sem dados neste mês" |
+| "Nova Monitoria" abria a listagem | abre `/monitorings/new` |
+
+As duas divergências de campo são **a mesma classe de defeito do BUG-02**. Sobreviveram à F0-15
+porque `HomeMonitor` é um dos 15 arquivos ainda em `.jsx`, fora do type-check — reforçando o
+débito 12. A remoção da prop `agenda` do `App.tsx`, por outro lado, **foi acusada pelo `tsc`**
+antes de chegar à tela.
+
+| | Antes | Depois |
+|---|---|---|
+| Altura | 1.728 px | **691 px** |
+| Blocos | 9 | **5** |
+| Botões | 18 | **5** |
+| Botões sem ação | 14 | **0** |
+
+### Decisão de produto registrada
+
+A Home simplificada foi aprovada **para os pilotos**, não como desenho final.
+
+O diagnóstico registrado é que **a Home não tem trabalho próprio**: o menu já navega, o Dashboard
+Executivo já reporta, e sobrou uma tela de métricas de fechamento numa posição de abertura. A
+hipótese em aberto é transformá-la em **bancada de trabalho** — a fila da monitora, não o painel
+dela.
+
+**Nenhuma implementação dessa Home foi aprovada.** A decisão depende de uma pergunta que só o uso
+real responde, e que será coletada nos pilotos: a monitora trabalha **por colaborador** ou **por
+atendimento**? Detalhes em [`OPERACAO.md`](OPERACAO.md), seção 7.
 
 ---
 

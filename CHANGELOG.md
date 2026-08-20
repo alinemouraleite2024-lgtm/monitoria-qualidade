@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.1] - 2026-08-20 — Ajustes pré-piloto
+
+> Dois ajustes publicados na véspera da entrada em operação, ambos sem alteração de
+> autenticação, sessão, rotas, permissões ou regra de negócio.
+> Contexto operacional em [`docs/OPERACAO.md`](docs/OPERACAO.md).
+
+### Changed
+- **Tela de login com a identidade da Moura Leite** (`7d389b1`): fundo verde institucional com
+  a mesma textura do Portal de Simulações, faixa laranja no topo do card, árvore do logo em SVG
+  no lugar do quadrado com as letras "ML", e a marca **MonitorIA** passando a aparecer em
+  destaque — antes o nome do produto não constava na tela. Campos e botão ampliados para 48 px,
+  com estados de foco visíveis. A linha "Simulação Comercial: 05 de Junho, 2026" foi substituída
+  por "Acesso restrito a colaboradores Moura Leite": num sistema que entra em uso real, anunciar
+  "simulação" na primeira tela contradizia o próprio uso.
+- **Home da monitora sem indicadores inventados** (`3756071`): a tela exibia seis blocos de
+  dados que não vinham de lugar nenhum. Numa base zerada — o estado do primeiro dia — ela
+  afirmava "Nota Média 0,00% · Crítico" ao lado de "Produtividade 95% · Dentro do SLA",
+  acusando desempenho crítico antes do primeiro registro e garantindo uma produtividade que
+  ninguém calculava. Foram removidos o card de produtividade, o gráfico "Meu Desempenho" (array
+  fixo e meses fixos), os três avisos de equipe escritos à mão, e a agenda, que lia a semente de
+  junho e exibia todo compromisso às 21:00. Com a agenda saíram 13 botões "Iniciar" sem ação, e
+  com a tabela, um botão "Visualizar" também sem ação.
+  Resultado: **1.728 → 691 px de altura, 9 → 5 blocos, 18 → 5 botões, 14 → 0 botões sem ação.**
+  Nenhum dado inventado foi substituído por outro.
+
+### Fixed
+- **Fila de pendências da Home nunca exibia nada** (`3756071`): duas divergências de contrato no
+  mesmo card. O filtro consultava `d.assigneeId` quando o campo do registro é `assignedTo`, de
+  modo que a contagem era sempre zero e a tela dizia "Tudo limpo por aqui" mesmo havendo
+  demandas em aberto. O prazo lia `d.dueDate` quando o campo é `deadline`, o que exibiria
+  "Invalid Date" assim que a contagem voltasse a funcionar. Com os dois nomes acertados, a Home
+  passou a mostrar duas demandas reais da monitora, uma delas crítica.
+  É a mesma classe de defeito do BUG-02 — dois lados discordando sobre o nome de um campo.
+- **Nota média com base vazia acusava "Crítico"**: passou a exibir "—  Sem dados neste mês".
+- **"Nova Monitoria" não abria o formulário**: levava à listagem; agora abre `/monitorings/new`.
+
+---
+
 ## [0.8.0] - 2026-08-19 — Sprint 0 (Fundamentos)
 
 > **Publicada.** 15 de 15 histórias. Homologação em

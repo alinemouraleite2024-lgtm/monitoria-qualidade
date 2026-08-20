@@ -5,6 +5,10 @@ Projeto de monitoria desenvolvido com React e Vite.
 ## Estrutura do Projeto
 
 A documentação principal do projeto pode ser encontrada na pasta `/docs`.
+O contexto oficial — estado, modelo de operação e decisões — está em
+[`docs/OPERACAO.md`](docs/OPERACAO.md).
+
+**Em produção:** https://monitoria-qualidade.vercel.app
 
 - `/docs`: Documentação geral, guias e arquitetura.
 - `/src`: Código-fonte da aplicação.
