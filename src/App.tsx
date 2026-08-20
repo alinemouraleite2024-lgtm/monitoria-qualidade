@@ -968,7 +968,7 @@ function AppContent() {
                   <div className="animate-fade-in">
                     {currentUser.role === 'ADMIN' && <HomeAdmin currentUser={currentUser} />}
                     {currentUser.role === 'GESTOR' && <HomeGestor currentUser={currentUser} demands={demands} users={users} />}
-                    {currentUser.role === 'MONITOR' && <HomeMonitor currentUser={currentUser} agenda={agenda} demands={demands} monitorings={monitorings} collaborators={collaborators} onNavigate={navigateToTab} />}
+                    {currentUser.role === 'MONITOR' && <HomeMonitor currentUser={currentUser} demands={demands} monitorings={monitorings} collaborators={collaborators} onNavigate={navigateToTab} />}
                   </div>
               </Screen>
             } />
