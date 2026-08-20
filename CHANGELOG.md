@@ -5,11 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.8.0] — Sprint 0 (Fundamentos) — **aguardando publicação**
+## [0.8.0] - 2026-08-19 — Sprint 0 (Fundamentos)
 
-> Desenvolvimento concluído: 15 de 15 histórias. A versão só passa a "publicada" quando o
-> deploy estiver no ar e a URL de homologação disponível para validação, conforme
-> `.agents/AGENTS.md`. Até lá, esta seção fica sem data.
+> **Publicada.** 15 de 15 histórias. Homologação em
+> https://monitoria-qualidade.vercel.app · commit `94386d9`.
 >
 > `package.json` foi corrigido de `0.3.0` para `0.8.0` — havia parado de acompanhar o
 > CHANGELOG desde a 0.4.0.

@@ -1,11 +1,9 @@
 # Relatório Final — Sprint 0 (Fundamentos)
 
-> **Status: desenvolvimento concluído, publicação pendente.**
->
-> Conforme a Regra de Conclusão de Sprint em [`.agents/AGENTS.md`](../.agents/AGENTS.md), esta
-> Sprint **não pode ser declarada concluída** enquanto o deploy não estiver no ar e a URL de
-> homologação não estiver disponível para validação. Os campos abaixo marcados como
-> **pendente** são exatamente os que faltam.
+> **Status: PUBLICADA em 19/08/2026.** Todos os requisitos da Regra de Conclusão de Sprint de
+> [`.agents/AGENTS.md`](../.agents/AGENTS.md) foram cumpridos: código implementado, changelog
+> atualizado, commit realizado, deploy concluído, URL no ar e checklist de homologação
+> disponível.
 
 ---
 
@@ -14,10 +12,11 @@
 | Campo | Valor |
 |---|---|
 | **Versão** | 0.8.0 |
-| **Data da publicação** | ⏳ **pendente** — deploy não executado |
-| **Link de homologação** | ⏳ **pendente** |
+| **Data da publicação** | **19/08/2026** |
+| **Link de homologação** | **https://monitoria-qualidade.vercel.app** |
 | **Ambiente** | Homologação (`HOMOLOGATION_MODE = true`, persistência em `localStorage`) |
-| **Hash do commit publicado** | ⏳ **pendente** — commit ainda não realizado |
+| **Hash do commit publicado** | **`94386d938289b70bba705a0f7da47db76e3ececd`** (`94386d9`), em `main` |
+| **Artefato publicado** | `index-_khVWhmX.js` — hash idêntico ao build validado localmente |
 | **Commit base** | `f93b412` — *feat(monitoria): master data e cadastro inteligente de categorias* (2026-07-13) |
 | **Tempo da Sprint** | 2026-07-13 → 2026-08-19 (**37 dias**) |
 | **Próxima Sprint** | A definir — ver seção 7 |
@@ -166,10 +165,25 @@ Roteiro para validação manual no ambiente publicado.
 ## 5. Pendências conhecidas
 
 ### Bloqueando a conclusão da Sprint
-1. Commit não realizado
-2. Push não realizado
-3. Deploy não executado
-4. URL de homologação inexistente
+
+Nenhuma. Commit, merge em `main`, push, deploy e URL concluídos em 19/08/2026.
+
+### Homologação executada em produção — 19/08/2026
+
+| Verificação | Resultado |
+|---|---|
+| `/monitorings` colado direto na barra de endereços | **200** — sem 404, redireciona para `/login` |
+| Atualizar a página numa rota interna | **mantém sessão e tela** |
+| Rota inexistente | tela "Página não encontrada" do app, **não** o 404 da Vercel |
+| Login ADMIN, GESTORA e MONITORA | os três entram; menus com 15, 9 e 7 itens |
+| Retorno à rota pretendida após o login | confirmado |
+| `/home` `/monitorings` `/monitorings/new` `/users` `/admin` | todas carregam |
+| Monitora barrada em `/users` | Acesso Negado, como esperado |
+| Erros de console | **nenhum** — o único 404 do log de rede é anterior ao deploy |
+
+> **O risco 6 desta Sprint foi eliminado em produção.** Antes do deploy, `/monitorings`
+> retornava `404: NOT_FOUND` da Vercel; depois, retorna `200`. O rewrite do `vercel.json`
+> está ativo e comprovado.
 
 ### Débitos técnicos remanescentes
 
