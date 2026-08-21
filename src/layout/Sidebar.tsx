@@ -25,7 +25,7 @@ export const Sidebar = ({
 }: SidebarProps) => (
 <aside className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
   <div className="sidebar-header">
-    <a href="#" className="sidebar-brand" onClick={(e) => { e.preventDefault(); onNavigate('dashboard'); }}>
+    <a href="#" className="sidebar-brand" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>
       <img src={brand.logoUrl} className="sidebar-logo" alt={brand.name} />
       <span className="sidebar-title sidebar-brand-text" style={{ marginLeft: '0.5rem' }}>{brand.name}</span>
     </a>

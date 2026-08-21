@@ -26,7 +26,7 @@ export const Topbar = ({ currentUser, activeTab, menuConfig, renderUserAvatar }:
       <span className="breadcrumb-item">Workspace</span>
       <span style={{ color: 'var(--text-muted)' }}>/</span>
       <span className="breadcrumb-item active">
-        {menuConfig[currentUser.role]?.find(m => m.id === activeTab)?.label || 'Dashboard'}
+        {menuConfig[currentUser.role]?.find(m => m.id === activeTab)?.label || 'MonitorIA'}
       </span>
     </div>
   </div>

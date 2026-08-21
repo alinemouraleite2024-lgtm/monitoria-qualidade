@@ -8,9 +8,9 @@
 // real sob /monitorings.
 
 export const TABS: string[] = [
-  'home', 'dashboard', 'planning', 'demands', 'my-demands', 'monitorings',
-  'surveys', 'reports', 'allocations', 'users', 'roles', 'audit-logs',
-  'admin', 'settings', 'integrations', 'history', 'calendar', 'op-calendar', 'profile',
+  'home', 'dashboard', 'planning', 'demands', 'monitorings',
+  'csat', 'nps', 'reports', 'allocations', 'users', 'roles', 'audit-logs',
+  'admin', 'settings', 'integrations', 'history', 'op-calendar', 'profile',
 ];
 
 export const MONITORING_NEW = 'monitoring-new';

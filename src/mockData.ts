@@ -125,14 +125,10 @@ export const INITIAL_COLABORADOR_GOALS: ColaboradorGoal[] = [
 // Evaluation records (Seeded - limpo para evitar inconsistência com novos critérios)
 export const INITIAL_MONITORINGS: Monitoring[] = [];
 
-// Pesquisas de Satisfação (Mock)
-export const INITIAL_SURVEYS = [
-  { id: 'surv-1', type: 'NPS', date: '2026-06-01', score: 100, comment: 'Excelente atendimento, rápido e prático.', collaboratorId: 'usr-3' },
-  { id: 'surv-2', type: 'NPS', date: '2026-06-02', score: 60, comment: 'Demorou muito para me transferir.', collaboratorId: 'usr-4' },
-  { id: 'surv-3', type: 'CSAT', date: '2026-06-03', score: 50, comment: 'Problema resolvido na hora.', collaboratorId: 'usr-3' },
-  { id: 'surv-4', type: 'SAT', date: '2026-06-05', score: 40, comment: 'Atendente muito educada, mas o sistema estava fora do ar.', collaboratorId: 'usr-1' },
-  { id: 'surv-5', type: 'NPS', date: '2026-06-10', score: 90, comment: '', collaboratorId: 'usr-5' }
-];
+// INITIAL_SURVEYS foi removido junto com o item "Pesquisas". Era código morto — nenhum
+// repositório o carregava — e modelava cada resposta como nota sobre o colaborador
+// (collaboratorId), que é justamente o entendimento abandonado: a resposta é do CLIENTE.
+// O modelo de CSAT e NPS será desenhado com o cliente como sujeito.
 
 export const INITIAL_HOLIDAYS: Holiday[] = [
   {

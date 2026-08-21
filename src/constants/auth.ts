@@ -19,12 +19,15 @@ export const PERMISSIONS: Record<Permission, Role[]> = {
   VIEW_PLANNING: ['ADMIN', 'GESTOR'],
   VIEW_CENTRAL_DEMANDS: ['ADMIN', 'GESTOR'],
   VIEW_MONITORINGS: ['ADMIN', 'GESTOR', 'MONITOR'],
-  VIEW_SURVEYS: ['ADMIN', 'GESTOR', 'MONITOR'],
+  // CSAT e NPS substituem a antiga VIEW_SURVEYS. A simetria entre eles é aparente: CSAT é
+  // indicador, NPS é processo operacional — a Monitora entra no NPS para trabalhar o caso
+  // (analisar histórico e monitorias, refazer monitoria, contatar o cliente, registrar a
+  // tratativa), não apenas para consultar nota. Por isso os três papéis enxergam os dois.
+  VIEW_CSAT: ['ADMIN', 'GESTOR', 'MONITOR'],
+  VIEW_NPS: ['ADMIN', 'GESTOR', 'MONITOR'],
   VIEW_REPORTS: ['ADMIN', 'GESTOR', 'MONITOR'],
   VIEW_COLLABORATORS: ['ADMIN', 'GESTOR'],
-  VIEW_MY_DEMANDS: ['MONITOR'],
   VIEW_MY_MONITORINGS: ['MONITOR'],
-  VIEW_CALENDAR: ['MONITOR'],
   VIEW_OPERATIONAL_CALENDAR: ['GESTOR'],
   VIEW_MY_PROFILE: ['MONITOR', 'GESTOR', 'ADMIN'],
 

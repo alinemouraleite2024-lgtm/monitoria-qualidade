@@ -36,10 +36,14 @@ export const MonitoringList = ({
     if (filterDate && !m.date.startsWith(filterDate)) return false;
 
     if (searchTerm) {
+      // O protocolo entrou na busca junto com a regra que o tornou obrigatório: é por ele que
+      // se chega da resposta de um cliente até a monitoria do atendimento correspondente.
       const colab = collaborators.find(c => c.id === m.colaboradorId);
+      const termo = searchTerm.toLowerCase();
       const colabName = colab ? colab.name.toLowerCase() : '';
       const code = m.id.toLowerCase();
-      if (!colabName.includes(searchTerm.toLowerCase()) && !code.includes(searchTerm.toLowerCase())) {
+      const protocolo = (m.protocolo || '').toLowerCase();
+      if (!colabName.includes(termo) && !code.includes(termo) && !protocolo.includes(termo)) {
         return false;
       }
     }
@@ -91,7 +95,7 @@ export const MonitoringList = ({
               <Search size={16} style={{ color: 'var(--text-muted)' }} />
               <input
                 type="text"
-                placeholder="Código ou Colaborador..."
+                placeholder="Código, Colaborador ou Protocolo..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />

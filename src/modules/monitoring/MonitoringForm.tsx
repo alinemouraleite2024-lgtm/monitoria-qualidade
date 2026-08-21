@@ -165,6 +165,12 @@ export const MonitoringForm = ({
         evidencias: (initialData.evidencias || []) as Evidencia[],
         links: (initialData.links || []) as string[],
         evidenciaObservacoes: initialData.evidenciaObservacoes || '',
+        // Sem este fallback, abrir uma monitoria gravada antes de o protocolo existir traz
+        // `undefined` para dentro do estado e o campo deixa de ser controlado ("A component is
+        // changing a controlled input to be uncontrolled"). Com a regra que passou a exigir o
+        // protocolo também na edição, esse é justamente o caminho mais percorrido: toda
+        // monitoria antiga aberta para ajuste passa por aqui.
+        protocolo: initialData.protocolo || '',
         strengths: initialData.strengths || '',
         opportunities: initialData.opportunities || '',
         comments: initialData.comments || ''
@@ -291,6 +297,13 @@ export const MonitoringForm = ({
     if (!formData.colaboradorId) return 'Por favor, selecione o Colaborador Avaliado.';
     if (!formData.empreendimento) return 'O Empreendimento é obrigatório.';
     if (!formData.categoriaAtendimento) return 'A Categoria do Atendimento é obrigatória.';
+    // O protocolo passou a ser obrigatório: é a única chave que liga uma monitoria ao
+    // atendimento e, por consequência, ao cliente. Enquanto era opcional, o campo era gravado
+    // e nunca lido — nem na busca, nem em relatório. A regra vale também na edição, de
+    // propósito: as monitorias registradas antes desta mudança ganham a chave ao serem
+    // abertas, em vez de deixar a base com dois padrões. Preparação para a visão de Cliente
+    // como entidade central (ver docs/VISAO-PRODUTO.md).
+    if (!formData.protocolo || !formData.protocolo.trim()) return 'O Nº do Protocolo é obrigatório.';
     if (!formData.canal) return 'O Canal é obrigatório.';
     if (!formData.date) return 'A Data é obrigatória.';
     return null;
@@ -601,14 +614,14 @@ export const MonitoringForm = ({
                       </div>
                       
                       <div className="form-group">
-                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>📝 Nº do Protocolo</label>
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>📝 Nº do Protocolo *</label>
                         <input 
                           type="text" 
                           className="form-control"
-                          placeholder="Opcional..."
+                          placeholder="Nº do atendimento..."
                           value={formData.protocolo}
                           onChange={(e) => setFormData({...formData, protocolo: e.target.value})}
-                          style={{ backgroundColor: '#f9fafb' }}
+                          style={{ borderColor: (hasAttemptedNext && !formData.protocolo) ? '#ef4444' : '#d1d5db', backgroundColor: '#f9fafb' }}
                         />
                       </div>
                     </div>
@@ -1007,6 +1020,7 @@ export const MonitoringForm = ({
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Colaborador:</span> <span style={{ fontWeight: '600', color: '#111827' }}>{collaborators.find(c => c.id === formData.colaboradorId)?.name || '-'}</span></div>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Monitor:</span> <span style={{ fontWeight: '600', color: '#111827' }}>{users.find(u => u.id === formData.monitorId)?.name || '-'}</span></div>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Empreendimento:</span> <span style={{ fontWeight: '600', color: '#111827' }}>{formData.empreendimento || '-'}</span></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Protocolo:</span> <span style={{ fontWeight: '600', color: '#111827' }}>{formData.protocolo || '-'}</span></div>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Canal / Data:</span> <span style={{ fontWeight: '600', color: '#111827' }}>{formData.canal} • {formData.date.split('-').reverse().join('/')}</span></div>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Evidências:</span> <span style={{ fontWeight: '600', color: '#111827' }}>{formData.evidencias.length} arquivos</span></div>
                       </div>

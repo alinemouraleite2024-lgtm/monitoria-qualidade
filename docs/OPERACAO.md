@@ -122,7 +122,7 @@ Nenhuma delas é de desenvolvimento. Todas dependem da operação.
 | Aline Oliveira Verneck | Raquel | **sem vínculo** |
 | Ana Carla | Aline | Aline |
 
-Em **Menu → Colaboradores**: `Adicionar Vínculo` apontando para a Aline (criar um vínculo novo
+Em **Menu → Equipe**: `Adicionar Vínculo` apontando para a Aline (criar um vínculo novo
 encerra o anterior sozinho) e `Terminar` na linha da Aline.
 
 Restrição da tela: o campo `Monitor Responsável` só lista perfis MONITOR — hoje **apenas a

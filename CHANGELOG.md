@@ -5,6 +5,85 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-08-21 — Navegação da plataforma de qualidade
+
+> Reorganização do menu em torno dos três pilares da Qualidade e primeira preparação de dados
+> para a visão de Cliente como entidade central, registrada em
+> [`docs/VISAO-PRODUTO.md`](docs/VISAO-PRODUTO.md).
+>
+> A mudança de entendimento por trás desta versão: **NPS não é indicador, é processo
+> operacional** — o cliente responde, a Qualidade recebe o caso, analisa histórico e
+> monitorias, refaz monitoria quando necessário, contata o cliente, registra a tratativa e
+> acompanha até a conclusão. Por isso NPS é item de primeiro nível e aparece também para a
+> Monitora, que é quem executa o fluxo.
+
+### Added
+- **CSAT e NPS no primeiro nível do menu**, nos três perfis, com rotas `/csat` e `/nps`.
+  Entram como placeholder — estão no menu por decisão de produto, não por já existirem. Novas
+  permissões `VIEW_CSAT` e `VIEW_NPS`, ambas para ADMIN, GESTOR e MONITOR.
+- **Placeholder com texto próprio por módulo**: `NotImplementedScreen` passou a aceitar
+  `description`. O do NPS descreve a fila de casos e a tratativa; o do CSAT, o acompanhamento
+  de satisfação. Placeholder mudo convida à pergunta "por que isso está aqui?".
+- **"Meu Perfil" para GESTOR e ADMIN.** A permissão e a rota já existiam desde a Sprint 0;
+  faltava a entrada no menu — os dois perfis só chegavam à tela digitando a URL.
+- **Administração absorveu Contas e Acessos, Perfis e Permissões e Logs de Acesso** como
+  sub-abas. As três telas perderam o item de primeiro nível e nenhuma podia ficar acessível
+  apenas por URL.
+- **`docs/VISAO-PRODUTO.md`**: o eixo hoje é o colaborador; a visão é o cliente. Monitorias,
+  CSAT, NPS e Tratativas devem convergir para uma visão única do histórico do cliente.
+
+### Changed
+- **Protocolo obrigatório e pesquisável.** O campo era gravado e nunca lido — não aparecia na
+  listagem, não era filtro, não entrava na busca, não ia para relatório. Passou a ser exigido
+  na Etapa 1, a constar no resumo da Etapa 4 e a ser aceito na busca da listagem, junto com
+  código e colaborador. É a única chave que liga uma monitoria ao atendimento e, por
+  consequência, ao cliente.
+  A regra vale **também na edição**, de propósito: monitoria registrada antes desta versão
+  ganha a chave ao ser aberta, em vez de deixar a base com dois padrões.
+- **Rótulos:** `Home` → **Início**, `Minhas Monitorias` → **Monitorias**, `Colaboradores` →
+  **Equipe**, `Cadastros` → **Administração**.
+- **Menus por perfil:** MONITOR 7 → 6 itens, GESTOR 9 → 9, ADMIN 15 → 10. Os três passaram a
+  ser encaixados um no outro (MONITOR ⊂ GESTOR ⊂ ADMIN): nenhum papel vê item que o papel
+  acima não veja.
+  Dashboard Executivo e Planejamento **permanecem** em GESTOR e ADMIN — a operação assistida
+  vai até 28/08 e a Gestora depende dos dois. Revisão depois dessa data.
+
+### Fixed
+- **Logo da sidebar levava a `/dashboard`**, rota que a Monitora não acessa: clicar na marca
+  devolvia "Acesso Negado". Passou a levar a `/home`.
+- **Breadcrumb exibia "Dashboard" em toda rota fora do menu** — inclusive em
+  `/monitorings/new`, onde o texto era simplesmente falso. O literal virou "MonitorIA".
+- **Campo de protocolo deixava de ser controlado ao editar monitoria antiga.** `initialData`
+  era espalhado sem o `|| ''` que os campos vizinhos têm, então um registro gravado antes de o
+  campo existir trazia `undefined` para o estado e o React acusava
+  "changing a controlled input to be uncontrolled". Com a regra que passou a exigir o protocolo
+  na edição, esse virou o caminho mais percorrido.
+
+### Removed
+- **Item "Pesquisas"** dos três menus, com a rota `/surveys`. CSAT e NPS não são duas variações
+  de pesquisa: um é indicador e o outro é processo com fila e tratativa.
+- **"Minhas Demandas"** (MONITOR) e **"Central de Demandas"** (GESTOR, ADMIN) do menu, e a rota
+  `/my-demands`. As telas nunca existiram — eram placeholder. O **modelo de dados foi
+  preservado**: `INITIAL_DEMANDS` e `demandsRepository` já têm exatamente a forma de uma
+  tratativa (`type`, `assignedTo`, `priority`, `deadline`, `status`, `origin`, `relatedId`) e
+  são a fundação do fluxo de NPS.
+- **"Calendário"** (MONITOR) e a rota `/calendar`. O `CalendarScreen` continua no repositório: o
+  débito 6 da Sprint 0 deixa de ser "implementado e inalcançável" e passa a "implementado e sem
+  rota". **"Calendário Operacional"** (GESTOR) saiu do menu; a rota `/op-calendar` segue como
+  placeholder.
+- **`INITIAL_SURVEYS`** do mock: código morto — nenhum repositório o carregava — e, pior,
+  modelava cada resposta como nota sobre o **colaborador** (`collaboratorId`), que é justamente
+  o entendimento abandonado. A resposta é do cliente.
+- Itens administrativos de primeiro nível **Usuários**, **Perfis e Permissões**, **Logs de
+  Acesso**, **Configurações**, **Integrações** e **Histórico de Versões**. Os três primeiros
+  viraram sub-abas de Administração; os três últimos eram placeholder e seguem roteáveis.
+
+### Notas de operação
+- `docs/OPERACAO.md` atualizado: o passo de vínculo de carteira dizia "Menu → Colaboradores" e
+  passou a dizer "Menu → Equipe".
+- A partir desta versão **nenhuma monitoria pode ser salva sem protocolo**. Combinar o padrão
+  do número antes de retomar os registros.
+
 ## [0.8.1] - 2026-08-20 — Ajustes pré-piloto
 
 > Dois ajustes publicados na véspera da entrada em operação, ambos sem alteração de

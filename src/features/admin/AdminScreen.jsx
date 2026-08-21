@@ -1,6 +1,20 @@
 import { PlusCircle, Plus, Edit } from 'lucide-react';
 import { DEFAULT_BRAND_CONFIG } from '../../mockData';
+import { UserManagement } from '../../modules/admin/UserManagement';
+import { RolesManagement } from '../../modules/admin/RolesManagement';
+import { AuditLogs } from '../../modules/admin/AuditLogs';
 
+// Tela de Administração.
+//
+// Com a reorganização do menu, "Usuários", "Perfis e Permissões" e "Logs de Acesso" deixaram
+// de ser itens de primeiro nível. As três telas continuam existindo e passaram a ser sub-abas
+// daqui — nenhuma funcionalidade pode ficar acessível apenas por URL.
+//
+// Duplicidade conhecida, herdada e NÃO resolvida aqui: "Usuários do Portal" (cadastro rápido
+// via UserModal, grava só o núcleo do registro) e "Contas e Acessos" (UserManagement, grava o
+// registro completo, bloqueia/desbloqueia e audita) fazem coisas parecidas por caminhos
+// diferentes. A divergência já estava registrada no cabeçalho de UserManagement.jsx. Unificar
+// as duas é mudança de regra e pertence à história do hub de Administração.
 export const AdminScreen = ({
   brand,
   setBrand,
@@ -10,6 +24,7 @@ export const AdminScreen = ({
   collaborators = /** @type {import('../../types/domain').Collaborator[]} */ ([]),
   users = /** @type {import('../../types/domain').User[]} */ ([]),
   criteria = /** @type {import('../../types/domain').Criterion[]} */ ([]),
+  onUsersChange,
   adminSubTab,
   setAdminSubTab,
   setNewCriterion,
@@ -59,6 +74,24 @@ export const AdminScreen = ({
                 onClick={() => setAdminSubTab('users')}
               >
                 Usuários do Portal
+              </button>
+              <button 
+                className={`tab-btn ${adminSubTab === 'accounts' ? 'active' : ''}`}
+                onClick={() => setAdminSubTab('accounts')}
+              >
+                Contas e Acessos
+              </button>
+              <button 
+                className={`tab-btn ${adminSubTab === 'roles' ? 'active' : ''}`}
+                onClick={() => setAdminSubTab('roles')}
+              >
+                Perfis e Permissões
+              </button>
+              <button 
+                className={`tab-btn ${adminSubTab === 'audit-logs' ? 'active' : ''}`}
+                onClick={() => setAdminSubTab('audit-logs')}
+              >
+                Logs de Acesso
               </button>
             </div>
 
@@ -384,6 +417,15 @@ export const AdminScreen = ({
                 </div>
               </div>
             )}
+
+            {/* Sub-abas absorvidas do menu de primeiro nível */}
+            {adminSubTab === 'accounts' && (
+              <UserManagement users={users} onUsersChange={onUsersChange} />
+            )}
+
+            {adminSubTab === 'roles' && <RolesManagement />}
+
+            {adminSubTab === 'audit-logs' && <AuditLogs />}
 
           </div>
 );

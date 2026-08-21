@@ -10,8 +10,9 @@ import {
   LayoutDashboard,
   Users,
   UserCheck,
-  Calendar as CalendarIcon,
   FileSpreadsheet,
+  Smile,
+  HeartHandshake,
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ArrowRight,
   Settings,
@@ -22,10 +23,8 @@ import {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
   RefreshCw,
   Layers,
-  ShieldAlert,
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
   HelpCircle,
-  Clock,
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
   UserX,
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -40,15 +39,10 @@ import {
   Trash2,
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
   Eye,
-  Settings2,
   Home,
-  Activity,
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
   Zap,
-  ClipboardList,
-  BarChart3,
-  FileText,
-  Plug
+  FileText
 } from 'lucide-react';
 // Os seeds de todas as coleções vivem em src/repositories (F0-12).
 
@@ -90,7 +84,6 @@ import { MonitoringHistory } from './modules/monitoring/MonitoringHistory';
 
 import { NotImplementedScreen } from './shared/components/NotImplementedScreen';
 import { ReportsScreen } from './features/reports/ReportsScreen';
-import { CalendarScreen } from './features/calendar/CalendarScreen';
 import { LoginScreen } from './features/auth/LoginScreen';
 import { HomeAdmin } from './features/home/HomeAdmin';
 import { HomeGestor } from './features/home/HomeGestor';
@@ -139,56 +132,79 @@ const SYSTEM_TODAY = '2026-06-05';
 
 
 // Configuração Dinâmica de Menu por Perfil (Sprint 1)
+// Navegação da plataforma de qualidade.
+//
+// Decisão de produto: Monitorias, CSAT e NPS são os pilares e ficam no primeiro nível. O item
+// genérico "Pesquisas" deixou de existir — CSAT e NPS não são duas variações de pesquisa: o
+// CSAT é indicador e o NPS é processo operacional, com fila de casos e tratativa própria.
+//
+// Os três menus são encaixados um no outro (MONITOR ⊂ GESTOR ⊂ ADMIN): nenhum papel vê um
+// item que o papel acima não veja, o que evita a pergunta "por que eu não enxergo isso?".
+//
+// Dashboard Executivo e Planejamento permanecem em GESTOR e ADMIN por decisão operacional:
+// a operação assistida vai até 28/08 e a Gestora depende dos dois para acompanhar. A revisão
+// desses dois itens acontece depois dessa data.
 const MENU_CONFIG: MenuConfig = {
   ADMIN: [
-    { id: 'home', label: 'Home', icon: Home },
+    { id: 'home', label: 'Início', icon: Home },
     { id: 'dashboard', label: 'Dashboard Executivo', icon: LayoutDashboard },
     { id: 'planning', label: 'Planejamento', icon: Layers },
-    { id: 'demands', label: 'Central de Demandas', icon: ClipboardList },
     { id: 'monitorings', label: 'Monitorias', icon: FileSpreadsheet },
-    { id: 'surveys', label: 'Pesquisas', icon: BarChart3 },
+    { id: 'csat', label: 'CSAT', icon: Smile },
+    { id: 'nps', label: 'NPS', icon: HeartHandshake },
+    { id: 'allocations', label: 'Equipe', icon: Users },
     { id: 'reports', label: 'Relatórios', icon: FileText },
-    { id: 'allocations', label: 'Colaboradores', icon: Users },
-    { id: 'users', label: 'Usuários', icon: UserCheck },
-    { id: 'roles', label: 'Perfis e Permissões', icon: ShieldAlert },
-    { id: 'audit-logs', label: 'Logs de Acesso', icon: Activity },
-    { id: 'admin', label: 'Cadastros', icon: Settings },
-    { id: 'settings', label: 'Configurações', icon: Settings2 },
-    { id: 'integrations', label: 'Integrações', icon: Plug },
-    { id: 'history', label: 'Histórico de Versões', icon: Clock },
+    { id: 'admin', label: 'Administração', icon: Settings },
+    { id: 'profile', label: 'Meu Perfil', icon: UserCheck },
   ],
   GESTOR: [
-    { id: 'home', label: 'Home', icon: Home },
+    { id: 'home', label: 'Início', icon: Home },
     { id: 'dashboard', label: 'Dashboard Executivo', icon: LayoutDashboard },
     { id: 'planning', label: 'Planejamento', icon: Layers },
-    { id: 'demands', label: 'Central de Demandas', icon: ClipboardList },
     { id: 'monitorings', label: 'Monitorias', icon: FileSpreadsheet },
-    { id: 'surveys', label: 'Pesquisas', icon: BarChart3 },
+    { id: 'csat', label: 'CSAT', icon: Smile },
+    { id: 'nps', label: 'NPS', icon: HeartHandshake },
+    { id: 'allocations', label: 'Equipe', icon: Users },
     { id: 'reports', label: 'Relatórios', icon: FileText },
-    { id: 'allocations', label: 'Colaboradores', icon: Users },
-    { id: 'op-calendar', label: 'Calendário Operacional', icon: CalendarIcon },
+    { id: 'profile', label: 'Meu Perfil', icon: UserCheck },
   ],
   MONITOR: [
-    { id: 'home', label: 'Home', icon: Home },
-    { id: 'my-demands', label: 'Minhas Demandas', icon: ClipboardList },
-    { id: 'monitorings', label: 'Minhas Monitorias', icon: FileSpreadsheet },
-    { id: 'surveys', label: 'Pesquisas', icon: BarChart3 },
-    { id: 'calendar', label: 'Calendário', icon: CalendarIcon },
+    { id: 'home', label: 'Início', icon: Home },
+    { id: 'monitorings', label: 'Monitorias', icon: FileSpreadsheet },
+    { id: 'csat', label: 'CSAT', icon: Smile },
+    { id: 'nps', label: 'NPS', icon: HeartHandshake },
     { id: 'reports', label: 'Relatórios', icon: FileText },
     { id: 'profile', label: 'Meu Perfil', icon: UserCheck },
   ],
 };
 
-// Telas cujo módulo ainda não existe. Lista transcrita do dispatcher anterior sem alteração —
-// é ela que mantém o Calendário inalcançável (débito 6), preservado nesta história.
-const UNIMPLEMENTED_TABS = ['settings', 'history', 'op-calendar', 'demands', 'my-demands', 'surveys', 'integrations', 'calendar'];
+// Texto do placeholder de cada módulo ainda não construído. Sem isto, CSAT e NPS abririam com
+// o mesmo aviso genérico de "módulo não implementado" e não sustentariam a decisão de produto
+// que os colocou no primeiro nível — placeholder mudo convida à pergunta "por que isso existe?".
+const PLACEHOLDER_DESCRIPTIONS: Record<string, string> = {
+  csat: 'Aqui ficará o acompanhamento da satisfação do cliente com cada atendimento: nota por período, evolução ao longo do tempo e leitura por equipe e por colaborador. O módulo entra depois que a base de monitorias com protocolo estiver formada.',
+  nps: 'O NPS não é apenas um indicador: é um processo operacional. Este módulo receberá a fila de respostas de clientes e conduzirá cada caso do início ao fim — análise do histórico e das monitorias, nova monitoria quando necessário, contato com o cliente, registro da tratativa e acompanhamento até a conclusão.',
+};
+
+// Telas cujo módulo ainda não existe.
+//
+// 'csat' e 'nps' entram aqui como placeholder explicado por PLACEHOLDER_DESCRIPTIONS: estão
+// no menu por decisão de produto, e não por já existirem.
+//
+// Saíram 'my-demands', 'surveys' e 'calendar' junto com suas rotas. O CalendarScreen continua
+// no repositório, agora desligado — o débito 6 da Sprint 0 deixa de ser "implementado e
+// inalcançável" e passa a ser "implementado e sem rota".
+const UNIMPLEMENTED_TABS = ['settings', 'history', 'op-calendar', 'demands', 'integrations', 'csat', 'nps'];
 
 // Envelope de rota. A decisão de acesso é do RouteGuard (F0-14); aqui resta apenas a
 // precedência remanescente do dispatcher: autorizado -> "não implementado" -> tela.
 const Screen = ({ tab, role, children }: { tab: string; role: AnyRole; children?: ReactNode }) => (
   <RouteGuard tab={tab} role={role}>
     {UNIMPLEMENTED_TABS.includes(tab)
-      ? <NotImplementedScreen title={MENU_CONFIG[role]?.find((m) => m.id === tab)?.label} />
+      ? <NotImplementedScreen
+          title={MENU_CONFIG[role]?.find((m) => m.id === tab)?.label}
+          description={PLACEHOLDER_DESCRIPTIONS[tab]}
+        />
       : (children ?? null)}
   </RouteGuard>
 );
@@ -1018,16 +1034,6 @@ function AppContent() {
               </Screen>
             } />
 
-            <Route path="/calendar" element={
-              <Screen tab="calendar" role={currentUser.role}>
-                  <CalendarScreen
-                    monitorings={monitorings}
-                    users={users}
-                    currentUser={currentUser}
-                  />
-              </Screen>
-            } />
-
             <Route path="/monitorings" element={
               <Screen tab="monitorings" role={currentUser.role}>
                   <MonitoringList 
@@ -1129,6 +1135,7 @@ function AppContent() {
                     areas={areas}
                     collaborators={collaborators}
                     users={users}
+                    onUsersChange={setUsers}
                     criteria={criteria}
                     adminSubTab={adminSubTab}
                     setAdminSubTab={setAdminSubTab}
@@ -1157,9 +1164,9 @@ function AppContent() {
 
             <Route path="/demands" element={<Screen tab="demands" role={currentUser.role} />} />
 
-            <Route path="/my-demands" element={<Screen tab="my-demands" role={currentUser.role} />} />
+            <Route path="/csat" element={<Screen tab="csat" role={currentUser.role} />} />
 
-            <Route path="/surveys" element={<Screen tab="surveys" role={currentUser.role} />} />
+            <Route path="/nps" element={<Screen tab="nps" role={currentUser.role} />} />
 
             <Route path="/integrations" element={<Screen tab="integrations" role={currentUser.role} />} />
 

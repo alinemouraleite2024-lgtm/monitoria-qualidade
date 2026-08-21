@@ -1,4 +1,4 @@
-import { UserCheck, PlusCircle, Activity, ClipboardList, BarChart3, Search } from 'lucide-react';
+import { UserCheck, PlusCircle, Activity, BarChart3, Search } from 'lucide-react';
 import { getScoreConcept } from '../../scoreUtils';
 
 // Home do Monitor.
@@ -90,25 +90,17 @@ export const HomeMonitor = ({ currentUser, demands, monitorings, collaborators, 
         <button className="btn btn-outline" onClick={() => onNavigate('profile')}><UserCheck size={16} /> Meu Perfil</button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1.5rem', alignItems: 'start' }}>
+      {/*
+        O bloco "Demandas Prioritárias" ficava aqui e está desligado, não apagado.
 
-        {/* Demandas Prioritárias */}
-        <div className="section-card" style={{ padding: '1.25rem' }}>
-          <h2 className="section-card-title" style={{ fontSize: '1rem', marginBottom: '1rem' }}><ClipboardList size={16} /> Demandas Prioritárias</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {pendingDemands.length > 0 ? pendingDemands.map(d => (
-              <div key={d.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
-                <input type="checkbox" style={{ marginTop: '0.2rem', accentColor: 'var(--primary)' }} />
-                <div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-main)' }}>{d.title}</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Prazo: {new Date(d.deadline).toLocaleDateString('pt-BR')}</div>
-                </div>
-              </div>
-            )) : (
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', padding: '1rem 0' }}>Nenhuma demanda em aberto.</div>
-            )}
-          </div>
-        </div>
+        Motivo: "Minhas Demandas" saiu do menu, então a lista deixou de ter destino — clicar
+        num item não levava a lugar nenhum. O bloco não foi removido porque é exatamente o
+        slot da fila que o NPS vai ocupar: casos recebidos, aguardando tratativa, com prazo.
+        Quando o módulo de NPS existir, este espaço volta com conteúdo real.
+
+        Preservado no histórico do Git; o markup original está no commit desta mudança.
+      */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem', alignItems: 'start' }}>
 
         {/* Últimas Monitorias */}
         <div className="section-card" style={{ padding: '1.25rem' }}>
