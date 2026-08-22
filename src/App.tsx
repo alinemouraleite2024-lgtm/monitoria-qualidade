@@ -122,7 +122,11 @@ import {
   sessionRepository,
 } from './repositories';
 import { UserAvatar } from './shared/components/UserAvatar';
-import { getActiveMonitorForColab as resolveActiveMonitorForColab } from './domain/allocationService';
+import {
+  getActiveMonitorForColab as resolveActiveMonitorForColab,
+  getCarteira as resolveCarteira,
+  getSemVinculo as resolveSemVinculo,
+} from './domain/allocationService';
 import {
   todayISO,
   getCurrentPeriod,
@@ -442,6 +446,19 @@ function AppContent() {
 
   const getActiveMonitorForColab = (colaboradorId: string, dateStr: string = hoje) =>
     resolveActiveMonitorForColab({ allocations, holidays, users }, colaboradorId, dateStr);
+
+  /** Colaboradoras pelas quais um monitor responde na data. */
+  const getCarteiraDe = (monitorId: string, dateStr: string = hoje) =>
+    resolveCarteira({ allocations, holidays, users }, collaborators, monitorId, dateStr);
+
+  /**
+   * Colaboradoras sem vínculo vigente: não são de ninguém e não entram em meta alguma.
+   * Sem consumidor até a fila operacional (2B), onde vira um aviso próprio — o caso existe
+   * hoje na base (a Aline é colaboradora e não tem monitora vinculada).
+   */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const getSemVinculo = (dateStr: string = hoje) =>
+    resolveSemVinculo({ allocations, holidays, users }, collaborators, dateStr);
 
   // businessDaysTotal/Elapsed eram usados apenas por getInArrearsCount, removido na F0-12
   // por ser órfão. Mantido apenas o valor efetivamente consumido pelo Dashboard.
@@ -837,16 +854,25 @@ function AppContent() {
     });
   };
 
-  // Calculations for Gestor Dashboard
-  const getUnmonitoredCollaborators = () => {
-    return getCollaborators().filter(c => {
-      const monCount = monitorings.filter(m =>
-        m.colaboradorId === c.id
-        && isInPeriod(m.date, periodoAtual)
-        && countsForCarteiraGoal(m)
-      ).length;
-      return monCount === 0;
-    });
+  // Quem ainda não foi monitorada no período.
+  //
+  // 2A.3: passou a ser escopado. Antes varria TODAS as colaboradoras cadastradas, então
+  // listava gente que não pertence à carteira de ninguém — inclusive quem não tem vínculo
+  // vigente e por isso jamais poderia ser monitorada por quem estivesse olhando a lista.
+  //
+  // Sem `monitorId`, responde sobre todas as colaboradoras COM vínculo vigente (visão da
+  // gestora). As sem vínculo saem daqui e ficam em `getSemVinculo`: não é falta de monitoria,
+  // é falta de carteira, e o conserto é outro — resolver o vínculo em Equipe.
+  const getUnmonitoredCollaborators = (monitorId: string | null = null) => {
+    const base = monitorId
+      ? getCarteiraDe(monitorId)
+      : collaborators.filter(c => Boolean(getActiveMonitorForColab(c.id).monitor));
+
+    return base.filter(c => !monitorings.some(m =>
+      m.colaboradorId === c.id
+      && isInPeriod(m.date, periodoAtual)
+      && countsForCarteiraGoal(m)
+    ));
   };
 
   // Progresso de um monitor no período de competência corrente.
@@ -1047,13 +1073,11 @@ function AppContent() {
                     setShowDetailModal={setShowDetailModal}
                     setSelectedMonitoringDetail={setSelectedMonitoringDetail}
                     renderUserAvatar={renderUserAvatar}
-                    getCollaborators={getCollaborators}
                     getMonitors={getMonitors}
                     getMonitorStats={getMonitorStats}
-                    getActiveMonitorForColab={getActiveMonitorForColab}
                     getUnmonitoredCollaborators={getUnmonitoredCollaborators}
+                    getCarteiraDe={getCarteiraDe}
                     businessDaysRemaining={businessDaysRemaining}
-                    hoje={hoje}
                     periodoAtual={periodoAtual}
                     periodoLabel={periodLabel(periodoAtual)}
                   />

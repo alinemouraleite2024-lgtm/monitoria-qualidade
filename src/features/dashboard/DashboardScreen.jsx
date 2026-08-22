@@ -15,13 +15,11 @@ export const DashboardScreen = ({
   setShowDetailModal,
   setSelectedMonitoringDetail,
   renderUserAvatar,
-  getCollaborators,
   getMonitors,
   getMonitorStats,
-  getActiveMonitorForColab,
   getUnmonitoredCollaborators,
+  getCarteiraDe,
   businessDaysRemaining,
-  hoje,
   periodoAtual,
   periodoLabel
 }) => (
@@ -91,6 +89,9 @@ export const DashboardScreen = ({
                   totalMeta += s.target;
                 });
                 
+                // A base já exclui quem não tem vínculo vigente: isso não é "falta
+                // monitorar", é falta de carteira, e o conserto é em Equipe. O helper
+                // getSemVinculo existe para a fila operacional exibir esse caso à parte.
                 let colabs = getUnmonitoredCollaborators();
                 if (dashboardAreaId !== 'ALL') {
                   colabs = colabs.filter(c => c.areaId === dashboardAreaId);
@@ -102,14 +103,7 @@ export const DashboardScreen = ({
                 totalRealizadas = stats.completed;
                 totalMeta = stats.target;
                 // Monitor's unmonitored colabs
-                const myColabs = getCollaborators().filter(c => {
-                  const { monitor } = getActiveMonitorForColab(c.id, hoje);
-                  return monitor && monitor.id === currentUser.id;
-                });
-                const myUnmonitored = myColabs.filter(c => {
-                  const done = monitorings.filter(m => m.colaboradorId === c.id && m.monitorId === currentUser.id && isInPeriod(m.date, periodoAtual) && countsForCarteiraGoal(m));
-                  return done.length === 0;
-                });
+                const myUnmonitored = getUnmonitoredCollaborators(currentUser.id);
 // eslint-disable-next-line no-unused-vars
                 unmonitoredCount = myUnmonitored.length;
                 pace = stats.pace;
@@ -313,10 +307,7 @@ export const DashboardScreen = ({
                                   );
                                 })
                               ) : (
-                                getCollaborators().filter(c => {
-                                  const { monitor } = getActiveMonitorForColab(c.id, hoje);
-                                  return monitor && monitor.id === currentUser.id;
-                                }).map(c => {
+                                getCarteiraDe(currentUser.id).map(c => {
                                   const completed = monitorings.filter(m => m.colaboradorId === c.id && m.monitorId === currentUser.id && isInPeriod(m.date, periodoAtual) && countsForCarteiraGoal(m)).length;
                                   // 2A.2: sem `|| 5`. A ausência de meta é informada, não preenchida com um número.
                                   const goal = colaboradorGoals.find(g => g.monitorId === currentUser.id && g.colaboradorId === c.id && g.year === periodoAtual.year && g.month === periodoAtual.month);

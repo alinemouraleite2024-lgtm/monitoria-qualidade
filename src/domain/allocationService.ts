@@ -1,4 +1,4 @@
-import type { Allocation, Holiday, User } from '../types/domain';
+import type { Allocation, Collaborator, Holiday, User } from '../types/domain';
 
 /** Resultado da resolução do monitor responsável, incluindo substituição por férias. */
 export interface MonitorResolution {
@@ -23,6 +23,37 @@ export const isAllocationActiveForDate = (alloc: Allocation, dateStr: string): b
 
 // Resolve o monitor responsável por um colaborador em uma data, considerando
 // substituição por férias quando houver.
+/**
+ * Carteira vigente de um monitor numa data: as colaboradoras por quem ele responde.
+ *
+ * 2A.3: esta regra já existia, escrita inline em dois pontos do Dashboard, e faltava
+ * exatamente onde mais importava — `getUnmonitoredCollaborators` varria TODAS as
+ * colaboradoras cadastradas, de modo que "quem falta monitorar" listava gente que não é da
+ * carteira de ninguém. É a base da futura fila operacional: uma fila que não é escopada não
+ * é uma fila, é uma lista.
+ *
+ * Respeita substituição por férias, porque delega a `getActiveMonitorForColab`: durante o
+ * período de férias, a carteira responde ao monitor substituto.
+ */
+export const getCarteira = (
+  ctx: { allocations?: Allocation[]; holidays?: Holiday[]; users?: User[] },
+  collaborators: Collaborator[],
+  monitorId: string,
+  dateStr: string
+): Collaborator[] =>
+  collaborators.filter((c) => {
+    const { monitor } = getActiveMonitorForColab(ctx, c.id, dateStr);
+    return Boolean(monitor && monitor.id === monitorId);
+  });
+
+/** Colaboradoras sem vínculo vigente — não entram em carteira nem em meta nenhuma. */
+export const getSemVinculo = (
+  ctx: { allocations?: Allocation[]; holidays?: Holiday[]; users?: User[] },
+  collaborators: Collaborator[],
+  dateStr: string
+): Collaborator[] =>
+  collaborators.filter((c) => !getActiveMonitorForColab(ctx, c.id, dateStr).monitor);
+
 export const getActiveMonitorForColab = (
   { allocations = [], holidays = [], users = [] }: {
     allocations?: Allocation[];
