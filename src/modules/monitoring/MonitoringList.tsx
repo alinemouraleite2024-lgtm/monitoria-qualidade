@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { Search, Filter, Plus, Edit, Eye, Trash2, Calendar, FileSpreadsheet } from 'lucide-react';
+import { Search, Filter, Plus, Edit, Eye, Trash2, FileSpreadsheet } from 'lucide-react';
 import { getScoreConcept } from '../../scoreUtils';
 import { CANAIS, canalLabel } from '../../constants/canais';
+import { FILTROS_VAZIOS, type FiltrosHistorico } from '../../domain/historyFilter';
 import type { Collaborator, Monitoring, User } from '../../types/domain';
 
 // A tabela, a busca e os cinco filtros que viviam em /monitorings.
@@ -13,10 +13,18 @@ import type { Collaborator, Monitoring, User } from '../../types/domain';
 //
 // O cabeçalho e as ações viraram opcionais para que a tela hospedeira decida o que faz sentido
 // no contexto dela.
+//
+// 2B.5: o componente deixou de filtrar por conta própria. Ele recebe os registros já filtrados
+// e apenas emite mudanças de filtro. Enquanto o filtro morava aqui como estado interno, a
+// exportação usava outro caminho e levava um conjunto diferente do exibido — a tela dizia 2
+// linhas e o botão exportava 4.
 interface MonitoringListProps {
+  /** Já filtrados por quem hospeda. Este componente não filtra nada. */
   monitorings?: Monitoring[];
   users?: User[];
   collaborators?: Collaborator[];
+  filtros?: FiltrosHistorico;
+  onFiltrosChange?: (f: FiltrosHistorico) => void;
   titulo?: string;
   subtitulo?: string;
   /** Ausente esconde o botão: em Relatórios não se cria monitoria. */
@@ -31,6 +39,8 @@ export const MonitoringList = ({
   monitorings = [],
   users = [],
   collaborators = [],
+  filtros = FILTROS_VAZIOS,
+  onFiltrosChange = () => {},
   titulo = 'Central de Monitorias',
   subtitulo = 'Acompanhe, filtre e gerencie as avaliações de qualidade.',
   onNewMonitoring,
@@ -38,33 +48,9 @@ export const MonitoringList = ({
   onEdit,
   onDelete
 }: MonitoringListProps) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterMonitor, setFilterMonitor] = useState('ALL');
-  const [filterStatus, setFilterStatus] = useState('ALL');
-  const [filterCanal, setFilterCanal] = useState('ALL');
-  const [filterDate, setFilterDate] = useState('');
-
-  // Derived data based on filters
-  const filteredData = monitorings.filter(m => {
-    if (filterMonitor !== 'ALL' && m.monitorId !== filterMonitor) return false;
-    if (filterStatus !== 'ALL' && m.status !== filterStatus) return false;
-    if (filterCanal !== 'ALL' && m.canal !== filterCanal) return false;
-    if (filterDate && !m.date.startsWith(filterDate)) return false;
-
-    if (searchTerm) {
-      // O protocolo entrou na busca junto com a regra que o tornou obrigatório: é por ele que
-      // se chega da resposta de um cliente até a monitoria do atendimento correspondente.
-      const colab = collaborators.find(c => c.id === m.colaboradorId);
-      const termo = searchTerm.toLowerCase();
-      const colabName = colab ? colab.name.toLowerCase() : '';
-      const code = m.id.toLowerCase();
-      const protocolo = (m.protocolo || '').toLowerCase();
-      if (!colabName.includes(termo) && !code.includes(termo) && !protocolo.includes(termo)) {
-        return false;
-      }
-    }
-    return true;
-  });
+  // Os registros chegam prontos. A única responsabilidade daqui é exibir e pedir mudanças.
+  const filteredData = monitorings;
+  const set = (parcial: Partial<FiltrosHistorico>) => onFiltrosChange({ ...filtros, ...parcial });
 
   const getUserName = (id: string) => {
     const u = users.find(u => u.id === id);
@@ -114,15 +100,15 @@ export const MonitoringList = ({
               <input
                 type="text"
                 placeholder="Código, Colaborador ou Protocolo..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={filtros.busca}
+                onChange={(e) => set({ busca: e.target.value })}
               />
             </div>
           </div>
           
           <div className="form-group" style={{ marginBottom: 0, minWidth: '150px' }}>
             <label className="form-label">Monitor</label>
-            <select className="form-control" value={filterMonitor} onChange={(e) => setFilterMonitor(e.target.value)}>
+            <select className="form-control" value={filtros.monitorId} onChange={(e) => set({ monitorId: e.target.value })}>
               <option value="ALL">Todos os Monitores</option>
               {users.filter(u => u.role === 'MONITOR' || u.role === 'GESTOR').map(u => (
                 <option key={u.id} value={u.id}>{u.name}</option>
@@ -132,7 +118,7 @@ export const MonitoringList = ({
 
           <div className="form-group" style={{ marginBottom: 0, minWidth: '150px' }}>
             <label className="form-label">Canal</label>
-            <select className="form-control" value={filterCanal} onChange={(e) => setFilterCanal(e.target.value)}>
+            <select className="form-control" value={filtros.canal} onChange={(e) => set({ canal: e.target.value })}>
               <option value="ALL">Todos os Canais</option>
               {CANAIS.map(c => (
                 <option key={c} value={c}>{canalLabel(c)}</option>
@@ -142,7 +128,7 @@ export const MonitoringList = ({
 
           <div className="form-group" style={{ marginBottom: 0, minWidth: '150px' }}>
             <label className="form-label">Status</label>
-            <select className="form-control" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+            <select className="form-control" value={filtros.status} onChange={(e) => set({ status: e.target.value })}>
               <option value="ALL">Todos os Status</option>
               <option value="Rascunho">Rascunho</option>
               <option value="Pendente">Pendente</option>
@@ -160,18 +146,12 @@ export const MonitoringList = ({
             <input 
               type="date" 
               className="form-control" 
-              value={filterDate} 
-              onChange={(e) => setFilterDate(e.target.value)}
+              value={filtros.data}
+              onChange={(e) => set({ data: e.target.value })}
             />
           </div>
           
-          <button className="btn btn-secondary" style={{ padding: '0.6rem 1rem' }} onClick={() => {
-            setSearchTerm('');
-            setFilterMonitor('ALL');
-            setFilterStatus('ALL');
-            setFilterCanal('ALL');
-            setFilterDate('');
-          }}>
+          <button className="btn btn-secondary" style={{ padding: '0.6rem 1rem' }} onClick={() => onFiltrosChange(FILTROS_VAZIOS)}>
             <Filter size={16} /> Limpar
           </button>
         </div>

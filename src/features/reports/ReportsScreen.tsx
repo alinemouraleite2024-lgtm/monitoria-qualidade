@@ -19,6 +19,9 @@ interface ReportsScreenProps {
   periodoSeguinteLabel: string;
   onPeriodoAnterior: () => void;
   onPeriodoSeguinte: () => void;
+  /** Registros da competência, antes dos filtros. Distingue 'mês vazio' de 'filtro sem resultado'. */
+  totalNoPeriodo: number;
+  /** Registros após os filtros — o que a tabela exibe e o que será exportado. */
   totalRegistros: number;
   onExportExcel: () => void;
   onExportPDF: () => void;
@@ -36,12 +39,17 @@ export const ReportsScreen = ({
   periodoSeguinteLabel,
   onPeriodoAnterior,
   onPeriodoSeguinte,
+  totalNoPeriodo,
   totalRegistros,
   onExportExcel,
   onExportPDF,
   historico,
 }: ReportsScreenProps) => {
-  const vazio = totalRegistros === 0;
+  // Duas ausências diferentes: a competência não tem registro nenhum, ou os filtros do usuário
+  // não acharam nada. A segunda não pode esconder a tabela, senão ele perde os controles e
+  // fica sem como desfazer o próprio filtro.
+  const periodoVazio = totalNoPeriodo === 0;
+  const semResultado = !periodoVazio && totalRegistros === 0;
 
   return (
     <div className="animate-fade-in">
@@ -122,7 +130,7 @@ export const ReportsScreen = ({
           Gerar Documento Consolidado
         </h3>
 
-        {vazio ? (
+        {periodoVazio ? (
           <div
             style={{
               display: 'flex',
@@ -144,6 +152,12 @@ export const ReportsScreen = ({
               período.
             </span>
           </div>
+        ) : semResultado ? (
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
+            Nenhum registro corresponde aos filtros aplicados, entre as{' '}
+            <strong style={{ color: 'var(--text-main)' }}>{totalNoPeriodo}</strong> monitorias de{' '}
+            {periodoLabel}. Ajuste ou limpe os filtros abaixo para exportar.
+          </p>
         ) : (
           <>
             <p
@@ -155,8 +169,11 @@ export const ReportsScreen = ({
             >
               <strong style={{ color: 'var(--text-main)' }}>
                 {totalRegistros} {totalRegistros === 1 ? 'monitoria' : 'monitorias'}
-              </strong>{' '}
-              em {periodoLabel}. Os dois formatos exportam exatamente estes registros.
+              </strong>
+              {totalRegistros < totalNoPeriodo
+                ? ` de ${totalNoPeriodo} em ${periodoLabel}, após os filtros.`
+                : ` em ${periodoLabel}.`}{' '}
+              Os dois formatos exportam exatamente estes registros.
             </p>
 
             <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
@@ -172,7 +189,10 @@ export const ReportsScreen = ({
         )}
       </div>
 
-      {!vazio && historico}
+      {/* A tabela some só quando a competência está vazia. Se foram os filtros que zeraram o
+          resultado, ela precisa continuar visível — é onde os controles vivem, e sem eles o
+          usuário não consegue desfazer o próprio filtro. */}
+      {!periodoVazio && historico}
     </div>
   );
 };

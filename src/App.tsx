@@ -140,6 +140,11 @@ import {
   businessDaysRemainingIn,
 } from './domain/period';
 import { countsForCarteiraGoal } from './domain/monitoringRules';
+import {
+  aplicaFiltrosDeHistorico,
+  FILTROS_VAZIOS,
+  type FiltrosHistorico,
+} from './domain/historyFilter';
 import { canalLabel } from './constants/canais';
 import { getCarteiraProgress } from './domain/goalService';
 import { isManagerRole as isManagerUser } from './domain/authorizationService';
@@ -401,18 +406,13 @@ function AppContent() {
   // O período agora é um Period de verdade, navegável, e a faixa de datas é derivada dele —
   // não há mais como a data exibida divergir da data consultada.
   const [reportPeriod, setReportPeriod] = useState(() => getCurrentPeriod());
-  // O setter volta a existir, mas os demais filtros (monitora, área, canal, status, faixa de
-  // nota) só ganham controle na tela em 2C, junto com o histórico completo. Quem tinha efeito
-  // real e estava inalcançável era o período, e esse agora é navegável acima.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [historyFilters, setHistoryFilters] = useState({
-    monitorId: 'ALL',
-    areaId: 'ALL',
-    colaboradorId: 'ALL',
-    canal: 'ALL',
-    status: 'ALL',
-    scoreFilter: 'ALL'
-  });
+  // 2B.5: os filtros do histórico deixaram de ser estado interno da tabela e subiram para cá.
+  // Enquanto viviam lá dentro, a exportação usava outro caminho e levava um conjunto diferente
+  // do exibido — a tela mostrava 2 linhas e o botão exportava 4. Agora há um conjunto só.
+  //
+  // Saíram areaId, colaboradorId e scoreFilter: estavam na estrutura antiga, nunca tiveram
+  // controle na tela e nunca foram usados por ninguém.
+  const [historicoFiltros, setHistoricoFiltros] = useState<FiltrosHistorico>(FILTROS_VAZIOS);
 
   // Persistência granular por coleção (F0-12).
   // Antes, um único efeito reescrevia 15 chaves a cada mudança de qualquer uma delas.
@@ -896,36 +896,29 @@ function AppContent() {
   };
 
   // Filter monitorings list for view
-  const getFilteredMonitorings = () => {
+  /** Registros da competência selecionada, antes dos filtros do usuário. */
+  const monitoriasDoPeriodo = React.useMemo(() => {
+    const { startDate, endDate } = periodRange(reportPeriod);
+    const de = new Date(startDate + 'T00:00:00Z');
+    const ate = new Date(endDate + 'T23:59:59Z');
     return monitorings.filter(m => {
-      const monMatch = historyFilters.monitorId === 'ALL' || m.monitorId === historyFilters.monitorId;
-      const colMatch = historyFilters.colaboradorId === 'ALL' || m.colaboradorId === historyFilters.colaboradorId;
-      const canalMatch = historyFilters.canal === 'ALL' || m.canal === historyFilters.canal;
-      const statusMatch = historyFilters.status === 'ALL' || m.status === historyFilters.status;
-
-      let areaMatch = true;
-      if (historyFilters.areaId && historyFilters.areaId !== 'ALL') {
-        const colab = collaborators.find(c => c.id === m.colaboradorId);
-        areaMatch = Boolean(colab && colab.areaId === historyFilters.areaId);
-      }
-      
-      let scoreMatch = true;
-      if (historyFilters.scoreFilter === 'LOW') {
-        scoreMatch = m.finalScore < 75;
-      } else if (historyFilters.scoreFilter === 'HIGH') {
-        scoreMatch = m.finalScore >= 95;
-      } else if (historyFilters.scoreFilter === 'MID') {
-        scoreMatch = m.finalScore >= 75 && m.finalScore < 95;
-      }
-
-      const { startDate, endDate } = periodRange(reportPeriod);
-      const mDate = new Date(m.date);
-      const dateMatch = mDate >= new Date(startDate + 'T00:00:00Z')
-        && mDate <= new Date(endDate + 'T23:59:59Z');
-
-      return monMatch && colMatch && canalMatch && statusMatch && scoreMatch && dateMatch && areaMatch;
+      const d = new Date(m.date);
+      return d >= de && d <= ate;
     });
-  };
+  }, [monitorings, reportPeriod]);
+
+  /**
+   * O conjunto único de Relatórios.
+   *
+   * É exatamente isto que a tabela exibe, o CSV leva e o PDF imprime. A regra combinada com o
+   * usuário: o que aparece na tela é o que será exportado.
+   */
+  const monitoriasFiltradas = React.useMemo(
+    () => aplicaFiltrosDeHistorico(monitoriasDoPeriodo, historicoFiltros, collaborators),
+    [monitoriasDoPeriodo, historicoFiltros, collaborators]
+  );
+
+  const getFilteredMonitorings = () => monitoriasFiltradas;
 
   // Quem ainda não foi monitorada no período.
   //
@@ -1228,9 +1221,11 @@ function AppContent() {
                   <ReportsScreen
                     historico={
                       <MonitoringList
-                        monitorings={getFilteredMonitorings()}
+                        monitorings={monitoriasFiltradas}
                         users={users}
                         collaborators={getCollaborators()}
+                        filtros={historicoFiltros}
+                        onFiltrosChange={setHistoricoFiltros}
                         titulo={`Histórico de ${periodLabel(reportPeriod)}`}
                         subtitulo="Busque, filtre e abra qualquer monitoria da competência."
                         onView={(m) => {
@@ -1246,7 +1241,8 @@ function AppContent() {
                     periodoSeguinteLabel={periodLabel(nextPeriod(reportPeriod))}
                     onPeriodoAnterior={() => setReportPeriod(previousPeriod(reportPeriod))}
                     onPeriodoSeguinte={() => setReportPeriod(nextPeriod(reportPeriod))}
-                    totalRegistros={getFilteredMonitorings().length}
+                    totalNoPeriodo={monitoriasDoPeriodo.length}
+                    totalRegistros={monitoriasFiltradas.length}
                     onExportExcel={handleExportExcel}
                     onExportPDF={handleExportPDF}
                   />
