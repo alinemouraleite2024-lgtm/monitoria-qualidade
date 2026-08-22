@@ -134,12 +134,8 @@ import {
   periodLabel,
   businessDaysRemainingIn,
 } from './domain/period';
-import {
-  countsForCarteiraGoal,
-  countsOutsideCarteira,
-  isValidated,
-  isAwaitingValidation,
-} from './domain/monitoringRules';
+import { countsForCarteiraGoal } from './domain/monitoringRules';
+import { getCarteiraProgress } from './domain/goalService';
 import { isManagerRole as isManagerUser } from './domain/authorizationService';
 
 // 2A.1: a data corrente deixou de ser simulada.
@@ -247,6 +243,9 @@ function AppContent() {
   const [criteria, setCriteria] = useState(() => criteriaRepository.load());
   const [allocations, setAllocations] = useState(() => allocationsRepository.load());
   const [allocationHistory, setAllocationHistory] = useState(() => allocationHistoryRepository.load());
+  // Metas globais de monitor: nada mais as lê nem as grava desde a 2A.4. O estado permanece
+  // apenas para que a persistência não apague os registros históricos de pm2_mgoals.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [monitorGoals, setMonitorGoals] = useState(() => monitorGoalsRepository.load());
   const [colaboradorGoals, setColaboradorGoals] = useState(() => colaboradorGoalsRepository.load());
   // As migrações de dados legados (escala 0-10 -> 0-100 e Fluxo -> Processo) foram
@@ -380,7 +379,6 @@ function AppContent() {
     team: ''
   });
 
-  const [newMGoalVal, setNewMGoalVal] = useState({ monitorId: 'usr-1', targetQty: 30 });
   const [newCGoalVal, setNewCGoalVal] = useState({ monitorId: 'usr-1', colaboradorId: 'ag-1', targetQty: 5 });
 
   // Monitoring List Filters state
@@ -708,30 +706,23 @@ function AppContent() {
     setNewCollaborator({ id: '', email: '', name: '', cargo: '', areaId: '', active: true });
   };
 
-  // Two levels goals forms
-  const handleUpdateMonitorGoal = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const existingIndex = monitorGoals.findIndex(g => g.monitorId === newMGoalVal.monitorId && g.year === 2026 && g.month === 5);
-    if (existingIndex > -1) {
-      const updated = [...monitorGoals];
-      updated[existingIndex].targetQty = parseInt(String(newMGoalVal.targetQty));
-      setMonitorGoals(updated);
-    } else {
-      setMonitorGoals([...monitorGoals, {
-        id: `mgoal-${Date.now()}`,
-        monitorId: newMGoalVal.monitorId,
-        year: 2026,
-        month: 5,
-        targetQty: parseInt(String(newMGoalVal.targetQty))
-      }]);
-    }
-    alert('Meta de carteira do monitor atualizada com sucesso!');
-  };
-
+  // 2A.4: existia aqui um segundo handler, handleUpdateMonitorGoal, que gravava uma "meta
+  // global do monitor". Ela concorria com a meta por colaboradora e o sistema resolvia o
+  // conflito escolhendo a maior das duas, em silêncio. Com a meta por colaboradora definida
+  // como fonte única, o formulário que a alimentava saiu do Planejamento e o handler saiu
+  // daqui. Os registros já gravados em pm2_mgoals permanecem intocados — nada os lê.
+  //
+  // A meta passou a ser gravada no período de competência corrente. Antes, os dois handlers
+  // fixavam `year: 2026, month: 5`: definir uma meta em agosto gravava a meta de junho, sem
+  // que a tela dissesse isso.
   const handleUpdateColabGoal = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const { year, month } = periodoAtual;
     const existingIndex = colaboradorGoals.findIndex(
-      g => g.monitorId === newCGoalVal.monitorId && g.colaboradorId === newCGoalVal.colaboradorId && g.year === 2026 && g.month === 5
+      g => g.monitorId === newCGoalVal.monitorId
+        && g.colaboradorId === newCGoalVal.colaboradorId
+        && g.year === year
+        && g.month === month
     );
     if (existingIndex > -1) {
       const updated = [...colaboradorGoals];
@@ -742,12 +733,12 @@ function AppContent() {
         id: `cgoal-${Date.now()}`,
         monitorId: newCGoalVal.monitorId,
         colaboradorId: newCGoalVal.colaboradorId,
-        year: 2026,
-        month: 5,
+        year,
+        month,
         targetQty: parseInt(String(newCGoalVal.targetQty))
       }]);
     }
-    alert('Meta individual de colaborador atualizada com sucesso!');
+    alert(`Meta de ${periodLabel(periodoAtual)} atualizada com sucesso!`);
   };
 
   // Aplica uma mutação a uma monitoria e mantém o painel de detalhe (que guarda um
@@ -884,39 +875,11 @@ function AppContent() {
   // `hasGoal` existe para que a ausência de meta seja dita, e não preenchida com um número
   // inventado: sem meta no período, a tela informa a ausência em vez de exibir 0 ou 5.
   const getMonitorStats = (monitorId: string) => {
-    const metasDoPeriodo = colaboradorGoals.filter(
-      g => g.monitorId === monitorId
-        && g.year === periodoAtual.year
-        && g.month === periodoAtual.month
-    );
-    const target = metasDoPeriodo.reduce((sum, g) => sum + g.targetQty, 0);
-    const hasGoal = metasDoPeriodo.length > 0;
-
-    const doPeriodo = monitorings.filter(
-      m => m.monitorId === monitorId && isInPeriod(m.date, periodoAtual)
-    );
-
-    // Feito conta no envio: Pendente entra junto com Validada.
-    const daCarteira = doPeriodo.filter(countsForCarteiraGoal);
-    const completed = daCarteira.length;
-    const validated = daCarteira.filter(isValidated).length;
-    const awaiting = daCarteira.filter(isAwaitingValidation).length;
-    const outOfCarteira = doPeriodo.filter(countsOutsideCarteira).length;
-
-    const remaining = Math.max(0, target - completed);
-    const pace = businessDaysRemaining > 0 ? (remaining / businessDaysRemaining).toFixed(1) : 0;
-
-    return {
-      target,
-      hasGoal,
-      completed,
-      validated,
-      awaiting,
-      outOfCarteira,
-      remaining,
-      pace,
-      progressPct: target > 0 ? Math.min(100, Math.round((completed / target) * 100)) : 0
-    };
+    const progresso = getCarteiraProgress(colaboradorGoals, monitorings, monitorId, periodoAtual);
+    const pace = businessDaysRemaining > 0
+      ? (progresso.remaining / businessDaysRemaining).toFixed(1)
+      : 0;
+    return { ...progresso, pace };
   };
 
   // Export handlers
@@ -1092,11 +1055,8 @@ function AppContent() {
                     colaboradorGoals={colaboradorGoals}
                     periodoAtual={periodoAtual}
                     periodoLabel={periodLabel(periodoAtual)}
-                    newMGoalVal={newMGoalVal}
-                    setNewMGoalVal={setNewMGoalVal}
                     newCGoalVal={newCGoalVal}
                     setNewCGoalVal={setNewCGoalVal}
-                    onUpdateMonitorGoal={handleUpdateMonitorGoal}
                     onUpdateColabGoal={handleUpdateColabGoal}
                     getMonitors={getMonitors}
                     getCollaborators={getCollaborators}

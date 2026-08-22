@@ -7,11 +7,8 @@ export const PlanningScreen = ({
   colaboradorGoals = /** @type {import('../../types/domain').ColaboradorGoal[]} */ ([]),
   periodoAtual,
   periodoLabel,
-  newMGoalVal,
-  setNewMGoalVal,
   newCGoalVal,
   setNewCGoalVal,
-  onUpdateMonitorGoal,
   onUpdateColabGoal,
   getMonitors,
   getCollaborators,
@@ -21,7 +18,7 @@ export const PlanningScreen = ({
             <div className="page-header" style={{ marginBottom: '1.5rem' }}>
               <div>
                 <h1 className="page-title">Planejamento e Metas Operacionais</h1>
-                <p className="page-subtitle">Configure as metas globais dos monitores e os volumes individuais dos colaboradores.</p>
+                <p className="page-subtitle">Defina quantas monitorias cada colaboradora deve receber na competência de {periodoLabel}.</p>
               </div>
             </div>
 
@@ -29,41 +26,13 @@ export const PlanningScreen = ({
               
               {/* Goal configurations */}
               <div className="section-card">
+                {/* 2A.4: havia aqui um formulário de "Meta Global (Volume Mensal)" por
+                    monitor. Ele concorria com a meta por colaboradora e o sistema resolvia o
+                    conflito escolhendo a maior das duas, sem dizer qual. Com a meta por
+                    colaboradora como fonte única, o formulário saiu: pedir um número que o
+                    sistema não usa é pior do que não pedir nada. */}
                 <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1rem', marginBottom: '1.25rem', fontWeight: 'bold' }}>
-                  Configurar Metas de Carteira
-                </h3>
-
-                <form onSubmit={onUpdateMonitorGoal} style={{ marginBottom: '2rem' }}>
-                  <div className="form-group">
-                    <label className="form-label">Monitor Avaliador</label>
-                    <select 
-                      className="form-control"
-                      value={newMGoalVal.monitorId}
-                      onChange={(e) => setNewMGoalVal({ ...newMGoalVal, monitorId: e.target.value })}
-                    >
-                      {getMonitors().filter(m => m.role === 'MONITOR').map(m => (
-                        <option key={m.id} value={m.id}>{m.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Meta Global (Volume Mensal)</label>
-                    <input 
-                      type="number" 
-                      className="form-control"
-                      value={newMGoalVal.targetQty}
-                      onChange={(e) => setNewMGoalVal({ ...newMGoalVal, targetQty: e.target.value })}
-                      min="1"
-                      required
-                    />
-                  </div>
-                  <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
-                    Atualizar Meta Carteira
-                  </button>
-                </form>
-
-                <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1rem', margin: '2rem 0 1.25rem', fontWeight: 'bold', paddingTop: '1.5rem', borderTop: '1px solid var(--border-color)' }}>
-                  Configurar Metas Individuais (Colaborador)
+                  Meta por colaboradora — {periodoLabel}
                 </h3>
 
                 <form onSubmit={onUpdateColabGoal}>
@@ -103,7 +72,7 @@ export const PlanningScreen = ({
                     />
                   </div>
                   <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
-                    Atualizar Meta Colaborador
+                    Salvar meta de {periodoLabel}
                   </button>
                 </form>
               </div>
@@ -113,6 +82,12 @@ export const PlanningScreen = ({
                 <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1rem', marginBottom: '1.25rem', fontWeight: 'bold' }}>
                   Quadro de Metas Ativo ({periodoLabel})
                 </h3>
+
+                {colaboradorGoals.filter(g => g.year === periodoAtual.year && g.month === periodoAtual.month).length === 0 && (
+                  <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', margin: '0 0 1rem' }}>
+                    Sem meta definida para o período.
+                  </p>
+                )}
 
                 <div className="table-responsive">
                   <table className="table-premium">
