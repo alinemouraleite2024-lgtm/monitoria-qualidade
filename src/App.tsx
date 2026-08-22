@@ -4,7 +4,7 @@ import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-
 import { pathToTab, PATH_LOGIN } from './routes/paths';
 import type { FormEvent, ReactNode } from 'react';
 import type {
-  AnyRole, Area, Collaborator, Criterion, Monitoring,
+  AnyRole, Area, Canal, Collaborator, Criterion, Monitoring,
 } from './types/domain';
 import {
   LayoutDashboard,
@@ -383,7 +383,8 @@ function AppContent() {
     team: ''
   });
 
-  const [newCGoalVal, setNewCGoalVal] = useState({ monitorId: 'usr-1', colaboradorId: 'ag-1', targetQty: 5 });
+  // `canal` vazio significa meta geral — o escopo padrão do formulário.
+  const [newCGoalVal, setNewCGoalVal] = useState({ monitorId: 'usr-1', colaboradorId: 'ag-1', canal: '', targetQty: 5 });
 
   // Filtros de Relatórios.
   //
@@ -733,11 +734,54 @@ function AppContent() {
   const handleUpdateColabGoal = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const { year, month } = periodoAtual;
+    const canal = newCGoalVal.canal ? (newCGoalVal.canal as Canal) : undefined;
+
+    // 2A.6.3: bloqueio da combinação proibida.
+    //
+    // Meta geral e meta por canal são mutuamente exclusivas: ter as duas não tem resposta
+    // certa, porque o canal abateria a geral ou somaria a ela. O sistema não escolhe sozinho
+    // — a tela recusa e explica qual é o caminho.
+    const doPeriodo = colaboradorGoals.filter(
+      g => g.monitorId === newCGoalVal.monitorId
+        && g.colaboradorId === newCGoalVal.colaboradorId
+        && g.year === year
+        && g.month === month
+    );
+    const jaTemGeral = doPeriodo.some(g => !g.canal);
+    const jaTemPorCanal = doPeriodo.some(g => Boolean(g.canal));
+    const nome = collaborators.find(c => c.id === newCGoalVal.colaboradorId)?.name
+      ?? users.find(u => u.id === newCGoalVal.colaboradorId)?.name
+      ?? 'A colaboradora';
+
+    if (canal && jaTemGeral) {
+      alert(
+        `${nome} já tem uma meta geral em ${periodLabel(periodoAtual)}.
+
+`
+        + 'Meta geral e meta por canal não podem coexistir: remova a meta geral no quadro ao '
+        + 'lado antes de definir metas por canal.'
+      );
+      return;
+    }
+    if (!canal && jaTemPorCanal) {
+      alert(
+        `${nome} já tem metas por canal em ${periodLabel(periodoAtual)}.
+
+`
+        + 'Meta geral e meta por canal não podem coexistir: remova as metas por canal no '
+        + 'quadro ao lado antes de definir uma meta geral.'
+      );
+      return;
+    }
+
+    // Atualização só acontece dentro do MESMO escopo: a meta de WhatsApp não sobrescreve a
+    // de Ligação nem a geral.
     const existingIndex = colaboradorGoals.findIndex(
       g => g.monitorId === newCGoalVal.monitorId
         && g.colaboradorId === newCGoalVal.colaboradorId
         && g.year === year
         && g.month === month
+        && (g.canal ?? undefined) === canal
     );
     if (existingIndex > -1) {
       const updated = [...colaboradorGoals];
@@ -750,10 +794,26 @@ function AppContent() {
         colaboradorId: newCGoalVal.colaboradorId,
         year,
         month,
+        ...(canal ? { canal } : {}),
         targetQty: parseInt(String(newCGoalVal.targetQty))
       }]);
     }
-    alert(`Meta de ${periodLabel(periodoAtual)} atualizada com sucesso!`);
+    const escopo = canal ? canalLabel(canal) : 'geral';
+    alert(`Meta ${escopo} de ${nome} atualizada para ${periodLabel(periodoAtual)}.`);
+  };
+
+  // Exclusão de meta. Não existia: o formulário só criava e atualizava, então trocar uma
+  // colaboradora de meta geral para meta por canal era impossível pela tela — ela ficaria com
+  // as duas, que é justamente o estado proibido.
+  const handleRemoveColabGoal = (goalId: string) => {
+    const alvo = colaboradorGoals.find(g => g.id === goalId);
+    if (!alvo) return;
+    const nome = collaborators.find(c => c.id === alvo.colaboradorId)?.name
+      ?? users.find(u => u.id === alvo.colaboradorId)?.name
+      ?? 'a colaboradora';
+    const escopo = alvo.canal ? canalLabel(alvo.canal) : 'geral';
+    if (!confirm(`Remover a meta ${escopo} de ${nome} em ${periodLabel(periodoAtual)}?`)) return;
+    setColaboradorGoals(colaboradorGoals.filter(g => g.id !== goalId));
   };
 
   // Aplica uma mutação a uma monitoria e mantém o painel de detalhe (que guarda um
@@ -1066,6 +1126,7 @@ function AppContent() {
               <Screen tab="planning" role={currentUser.role}>
                   <PlanningScreen
                     users={users}
+                    collaborators={collaborators}
                     monitorings={monitorings}
                     colaboradorGoals={colaboradorGoals}
                     periodoAtual={periodoAtual}
@@ -1073,6 +1134,7 @@ function AppContent() {
                     newCGoalVal={newCGoalVal}
                     setNewCGoalVal={setNewCGoalVal}
                     onUpdateColabGoal={handleUpdateColabGoal}
+                    onRemoveColabGoal={handleRemoveColabGoal}
                     getMonitors={getMonitors}
                     getCollaborators={getCollaborators}
                     renderUserAvatar={renderUserAvatar}
