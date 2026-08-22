@@ -79,6 +79,7 @@ import { AuditLogs } from './modules/admin/AuditLogs';
 import { MyProfile } from './modules/profile/MyProfile';
 
 import { MonitoringList } from './modules/monitoring/MonitoringList';
+import { MonitoringQueueScreen } from './features/monitorings/MonitoringQueueScreen';
 import { MonitoringForm } from './modules/monitoring/MonitoringForm';
 import { MonitoringHistory } from './modules/monitoring/MonitoringHistory';
 
@@ -384,6 +385,9 @@ function AppContent() {
   });
 
   // `canal` vazio significa meta geral — o escopo padrão do formulário.
+  // Contexto que a fila passa ao formulário: abrir já sabendo quem monitorar e de que canal.
+  const [seedNovaMonitoria, setSeedNovaMonitoria] = useState<{ colaboradorId: string; canal: string }>({ colaboradorId: '', canal: '' });
+
   const [newCGoalVal, setNewCGoalVal] = useState({ monitorId: 'usr-1', colaboradorId: 'ag-1', canal: '', targetQty: 5 });
 
   // Filtros de Relatórios.
@@ -1144,11 +1148,32 @@ function AppContent() {
 
             <Route path="/monitorings" element={
               <Screen tab="monitorings" role={currentUser.role}>
+                {currentUser.role === 'MONITOR' ? (
+                  <MonitoringQueueScreen
+                    currentUser={currentUser}
+                    monitorings={monitorings}
+                    colaboradorGoals={colaboradorGoals}
+                    collaborators={collaborators}
+                    allocations={allocations}
+                    holidays={holidays}
+                    users={users}
+                    onNovaMonitoria={(colaboradorId, canal) => {
+                      setSeedNovaMonitoria({ colaboradorId: colaboradorId ?? '', canal: canal ?? '' });
+                      navigate('/monitorings/new');
+                    }}
+                    onAbrir={(m) => {
+                      setSelectedMonitoringDetail(m);
+                      setShowDetailModal(true);
+                    }}
+                    onEditar={(m) => navigate(`/monitorings/${m.id}/edit`)}
+                    onVerRelatorios={() => navigate('/reports')}
+                  />
+                ) : (
                   <MonitoringList 
                     monitorings={monitorings}
                     users={users}
                     collaborators={getCollaborators()}
-                    onNewMonitoring={() => navigate('/monitorings/new')}
+                    onNewMonitoring={() => { setSeedNovaMonitoria({ colaboradorId: '', canal: '' }); navigate('/monitorings/new'); }}
                     onView={(m) => {
                       setSelectedMonitoringDetail(m);
                       setShowDetailModal(true);
@@ -1156,6 +1181,7 @@ function AppContent() {
                     onEdit={(m) => navigate(`/monitorings/${m.id}/edit`)}
                     onDelete={handleCancelMonitoring}
                   />
+                )}
               </Screen>
             } />
 
@@ -1164,6 +1190,8 @@ function AppContent() {
                   <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
                     <MonitoringForm
                       initialData={editingMonitoring}
+                      colaboradorIdInicial={seedNovaMonitoria.colaboradorId}
+                      canalInicial={seedNovaMonitoria.canal}
                       users={users}
                       collaborators={getCollaborators()}
                       criteria={criteria}

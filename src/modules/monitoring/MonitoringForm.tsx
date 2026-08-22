@@ -19,6 +19,16 @@ import type { Collaborator, Criterion, Monitoring, User } from '../../types/doma
  */
 export interface MonitoringFormProps {
   initialData?: Monitoring | null;
+  /**
+   * Contexto vindo da fila operacional: abrir o formulário já sabendo quem monitorar e de que
+   * canal. Só valem para monitoria nova — na edição, initialData manda.
+   *
+   * O canal importa duas vezes: além de poupar um passo, ele determina quais critérios se
+   * aplicam (applicableCriteria filtra por canal), então abrir com o canal certo já traz o
+   * checklist certo.
+   */
+  colaboradorIdInicial?: string;
+  canalInicial?: string;
   users?: User[];
   collaborators?: Collaborator[];
   criteria?: Criterion[];
@@ -109,6 +119,8 @@ export const MonitoringForm = ({
   catalogCategorias = [],
   onAddEmpreendimento = () => {},
   onAddCategoria = () => {},
+  colaboradorIdInicial = '',
+  canalInicial = '',
   onClose,
   onSave
 }: MonitoringFormProps) => {
@@ -118,11 +130,11 @@ export const MonitoringForm = ({
   // Form States
   const [formData, setFormData] = useState<FormDataMonitoria>({
     id: '',
-    colaboradorId: '',
+    colaboradorId: colaboradorIdInicial,
     monitorId: currentUser?.id || '',
     gestorId: '',
     date: new Date().toISOString().split('T')[0],
-    canal: '',
+    canal: canalInicial,
     empreendimento: '',
     categoriaAtendimento: '',
     protocolo: '',
