@@ -4,20 +4,35 @@ import { getScoreConcept } from '../../scoreUtils';
 import { CANAIS, canalLabel } from '../../constants/canais';
 import type { Collaborator, Monitoring, User } from '../../types/domain';
 
+// A tabela, a busca e os cinco filtros que viviam em /monitorings.
+//
+// 2B.2: o componente não foi reescrito — mudou de endereço. Ele é o histórico de Relatórios,
+// que é onde consulta e análise pertencem; a agenda do dia ficou em Monitorias. Reescrever a
+// tabela custaria os detalhes que já estão certos aqui: os badges de Zerada e Eliminatório
+// Pendente, o conceito abaixo da nota, o N/A para rascunho.
+//
+// O cabeçalho e as ações viraram opcionais para que a tela hospedeira decida o que faz sentido
+// no contexto dela.
 interface MonitoringListProps {
   monitorings?: Monitoring[];
   users?: User[];
   collaborators?: Collaborator[];
-  onNewMonitoring: () => void;
+  titulo?: string;
+  subtitulo?: string;
+  /** Ausente esconde o botão: em Relatórios não se cria monitoria. */
+  onNewMonitoring?: () => void;
   onView: (m: Monitoring) => void;
   onEdit: (m: Monitoring) => void;
-  onDelete: (id: string) => void;
+  /** Ausente esconde a ação. Gate de DELETE_MONITORING é decisão de quem hospeda. */
+  onDelete?: (id: string) => void;
 }
 
 export const MonitoringList = ({
   monitorings = [],
   users = [],
   collaborators = [],
+  titulo = 'Central de Monitorias',
+  subtitulo = 'Acompanhe, filtre e gerencie as avaliações de qualidade.',
   onNewMonitoring,
   onView,
   onEdit,
@@ -80,12 +95,14 @@ export const MonitoringList = ({
     <div className="animate-fade-in" style={{ padding: '1rem' }}>
       <div className="page-header">
         <div>
-          <h1 className="page-title"><FileSpreadsheet size={24} style={{ display: 'inline', marginRight: '8px' }} /> Central de Monitorias</h1>
-          <p className="page-subtitle">Acompanhe, filtre e gerencie as avaliações de qualidade.</p>
+          <h1 className="page-title"><FileSpreadsheet size={24} style={{ display: 'inline', marginRight: '8px' }} /> {titulo}</h1>
+          <p className="page-subtitle">{subtitulo}</p>
         </div>
-        <button className="btn btn-primary" onClick={onNewMonitoring}>
-          <Plus size={16} /> Nova Monitoria
-        </button>
+        {onNewMonitoring && (
+          <button className="btn btn-primary" onClick={onNewMonitoring}>
+            <Plus size={16} /> Nova Monitoria
+          </button>
+        )}
       </div>
 
       <div className="section-card" style={{ marginBottom: '2rem' }}>
@@ -214,9 +231,11 @@ export const MonitoringList = ({
                       <button className="btn btn-secondary btn-sm" onClick={() => onEdit(m)} title="Editar">
                         <Edit size={14} />
                       </button>
-                      <button className="btn btn-secondary btn-sm" style={{ color: 'var(--danger)', borderColor: 'var(--danger-light)' }} onClick={() => onDelete(m.id)} title="Excluir">
-                        <Trash2 size={14} />
-                      </button>
+                      {onDelete && (
+                        <button className="btn btn-secondary btn-sm" style={{ color: 'var(--danger)', borderColor: 'var(--danger-light)' }} onClick={() => onDelete(m.id)} title="Cancelar monitoria">
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

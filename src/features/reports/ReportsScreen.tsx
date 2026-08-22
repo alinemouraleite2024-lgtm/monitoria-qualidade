@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { FileSpreadsheet, Download, ChevronLeft, ChevronRight, Inbox } from 'lucide-react';
 
 // Tela de Relatórios.
@@ -21,6 +22,12 @@ interface ReportsScreenProps {
   totalRegistros: number;
   onExportExcel: () => void;
   onExportPDF: () => void;
+  /**
+   * O histórico do período: a tabela, a busca e os cinco filtros que vieram de /monitorings
+   * na 2B.2. Entra por composição para que Relatórios não precise conhecer a forma do
+   * registro de monitoria.
+   */
+  historico?: ReactNode;
 }
 
 export const ReportsScreen = ({
@@ -32,6 +39,7 @@ export const ReportsScreen = ({
   totalRegistros,
   onExportExcel,
   onExportPDF,
+  historico,
 }: ReportsScreenProps) => {
   const vazio = totalRegistros === 0;
 
@@ -39,9 +47,9 @@ export const ReportsScreen = ({
     <div className="animate-fade-in">
       <div className="page-header" style={{ marginBottom: '1.5rem' }}>
         <div>
-          <h1 className="page-title">Relatórios e Exportações de Qualidade</h1>
+          <h1 className="page-title">Relatórios e Histórico de Qualidade</h1>
           <p className="page-subtitle">
-            Consulte e exporte as monitorias de uma competência.
+            Consulte, filtre e exporte as monitorias de uma competência.
           </p>
         </div>
       </div>
@@ -163,6 +171,8 @@ export const ReportsScreen = ({
           </>
         )}
       </div>
+
+      {!vazio && historico}
     </div>
   );
 };

@@ -48,6 +48,7 @@ import {
 
 import {
   logAuthEvent,
+  hasPermission,
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ROLES
 } from './auth';
@@ -79,6 +80,7 @@ import { AuditLogs } from './modules/admin/AuditLogs';
 import { MyProfile } from './modules/profile/MyProfile';
 
 import { MonitoringQueueScreen } from './features/monitorings/MonitoringQueueScreen';
+import { MonitoringList } from './modules/monitoring/MonitoringList';
 import { MonitoringForm } from './modules/monitoring/MonitoringForm';
 import { MonitoringHistory } from './modules/monitoring/MonitoringHistory';
 
@@ -881,10 +883,8 @@ function AppContent() {
     }));
   };
 
-  // Sem consumidor entre a 2B.4 e a 2B.2: a listagem que o usava saiu de /monitorings e a
-  // ação de cancelar reaparece com a tabela em Relatórios, aí sim com o gate de
-  // DELETE_MONITORING que hoje ela não tem.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // 2B.2: a ação aparecia para os três papéis, mas DELETE_MONITORING é ['ADMIN']. O botão
+  // nunca foi barrado. Ao migrar para Relatórios, ganhou o gate que já deveria ter.
   const handleCancelMonitoring = (monId: string) => {
     if (confirm('Deseja realmente cancelar esta monitoria?')) {
       const updated = monitorings.map(m => {
@@ -1226,6 +1226,21 @@ function AppContent() {
             <Route path="/reports" element={
               <Screen tab="reports" role={currentUser.role}>
                   <ReportsScreen
+                    historico={
+                      <MonitoringList
+                        monitorings={getFilteredMonitorings()}
+                        users={users}
+                        collaborators={getCollaborators()}
+                        titulo={`Histórico de ${periodLabel(reportPeriod)}`}
+                        subtitulo="Busque, filtre e abra qualquer monitoria da competência."
+                        onView={(m) => {
+                          setSelectedMonitoringDetail(m);
+                          setShowDetailModal(true);
+                        }}
+                        onEdit={(m) => navigate(`/monitorings/${m.id}/edit`)}
+                        onDelete={hasPermission(currentUser.role, 'DELETE_MONITORING') ? handleCancelMonitoring : undefined}
+                      />
+                    }
                     periodoLabel={periodLabel(reportPeriod)}
                     periodoAnteriorLabel={periodLabel(previousPeriod(reportPeriod))}
                     periodoSeguinteLabel={periodLabel(nextPeriod(reportPeriod))}
