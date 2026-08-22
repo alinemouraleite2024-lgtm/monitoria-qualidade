@@ -1,5 +1,6 @@
 import { UserCheck, PlusCircle, Activity, BarChart3, Search } from 'lucide-react';
 import { getScoreConcept } from '../../scoreUtils';
+import { getCurrentPeriod, isInPeriod } from '../../domain/period';
 
 // Home do Monitor.
 //
@@ -21,8 +22,8 @@ export const HomeMonitor = ({ currentUser, demands, monitorings, collaborators, 
 
   // Calculations
   const myMonitorings = monitorings.filter(m => m.monitorId === currentUser.id);
-  const currentMonth = new Date().getMonth();
-  const monthMonitorings = myMonitorings.filter(m => new Date(m.date).getMonth() === currentMonth);
+  const periodoAtual = getCurrentPeriod();
+  const monthMonitorings = myMonitorings.filter(m => isInPeriod(m.date, periodoAtual));
   const temMonitoriasNoMes = monthMonitorings.length > 0;
   const avgScore = temMonitoriasNoMes
     ? monthMonitorings.reduce((acc, m) => acc + m.finalScore, 0) / monthMonitorings.length

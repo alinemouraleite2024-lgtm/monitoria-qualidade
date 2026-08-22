@@ -1,7 +1,11 @@
+import { isInPeriod } from '../../domain/period';
+
 export const PlanningScreen = ({
   users = /** @type {import('../../types/domain').User[]} */ ([]),
   monitorings = /** @type {import('../../types/domain').Monitoring[]} */ ([]),
   colaboradorGoals = /** @type {import('../../types/domain').ColaboradorGoal[]} */ ([]),
+  periodoAtual,
+  periodoLabel,
   newMGoalVal,
   setNewMGoalVal,
   newCGoalVal,
@@ -106,7 +110,7 @@ export const PlanningScreen = ({
               {/* Meta list panel */}
               <div className="section-card">
                 <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1rem', marginBottom: '1.25rem', fontWeight: 'bold' }}>
-                  Quadro de Metas Ativo (Junho/2026)
+                  Quadro de Metas Ativo ({periodoLabel})
                 </h3>
 
                 <div className="table-responsive">
@@ -122,13 +126,14 @@ export const PlanningScreen = ({
                       </tr>
                     </thead>
                     <tbody>
-                      {colaboradorGoals.map(goal => {
+                      {colaboradorGoals
+                        .filter(goal => goal.year === periodoAtual.year && goal.month === periodoAtual.month)
+                        .map(goal => {
                         const mon = users.find(u => u.id === goal.monitorId)?.name || 'N/A';
                         const col = users.find(u => u.id === goal.colaboradorId)?.name || 'N/A';
 
                         const completed = monitorings.filter(m => {
-                          const isThisMonth = new Date(m.date).getMonth() === 5 && new Date(m.date).getFullYear() === 2026;
-                          return m.monitorId === goal.monitorId && m.colaboradorId === goal.colaboradorId && isThisMonth && (m.status === 'Validada' || m.status === 'Concluída');
+                          return m.monitorId === goal.monitorId && m.colaboradorId === goal.colaboradorId && isInPeriod(m.date, periodoAtual) && (m.status === 'Validada' || m.status === 'Concluída');
                         }).length;
 
                         return (

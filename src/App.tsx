@@ -122,12 +122,25 @@ import {
   sessionRepository,
 } from './repositories';
 import { UserAvatar } from './shared/components/UserAvatar';
-import { getBusinessDaysRemaining } from './shared/utils/businessDays';
 import { getActiveMonitorForColab as resolveActiveMonitorForColab } from './domain/allocationService';
+import {
+  todayISO,
+  getCurrentPeriod,
+  isInPeriod,
+  periodLabel,
+  businessDaysRemainingIn,
+} from './domain/period';
 import { isManagerRole as isManagerUser } from './domain/authorizationService';
 
-// Simulated current system date
-const SYSTEM_TODAY = '2026-06-05';
+// 2A.1: a data corrente deixou de ser simulada.
+//
+// Aqui existia `const SYSTEM_TODAY = '2026-06-05'`, e era dela que saíam dias úteis
+// restantes, ritmo necessário, vigência de carteira e as datas gravadas ao criar ou
+// encerrar um vínculo. Com o sistema em operação desde agosto, todo número operacional
+// respondia sobre junho — e as telas não diziam isso.
+//
+// Quem precisa de "hoje" agora chama `todayISO()`; quem precisa do mês de competência
+// chama `getCurrentPeriod()`. Ver src/domain/period.ts.
 
 
 
@@ -304,7 +317,7 @@ function AppContent() {
   // Form States (Admin & Management)
   const [selectedAllocationMonitor, setSelectedAllocationMonitor] = useState('usr-1');
   const [newAllocColaboradorId, setNewAllocColaboradorId] = useState('');
-  const [newAllocStartDate, setNewAllocStartDate] = useState(SYSTEM_TODAY);
+  const [newAllocStartDate, setNewAllocStartDate] = useState(todayISO());
   const [newAllocEndDate, setNewAllocEndDate] = useState('');
 
  
@@ -312,8 +325,8 @@ function AppContent() {
   const [newHoliday, setNewHoliday] = useState({
     originalMonitorId: 'usr-1',
     substituteMonitorId: 'usr-2',
-    startDate: SYSTEM_TODAY,
-    endDate: '2026-06-12'
+    startDate: todayISO(),
+    endDate: ''
   });
 
   /** Rascunho do modal de critério: campos ainda como texto até o submit. */
@@ -417,12 +430,16 @@ function AppContent() {
 
   // Resolve o monitor responsável por um colaborador na data, delegando a regra de
   // vigência/substituição ao serviço de domínio (F0-12).
-  const getActiveMonitorForColab = (colaboradorId: string, dateStr: string = SYSTEM_TODAY) =>
+  // Período de competência corrente. Todo número mensal desta tela responde sobre ele.
+  const hoje = todayISO();
+  const periodoAtual = getCurrentPeriod();
+
+  const getActiveMonitorForColab = (colaboradorId: string, dateStr: string = hoje) =>
     resolveActiveMonitorForColab({ allocations, holidays, users }, colaboradorId, dateStr);
 
   // businessDaysTotal/Elapsed eram usados apenas por getInArrearsCount, removido na F0-12
   // por ser órfão. Mantido apenas o valor efetivamente consumido pelo Dashboard.
-  const businessDaysRemaining = getBusinessDaysRemaining(2026, 5, SYSTEM_TODAY);
+  const businessDaysRemaining = businessDaysRemainingIn(periodoAtual, hoje);
 
   // Authenticate homologation account
   //
@@ -518,7 +535,7 @@ function AppContent() {
     }
 
     const existingIndex = allocations.findIndex(
-      a => a.colaboradorId === newAllocColaboradorId && a.active && (!a.endDate || new Date(SYSTEM_TODAY) <= new Date(a.endDate))
+      a => a.colaboradorId === newAllocColaboradorId && a.active && (!a.endDate || new Date(hoje) <= new Date(a.endDate))
     );
 
     const updatedAllocations = [...allocations];
@@ -526,7 +543,7 @@ function AppContent() {
 
     if (existingIndex > -1) {
       const oldAlloc = updatedAllocations[existingIndex];
-      oldAlloc.endDate = SYSTEM_TODAY;
+      oldAlloc.endDate = hoje;
       oldAlloc.active = false;
 
       resolvedHistory.push({
@@ -535,7 +552,7 @@ function AppContent() {
         actionType: 'TERMINATE',
         changedBy: currentUser!.id,
         changedAt: new Date().toISOString(),
-        details: `Alocação do Colaborador ID ${newAllocColaboradorId} terminada em ${SYSTEM_TODAY}.`
+        details: `Alocação do Colaborador ID ${newAllocColaboradorId} terminada em ${hoje}.`
       });
     }
 
@@ -571,7 +588,7 @@ function AppContent() {
     if (confirm('Deseja realmente encerrar a vigência desta alocação?')) {
       const updated = allocations.map(a => {
         if (a.id === allocId) {
-          return { ...a, endDate: SYSTEM_TODAY, active: false };
+          return { ...a, endDate: hoje, active: false };
         }
         return a;
       });
@@ -588,7 +605,7 @@ function AppContent() {
           actionType: 'TERMINATE',
           changedBy: currentUser!.id,
           changedAt: new Date().toISOString(),
-          details: `Alocação de ${colName} terminada em ${SYSTEM_TODAY} por ação do Gestor.`
+          details: `Alocação de ${colName} terminada em ${hoje} por ação do Gestor.`
         }
       ]);
     }
@@ -817,23 +834,25 @@ function AppContent() {
   // Calculations for Gestor Dashboard
   const getUnmonitoredCollaborators = () => {
     return getCollaborators().filter(c => {
-      const monCount = monitorings.filter(m => {
-        const isThisMonth = new Date(m.date).getMonth() === 5 && new Date(m.date).getFullYear() === 2026;
-        return m.colaboradorId === c.id && isThisMonth && (m.status === 'Validada' || m.status === 'Concluída');
-      }).length;
+      const monCount = monitorings.filter(m =>
+        m.colaboradorId === c.id
+        && isInPeriod(m.date, periodoAtual)
+        && (m.status === 'Validada' || m.status === 'Concluída')
+      ).length;
       return monCount === 0;
     });
   };
 
   // Calculate statistics per Monitor for Gestor dashboard V2
   const getMonitorStats = (monitorId: string) => {
-    const mGoal = monitorGoals.find(g => g.monitorId === monitorId && g.year === 2026 && g.month === 5)?.targetQty || 0;
-    const colabGoalsSum = colaboradorGoals.filter(g => g.monitorId === monitorId && g.year === 2026 && g.month === 5).reduce((sum, g) => sum + g.targetQty, 0);
+    const mGoal = monitorGoals.find(g => g.monitorId === monitorId && g.year === periodoAtual.year && g.month === periodoAtual.month)?.targetQty || 0;
+    const colabGoalsSum = colaboradorGoals.filter(g => g.monitorId === monitorId && g.year === periodoAtual.year && g.month === periodoAtual.month).reduce((sum, g) => sum + g.targetQty, 0);
 
-    const completed = monitorings.filter(m => {
-      const isThisMonth = new Date(m.date).getMonth() === 5 && new Date(m.date).getFullYear() === 2026;
-      return m.monitorId === monitorId && isThisMonth && (m.status === 'Validada' || m.status === 'Concluída');
-    }).length;
+    const completed = monitorings.filter(m =>
+      m.monitorId === monitorId
+      && isInPeriod(m.date, periodoAtual)
+      && (m.status === 'Validada' || m.status === 'Concluída')
+    ).length;
 
     const target = Math.max(mGoal, colabGoalsSum);
     const remaining = Math.max(0, target - completed);
@@ -865,7 +884,7 @@ function AppContent() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `relatorio_monitorias_v2_${SYSTEM_TODAY}.csv`);
+    link.setAttribute('download', `relatorio_monitorias_v2_${hoje}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -905,7 +924,7 @@ function AppContent() {
         </head>
         <body>
           <h1>Relatório Executivo de Avaliações - V2</h1>
-          <div><strong>Branding:</strong> ${brand.name} | <strong>Emitido em:</strong> ${new Date(SYSTEM_TODAY).toLocaleDateString('pt-BR')}</div>
+          <div><strong>Branding:</strong> ${brand.name} | <strong>Emitido em:</strong> ${new Date(hoje).toLocaleDateString('pt-BR')}</div>
           <table>
             <thead>
               <tr>
@@ -1010,7 +1029,9 @@ function AppContent() {
                     getActiveMonitorForColab={getActiveMonitorForColab}
                     getUnmonitoredCollaborators={getUnmonitoredCollaborators}
                     businessDaysRemaining={businessDaysRemaining}
-                    SYSTEM_TODAY={SYSTEM_TODAY}
+                    hoje={hoje}
+                    periodoAtual={periodoAtual}
+                    periodoLabel={periodLabel(periodoAtual)}
                   />
               </Screen>
             } />
@@ -1021,6 +1042,8 @@ function AppContent() {
                     users={users}
                     monitorings={monitorings}
                     colaboradorGoals={colaboradorGoals}
+                    periodoAtual={periodoAtual}
+                    periodoLabel={periodLabel(periodoAtual)}
                     newMGoalVal={newMGoalVal}
                     setNewMGoalVal={setNewMGoalVal}
                     newCGoalVal={newCGoalVal}

@@ -1,4 +1,5 @@
 import { FileSpreadsheet, CheckCircle2, AlertTriangle, Layers, Award, TrendingUp, Clock } from 'lucide-react';
+import { isInPeriod } from '../../domain/period';
 
 export const DashboardScreen = ({
   settings,
@@ -19,7 +20,9 @@ export const DashboardScreen = ({
   getActiveMonitorForColab,
   getUnmonitoredCollaborators,
   businessDaysRemaining,
-  SYSTEM_TODAY
+  hoje,
+  periodoAtual,
+  periodoLabel
 }) => (
           <div className="animate-fade-in">
             <div className="page-header" style={{ marginBottom: '1.5rem' }}>
@@ -27,7 +30,7 @@ export const DashboardScreen = ({
                 <h1 className="page-title">
                   {currentUser.role === 'GESTOR' || currentUser.role === 'ADMIN' ? 'Dashboard Executivo de Qualidade' : 'Painel Operacional do Monitor'}
                 </h1>
-                <p className="page-subtitle">Acompanhe a produtividade, cumprimento de metas e o fluxo das avaliações mensais.</p>
+                <p className="page-subtitle">Produtividade, cumprimento de metas e fluxo das avaliações — competência de {periodoLabel}.</p>
               </div>
               { (currentUser.role === 'GESTOR' || currentUser.role === 'ADMIN') && (
                 <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -99,11 +102,11 @@ export const DashboardScreen = ({
                 totalMeta = stats.target;
                 // Monitor's unmonitored colabs
                 const myColabs = getCollaborators().filter(c => {
-                  const { monitor } = getActiveMonitorForColab(c.id, SYSTEM_TODAY);
+                  const { monitor } = getActiveMonitorForColab(c.id, hoje);
                   return monitor && monitor.id === currentUser.id;
                 });
                 const myUnmonitored = myColabs.filter(c => {
-                  const done = monitorings.filter(m => m.colaboradorId === c.id && m.monitorId === currentUser.id && new Date(m.date).getMonth() === 5 && (m.status === 'Validada' || m.status === 'Concluída'));
+                  const done = monitorings.filter(m => m.colaboradorId === c.id && m.monitorId === currentUser.id && isInPeriod(m.date, periodoAtual) && (m.status === 'Validada' || m.status === 'Concluída'));
                   return done.length === 0;
                 });
 // eslint-disable-next-line no-unused-vars
@@ -295,11 +298,12 @@ export const DashboardScreen = ({
                                 })
                               ) : (
                                 getCollaborators().filter(c => {
-                                  const { monitor } = getActiveMonitorForColab(c.id, SYSTEM_TODAY);
+                                  const { monitor } = getActiveMonitorForColab(c.id, hoje);
                                   return monitor && monitor.id === currentUser.id;
                                 }).map(c => {
-                                  const completed = monitorings.filter(m => m.colaboradorId === c.id && m.monitorId === currentUser.id && new Date(m.date).getMonth() === 5 && (m.status === 'Validada' || m.status === 'Concluída')).length;
-                                  const goalVal = colaboradorGoals.find(g => g.monitorId === currentUser.id && g.colaboradorId === c.id && g.year === 2026 && g.month === 5)?.targetQty || 5;
+                                  const completed = monitorings.filter(m => m.colaboradorId === c.id && m.monitorId === currentUser.id && isInPeriod(m.date, periodoAtual) && (m.status === 'Validada' || m.status === 'Concluída')).length;
+                                  // TODO 2A.2: o `|| 5` inventa meta onde não há nenhuma. Sai junto com a regra de contagem.
+                                  const goalVal = colaboradorGoals.find(g => g.monitorId === currentUser.id && g.colaboradorId === c.id && g.year === periodoAtual.year && g.month === periodoAtual.month)?.targetQty || 5;
                                   const prog = Math.min(100, Math.round((completed / goalVal) * 100));
                                   return (
                                     <tr key={c.id}>
