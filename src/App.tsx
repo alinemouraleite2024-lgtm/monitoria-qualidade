@@ -130,6 +130,12 @@ import {
   periodLabel,
   businessDaysRemainingIn,
 } from './domain/period';
+import {
+  countsForCarteiraGoal,
+  countsOutsideCarteira,
+  isValidated,
+  isAwaitingValidation,
+} from './domain/monitoringRules';
 import { isManagerRole as isManagerUser } from './domain/authorizationService';
 
 // 2A.1: a data corrente deixou de ser simulada.
@@ -837,32 +843,50 @@ function AppContent() {
       const monCount = monitorings.filter(m =>
         m.colaboradorId === c.id
         && isInPeriod(m.date, periodoAtual)
-        && (m.status === 'Validada' || m.status === 'Concluída')
+        && countsForCarteiraGoal(m)
       ).length;
       return monCount === 0;
     });
   };
 
-  // Calculate statistics per Monitor for Gestor dashboard V2
+  // Progresso de um monitor no período de competência corrente.
+  //
+  // 2A.2: a meta por colaboradora passou a ser a única fonte da verdade. Antes o alvo era
+  // `Math.max(metaGlobalDoMonitor, somaDasMetasPorColaboradora)` — duas metas concorrentes
+  // resolvidas escolhendo a maior, sem que nada na tela dissesse qual delas venceu.
+  //
+  // `hasGoal` existe para que a ausência de meta seja dita, e não preenchida com um número
+  // inventado: sem meta no período, a tela informa a ausência em vez de exibir 0 ou 5.
   const getMonitorStats = (monitorId: string) => {
-    const mGoal = monitorGoals.find(g => g.monitorId === monitorId && g.year === periodoAtual.year && g.month === periodoAtual.month)?.targetQty || 0;
-    const colabGoalsSum = colaboradorGoals.filter(g => g.monitorId === monitorId && g.year === periodoAtual.year && g.month === periodoAtual.month).reduce((sum, g) => sum + g.targetQty, 0);
+    const metasDoPeriodo = colaboradorGoals.filter(
+      g => g.monitorId === monitorId
+        && g.year === periodoAtual.year
+        && g.month === periodoAtual.month
+    );
+    const target = metasDoPeriodo.reduce((sum, g) => sum + g.targetQty, 0);
+    const hasGoal = metasDoPeriodo.length > 0;
 
-    const completed = monitorings.filter(m =>
-      m.monitorId === monitorId
-      && isInPeriod(m.date, periodoAtual)
-      && (m.status === 'Validada' || m.status === 'Concluída')
-    ).length;
+    const doPeriodo = monitorings.filter(
+      m => m.monitorId === monitorId && isInPeriod(m.date, periodoAtual)
+    );
 
-    const target = Math.max(mGoal, colabGoalsSum);
+    // Feito conta no envio: Pendente entra junto com Validada.
+    const daCarteira = doPeriodo.filter(countsForCarteiraGoal);
+    const completed = daCarteira.length;
+    const validated = daCarteira.filter(isValidated).length;
+    const awaiting = daCarteira.filter(isAwaitingValidation).length;
+    const outOfCarteira = doPeriodo.filter(countsOutsideCarteira).length;
+
     const remaining = Math.max(0, target - completed);
     const pace = businessDaysRemaining > 0 ? (remaining / businessDaysRemaining).toFixed(1) : 0;
 
     return {
-      mGoal,
-      colabGoalsSum,
       target,
+      hasGoal,
       completed,
+      validated,
+      awaiting,
+      outOfCarteira,
       remaining,
       pace,
       progressPct: target > 0 ? Math.min(100, Math.round((completed / target) * 100)) : 0

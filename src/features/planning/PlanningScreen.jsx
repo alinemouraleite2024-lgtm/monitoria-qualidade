@@ -1,4 +1,5 @@
 import { isInPeriod } from '../../domain/period';
+import { countsForCarteiraGoal, isValidated } from '../../domain/monitoringRules';
 
 export const PlanningScreen = ({
   users = /** @type {import('../../types/domain').User[]} */ ([]),
@@ -121,6 +122,7 @@ export const PlanningScreen = ({
                         <th>Colaborador</th>
                         <th>Meta</th>
                         <th>Realizadas</th>
+                        <th>Validadas</th>
                         <th>Pendentes</th>
                         <th>Progresso</th>
                       </tr>
@@ -132,9 +134,15 @@ export const PlanningScreen = ({
                         const mon = users.find(u => u.id === goal.monitorId)?.name || 'N/A';
                         const col = users.find(u => u.id === goal.colaboradorId)?.name || 'N/A';
 
-                        const completed = monitorings.filter(m => {
-                          return m.monitorId === goal.monitorId && m.colaboradorId === goal.colaboradorId && isInPeriod(m.date, periodoAtual) && (m.status === 'Validada' || m.status === 'Concluída');
-                        }).length;
+                        // Feito conta no envio; validado aparece à parte, na coluna ao lado.
+                        const feitas = monitorings.filter(m =>
+                          m.monitorId === goal.monitorId
+                          && m.colaboradorId === goal.colaboradorId
+                          && isInPeriod(m.date, periodoAtual)
+                          && countsForCarteiraGoal(m)
+                        );
+                        const completed = feitas.length;
+                        const validadas = feitas.filter(isValidated).length;
 
                         return (
                           <tr key={goal.id}>
@@ -152,6 +160,7 @@ export const PlanningScreen = ({
                             </td>
                             <td style={{ fontWeight: 'bold' }}>{goal.targetQty}</td>
                             <td style={{ fontWeight: 'bold' }}>{completed}</td>
+                            <td style={{ color: 'var(--text-muted)' }}>{validadas}</td>
                             <td>{Math.max(0, goal.targetQty - completed)}</td>
                             <td>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

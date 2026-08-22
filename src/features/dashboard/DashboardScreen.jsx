@@ -1,5 +1,6 @@
 import { FileSpreadsheet, CheckCircle2, AlertTriangle, Layers, Award, TrendingUp, Clock } from 'lucide-react';
 import { isInPeriod } from '../../domain/period';
+import { countsForCarteiraGoal } from '../../domain/monitoringRules';
 
 export const DashboardScreen = ({
   settings,
@@ -106,7 +107,7 @@ export const DashboardScreen = ({
                   return monitor && monitor.id === currentUser.id;
                 });
                 const myUnmonitored = myColabs.filter(c => {
-                  const done = monitorings.filter(m => m.colaboradorId === c.id && m.monitorId === currentUser.id && isInPeriod(m.date, periodoAtual) && (m.status === 'Validada' || m.status === 'Concluída'));
+                  const done = monitorings.filter(m => m.colaboradorId === c.id && m.monitorId === currentUser.id && isInPeriod(m.date, periodoAtual) && countsForCarteiraGoal(m));
                   return done.length === 0;
                 });
 // eslint-disable-next-line no-unused-vars
@@ -282,17 +283,32 @@ export const DashboardScreen = ({
                                           <span style={{ fontWeight: '600' }}>{monitor.name}</span>
                                         </div>
                                       </td>
-                                      <td style={{ fontWeight: 'bold' }}>{s.target}</td>
-                                      <td style={{ fontWeight: 'bold' }}>{s.completed}</td>
-                                      <td>{Math.max(0, s.target - s.completed)}</td>
-                                      <td>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                          <div className="progress-container" style={{ width: '80px', margin: 0, height: '5px' }}>
-                                            <div className="progress-fill" style={{ width: `${s.progressPct}%`, backgroundColor: 'var(--primary)' }} />
-                                          </div>
-                                          <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>{s.progressPct}%</span>
-                                        </div>
-                                      </td>
+                                      {s.hasGoal ? (
+                                        <>
+                                          <td style={{ fontWeight: 'bold' }}>{s.target}</td>
+                                          <td style={{ fontWeight: 'bold' }}>
+                                            {s.completed}
+                                            {s.completed > 0 && (
+                                              <span style={{ fontWeight: '500', fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: '0.35rem' }}>
+                                                ({s.validated} validadas)
+                                              </span>
+                                            )}
+                                          </td>
+                                          <td>{s.remaining}</td>
+                                          <td>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                              <div className="progress-container" style={{ width: '80px', margin: 0, height: '5px' }}>
+                                                <div className="progress-fill" style={{ width: `${s.progressPct}%`, backgroundColor: 'var(--primary)' }} />
+                                              </div>
+                                              <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>{s.progressPct}%</span>
+                                            </div>
+                                          </td>
+                                        </>
+                                      ) : (
+                                        <td colSpan={4} style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                                          Sem meta definida para o período
+                                        </td>
+                                      )}
                                     </tr>
                                   );
                                 })
@@ -301,10 +317,11 @@ export const DashboardScreen = ({
                                   const { monitor } = getActiveMonitorForColab(c.id, hoje);
                                   return monitor && monitor.id === currentUser.id;
                                 }).map(c => {
-                                  const completed = monitorings.filter(m => m.colaboradorId === c.id && m.monitorId === currentUser.id && isInPeriod(m.date, periodoAtual) && (m.status === 'Validada' || m.status === 'Concluída')).length;
-                                  // TODO 2A.2: o `|| 5` inventa meta onde não há nenhuma. Sai junto com a regra de contagem.
-                                  const goalVal = colaboradorGoals.find(g => g.monitorId === currentUser.id && g.colaboradorId === c.id && g.year === periodoAtual.year && g.month === periodoAtual.month)?.targetQty || 5;
-                                  const prog = Math.min(100, Math.round((completed / goalVal) * 100));
+                                  const completed = monitorings.filter(m => m.colaboradorId === c.id && m.monitorId === currentUser.id && isInPeriod(m.date, periodoAtual) && countsForCarteiraGoal(m)).length;
+                                  // 2A.2: sem `|| 5`. A ausência de meta é informada, não preenchida com um número.
+                                  const goal = colaboradorGoals.find(g => g.monitorId === currentUser.id && g.colaboradorId === c.id && g.year === periodoAtual.year && g.month === periodoAtual.month);
+                                  const goalVal = goal ? goal.targetQty : null;
+                                  const prog = goalVal ? Math.min(100, Math.round((completed / goalVal) * 100)) : 0;
                                   return (
                                     <tr key={c.id}>
                                       <td>
@@ -313,17 +330,26 @@ export const DashboardScreen = ({
                                           <span style={{ fontWeight: '600' }}>{c.name}</span>
                                         </div>
                                       </td>
-                                      <td style={{ fontWeight: 'bold' }}>{goalVal}</td>
-                                      <td style={{ fontWeight: 'bold' }}>{completed}</td>
-                                      <td>{Math.max(0, goalVal - completed)}</td>
-                                      <td>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                          <div className="progress-container" style={{ width: '80px', margin: 0, height: '4px' }}>
-                                            <div className="progress-fill" style={{ width: `${prog}%`, backgroundColor: prog >= 100 ? '#10b981' : 'var(--primary)' }} />
-                                          </div>
-                                          <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>{prog}%</span>
-                                        </div>
-                                      </td>
+                                      {goalVal === null ? (
+                                        <td colSpan={4} style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                                          Sem meta definida para o período
+                                          {completed > 0 && ` — ${completed} monitoria(s) já registrada(s)`}
+                                        </td>
+                                      ) : (
+                                        <>
+                                          <td style={{ fontWeight: 'bold' }}>{goalVal}</td>
+                                          <td style={{ fontWeight: 'bold' }}>{completed}</td>
+                                          <td>{Math.max(0, goalVal - completed)}</td>
+                                          <td>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                              <div className="progress-container" style={{ width: '80px', margin: 0, height: '4px' }}>
+                                                <div className="progress-fill" style={{ width: `${prog}%`, backgroundColor: prog >= 100 ? '#10b981' : 'var(--primary)' }} />
+                                              </div>
+                                              <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>{prog}%</span>
+                                            </div>
+                                          </td>
+                                        </>
+                                      )}
                                     </tr>
                                   );
                                 })
