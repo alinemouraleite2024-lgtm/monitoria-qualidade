@@ -132,6 +132,9 @@ import {
   getCurrentPeriod,
   isInPeriod,
   periodLabel,
+  periodRange,
+  previousPeriod,
+  nextPeriod,
   businessDaysRemainingIn,
 } from './domain/period';
 import { countsForCarteiraGoal } from './domain/monitoringRules';
@@ -381,10 +384,21 @@ function AppContent() {
 
   const [newCGoalVal, setNewCGoalVal] = useState({ monitorId: 'usr-1', colaboradorId: 'ag-1', targetQty: 5 });
 
-  // Monitoring List Filters state
-  const [historyFilters, /* setHistoryFilters */] = useState({
-    startDate: '2026-06-01',
-    endDate: '2026-06-30',
+  // Filtros de Relatórios.
+  //
+  // 2A.5: o período estava fixo em 01/06/2026–30/06/2026 e o setter estava COMENTADO — não
+  // havia como alterá-lo por nenhum caminho da interface. Efeito prático: os dois botões de
+  // exportar devolviam apenas junho, sempre, e em agosto devolviam um arquivo vazio, sem
+  // mensagem nenhuma. Era a mais silenciosa das cinco travas da Fatia 2A.
+  //
+  // O período agora é um Period de verdade, navegável, e a faixa de datas é derivada dele —
+  // não há mais como a data exibida divergir da data consultada.
+  const [reportPeriod, setReportPeriod] = useState(() => getCurrentPeriod());
+  // O setter volta a existir, mas os demais filtros (monitora, área, canal, status, faixa de
+  // nota) só ganham controle na tela em 2C, junto com o histórico completo. Quem tinha efeito
+  // real e estava inalcançável era o período, e esse agora é navegável acima.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [historyFilters, setHistoryFilters] = useState({
     monitorId: 'ALL',
     areaId: 'ALL',
     colaboradorId: 'ALL',
@@ -836,10 +850,10 @@ function AppContent() {
         scoreMatch = m.finalScore >= 75 && m.finalScore < 95;
       }
 
+      const { startDate, endDate } = periodRange(reportPeriod);
       const mDate = new Date(m.date);
-      const filterStart = new Date(historyFilters.startDate + 'T00:00:00Z');
-      const filterEnd = new Date(historyFilters.endDate + 'T23:59:59Z');
-      const dateMatch = mDate >= filterStart && mDate <= filterEnd;
+      const dateMatch = mDate >= new Date(startDate + 'T00:00:00Z')
+        && mDate <= new Date(endDate + 'T23:59:59Z');
 
       return monMatch && colMatch && canalMatch && statusMatch && scoreMatch && dateMatch && areaMatch;
     });
@@ -897,7 +911,7 @@ function AppContent() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `relatorio_monitorias_v2_${hoje}.csv`);
+    link.setAttribute('download', `monitorias_${reportPeriod.year}-${String(reportPeriod.month + 1).padStart(2, '0')}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -937,7 +951,7 @@ function AppContent() {
         </head>
         <body>
           <h1>Relatório Executivo de Avaliações - V2</h1>
-          <div><strong>Branding:</strong> ${brand.name} | <strong>Emitido em:</strong> ${new Date(hoje).toLocaleDateString('pt-BR')}</div>
+          <div><strong>Branding:</strong> ${brand.name} | <strong>Competência:</strong> ${periodLabel(reportPeriod)} | <strong>Emitido em:</strong> ${new Date(hoje).toLocaleDateString('pt-BR')}</div>
           <table>
             <thead>
               <tr>
@@ -1127,6 +1141,12 @@ function AppContent() {
             <Route path="/reports" element={
               <Screen tab="reports" role={currentUser.role}>
                   <ReportsScreen
+                    periodoLabel={periodLabel(reportPeriod)}
+                    periodoAnteriorLabel={periodLabel(previousPeriod(reportPeriod))}
+                    periodoSeguinteLabel={periodLabel(nextPeriod(reportPeriod))}
+                    onPeriodoAnterior={() => setReportPeriod(previousPeriod(reportPeriod))}
+                    onPeriodoSeguinte={() => setReportPeriod(nextPeriod(reportPeriod))}
+                    totalRegistros={getFilteredMonitorings().length}
                     onExportExcel={handleExportExcel}
                     onExportPDF={handleExportPDF}
                   />

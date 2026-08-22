@@ -63,6 +63,29 @@ export const periodLabel = (period: Period): string =>
 /** Rótulo curto, para seletores: "Agosto". */
 export const monthLabel = (period: Period): string => MESES[period.month];
 
+/** Período anterior, atravessando a virada de ano. */
+export const previousPeriod = ({ year, month }: Period): Period =>
+  month === 0 ? { year: year - 1, month: 11 } : { year, month: month - 1 };
+
+/** Período seguinte, atravessando a virada de ano. */
+export const nextPeriod = ({ year, month }: Period): Period =>
+  month === 11 ? { year: year + 1, month: 0 } : { year, month: month + 1 };
+
+/**
+ * Primeiro e último dia do período, em YYYY-MM-DD.
+ *
+ * Usa `new Date(year, month + 1, 0)` para o último dia, que resolve fevereiro e ano
+ * bissexto sem tabela de dias por mês.
+ */
+export const periodRange = ({ year, month }: Period): { startDate: string; endDate: string } => {
+  const mm = String(month + 1).padStart(2, '0');
+  const ultimoDia = new Date(year, month + 1, 0).getDate();
+  return {
+    startDate: `${year}-${mm}-01`,
+    endDate: `${year}-${mm}-${String(ultimoDia).padStart(2, '0')}`,
+  };
+};
+
 /**
  * Dias úteis restantes no período, a partir de (mas sem incluir) a data informada.
  *
