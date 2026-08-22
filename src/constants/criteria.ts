@@ -1,4 +1,4 @@
-import type { Canal, TipoResposta } from '../types/domain';
+import type { TipoResposta } from '../types/domain';
 
 // Taxonomia oficial dos critérios de monitoria (CYF: 24 critérios + 4 eliminatórios).
 // Single Source of Truth para categorias, tipos de resposta e canais aplicáveis a um Critério.
@@ -22,4 +22,6 @@ export const RESPONSE_TYPES: { value: TipoResposta; label: string }[] = [
   { value: 'MULTIPLA_ESCOLHA', label: 'Múltipla Escolha (classificação)' },
 ];
 
-export const CHANNELS: Canal[] = ['Chat', 'WhatsApp', 'E-mail', 'Telefone', 'Presencial', 'Teams'];
+// Reexportado de canais.ts: duas listas de canais em arquivos diferentes é a mesma
+// duplicação que a 2A eliminou nas regras de contagem. A ordem passa a ser a de CANAIS.
+export { CANAIS as CHANNELS } from './canais';

@@ -234,8 +234,22 @@ export interface MonitorGoal {
   targetQty: number;
 }
 
+/**
+ * Meta de uma colaboradora num período.
+ *
+ * `canal` ausente significa META GERAL: qualquer canal atende. Presente, a meta vale só para
+ * aquele canal, e a colaboradora passa a ter uma linha por canal.
+ *
+ * O campo é opcional de propósito — todo registro gravado antes da 2A.6 é, por definição, uma
+ * meta geral. Nenhuma migração, nenhuma reescrita de dado, DATABASE_VERSION intocado.
+ *
+ * REGRA: geral e por canal são mutuamente exclusivas para a mesma colaboradora no mesmo
+ * período. Ter as duas não tem resposta certa — o canal abateria a geral ou somaria a ela? A
+ * exclusividade é defendida no goalService e bloqueada no Planejamento.
+ */
 export interface ColaboradorGoal extends MonitorGoal {
   colaboradorId: string;
+  canal?: Canal;
 }
 
 export interface BrandConfig {

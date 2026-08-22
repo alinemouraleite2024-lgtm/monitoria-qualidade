@@ -1,4 +1,5 @@
 import { CRITERION_CATEGORIES, RESPONSE_TYPES, CHANNELS } from '../../../constants/criteria';
+import { canalLabel } from '../../../constants/canais';
 
 export const CriterionModal = ({
   newCriterion,
@@ -147,7 +148,7 @@ export const CriterionModal = ({
                       setNewCriterion({ ...newCriterion, channels: updatedChans });
                     }}
                   />
-                  {chan}
+                  {canalLabel(chan)}
                 </label>
               );
             })}

@@ -1,6 +1,7 @@
 import { FileSpreadsheet, CheckCircle2, AlertTriangle, Layers, Award, TrendingUp, Clock } from 'lucide-react';
 import { isInPeriod } from '../../domain/period';
 import { countsForCarteiraGoal } from '../../domain/monitoringRules';
+import { canalLabel } from '../../constants/canais';
 
 export const DashboardScreen = ({
   settings,
@@ -390,7 +391,7 @@ export const DashboardScreen = ({
                                       </div>
                                     </div>
                                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                                      Status: <strong style={{ color: 'var(--text-main)' }}>{m.status}</strong> • Canal: {m.canal}
+                                      Status: <strong style={{ color: 'var(--text-main)' }}>{m.status}</strong> • Canal: {canalLabel(m.canal)}
                                     </div>
                                     <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
                                       {new Date(m.date).toLocaleString('pt-BR')}

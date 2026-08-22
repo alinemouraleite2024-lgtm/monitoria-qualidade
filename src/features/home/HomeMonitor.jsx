@@ -1,6 +1,7 @@
 import { UserCheck, PlusCircle, Activity, BarChart3, Search } from 'lucide-react';
 import { getScoreConcept } from '../../scoreUtils';
 import { getCurrentPeriod, isInPeriod } from '../../domain/period';
+import { canalLabel } from '../../constants/canais';
 
 // Home do Monitor.
 //
@@ -126,7 +127,7 @@ export const HomeMonitor = ({ currentUser, demands, monitorings, collaborators, 
                     <tr key={m.id}>
                       <td style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>{m.id}</td>
                       <td style={{ fontSize: '0.85rem' }}>{col ? col.name : m.colaboradorId}</td>
-                      <td><span className="badge-pill badge-info">{m.canal}</span></td>
+                      <td><span className="badge-pill badge-info">{canalLabel(m.canal)}</span></td>
                       <td style={{ fontWeight: '700', color: m.finalScore >= 75 ? 'var(--primary)' : 'var(--danger)' }}>{m.finalScore.toFixed(2)}%</td>
                     </tr>
                   )

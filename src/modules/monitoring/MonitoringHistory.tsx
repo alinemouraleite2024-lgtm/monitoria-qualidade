@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, CheckCircle2, User as UserIcon, Clock, FileText, Check, AlertCircle } from 'lucide-react';
 import { getScoreConcept } from '../../scoreUtils';
+import { canalLabel } from '../../constants/canais';
 import type { Collaborator, Criterion, Monitoring, User } from '../../types/domain';
 
 interface MonitoringHistoryProps {
@@ -88,7 +89,7 @@ export const MonitoringHistory = ({
             </div>
             <div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>Canal</div>
-              <div style={{ fontSize: '0.9rem', fontWeight: '500' }}>{monitoring.canal}</div>
+              <div style={{ fontSize: '0.9rem', fontWeight: '500' }}>{canalLabel(monitoring.canal)}</div>
             </div>
             <div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>Data</div>

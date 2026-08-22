@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Search, Filter, Plus, Edit, Eye, Trash2, Calendar, FileSpreadsheet } from 'lucide-react';
 import { getScoreConcept } from '../../scoreUtils';
+import { CANAIS, canalLabel } from '../../constants/canais';
 import type { Collaborator, Monitoring, User } from '../../types/domain';
 
 interface MonitoringListProps {
@@ -116,12 +117,9 @@ export const MonitoringList = ({
             <label className="form-label">Canal</label>
             <select className="form-control" value={filterCanal} onChange={(e) => setFilterCanal(e.target.value)}>
               <option value="ALL">Todos os Canais</option>
-              <option value="WhatsApp">WhatsApp</option>
-              <option value="Telefone">Telefone</option>
-              <option value="Teams">Teams</option>
-              <option value="Presencial">Presencial</option>
-              <option value="E-mail">E-mail</option>
-              <option value="Chat">Chat</option>
+              {CANAIS.map(c => (
+                <option key={c} value={c}>{canalLabel(c)}</option>
+              ))}
             </select>
           </div>
 
@@ -185,7 +183,7 @@ export const MonitoringList = ({
                     <div style={{ fontWeight: '500' }}>{getColabName(m.colaboradorId)}</div>
                   </td>
                   <td>{getUserName(m.monitorId)}</td>
-                  <td>{m.canal}</td>
+                  <td>{canalLabel(m.canal)}</td>
                   <td>{new Date(m.date).toLocaleDateString('pt-BR')}</td>
                   <td>
                     {m.status !== 'Rascunho' ? (

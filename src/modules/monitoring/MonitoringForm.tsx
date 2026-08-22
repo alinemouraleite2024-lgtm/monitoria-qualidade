@@ -6,6 +6,7 @@ import {
   Lightbulb, Target, BookOpen, ChevronDown, ChevronUp, HelpCircle 
 } from 'lucide-react';
 import { SearchableSelect } from '../../components/SearchableSelect';
+import { CANAIS, canalLabel } from '../../constants/canais';
 import { getScoreConcept } from '../../scoreUtils';
 import type { Collaborator, Criterion, Monitoring, User } from '../../types/domain';
 
@@ -582,12 +583,9 @@ export const MonitoringForm = ({
                           style={{ borderColor: (hasAttemptedNext && !formData.canal) ? '#ef4444' : '#d1d5db', backgroundColor: '#f9fafb' }}
                         >
                           <option value="">Selecione...</option>
-                          <option value="WhatsApp">WhatsApp</option>
-                          <option value="Telefone">Telefone</option>
-                          <option value="Teams">Teams</option>
-                          <option value="Presencial">Presencial</option>
-                          <option value="E-mail">E-mail</option>
-                          <option value="Chat">Chat</option>
+                          {CANAIS.map(c => (
+                            <option key={c} value={c}>{canalLabel(c)}</option>
+                          ))}
                         </select>
                       </div>
                       

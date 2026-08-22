@@ -138,6 +138,7 @@ import {
   businessDaysRemainingIn,
 } from './domain/period';
 import { countsForCarteiraGoal } from './domain/monitoringRules';
+import { canalLabel } from './constants/canais';
 import { getCarteiraProgress } from './domain/goalService';
 import { isManagerRole as isManagerUser } from './domain/authorizationService';
 
@@ -906,7 +907,7 @@ function AppContent() {
       const col = users.find(u => u.id === m.colaboradorId)?.name || 'N/A';
       const formattedDate = new Date(m.date).toLocaleDateString('pt-BR');
       const cleanComments = (m.comments ?? '').replace(/"/g, '""');
-      csvContent += `"${m.id}","${formattedDate}","${mon}","${col}","${m.canal}","${m.tipo}","${m.status}","${m.finalScore.toFixed(2)}%","${cleanComments}"\n`;
+      csvContent += `"${m.id}","${formattedDate}","${mon}","${col}","${canalLabel(m.canal)}","${m.tipo}","${m.status}","${m.finalScore.toFixed(2)}%","${cleanComments}"\n`;
     });
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
@@ -929,7 +930,7 @@ function AppContent() {
           <td>${new Date(m.date).toLocaleDateString('pt-BR')}</td>
           <td>${mon}</td>
           <td>${col}</td>
-          <td>${m.canal} (${m.tipo})</td>
+          <td>${canalLabel(m.canal)} (${m.tipo})</td>
           <td>${m.status}</td>
           <td style="font-weight: bold; color: ${m.finalScore >= 95 ? '#008443' : m.finalScore >= 75 ? '#f59e0b' : '#ef4444'}">${m.finalScore.toFixed(2)}%</td>
           <td>${m.comments}</td>
