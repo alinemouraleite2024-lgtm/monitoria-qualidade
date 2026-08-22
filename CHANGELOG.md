@@ -5,6 +5,62 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2026-08-22 — Metas por canal (Fatia 2A.6)
+
+> Algumas colaboradoras precisam de meta por canal — 5 de WhatsApp e 5 de Ligação —, e outras
+> de uma meta geral que qualquer canal atende. Esta versão traz o modelo, a aritmética correta
+> e a tela para cadastrar as duas formas.
+>
+> A consequência menos óbvia é aritmética: **excedente num canal não cobre déficit em outro**.
+> Meta 5+5 com 6 de WhatsApp e 0 de Ligação não é 6/10 — é cobertura 5, faltam 5.
+
+### Added
+- **Escopo de meta.** `ColaboradorGoal` ganhou `canal?`: ausente significa meta geral, presente
+  significa meta daquele canal. O campo é opcional de propósito — todo registro anterior é, por
+  definição, uma meta geral. Sem migração, sem reescrita de dado.
+- **Seletor de escopo no Planejamento**, com "Meta geral (qualquer canal atende)" ou
+  "Somente <canal>".
+- **Exclusão de meta**, que não existia: o formulário só criava e atualizava. Sem ela, trocar
+  uma colaboradora de meta geral para meta por canal era impossível pela tela — ela ficaria com
+  as duas, exatamente o estado que a regra proíbe.
+- **Quadro de metas agrupado por colaboradora**, com a forma da meta e o total na linha da
+  pessoa e um escopo por linha abaixo.
+- `assertMetasConsistentes`, ligado à tela: estado proibido que entre por outro caminho passa a
+  ser exibido em vez de calculado em silêncio.
+
+### Changed
+- **"Ligação" passa a ser o único termo visível.** A operação fala ligação; o dado continua
+  gravando `Telefone`, e migrar todas as monitorias já registradas seria risco sem retorno. O
+  canal era renderizado em **nove pontos**, cada um com seu próprio texto — formulário, filtro,
+  tabela, detalhe, Home, Dashboard, modal de critérios, CSV e PDF. Trocar só o formulário
+  deixaria a tela dizendo "Ligação" e o relatório enviado por e-mail dizendo "Telefone". Agora
+  há um vocabulário único em `constants/canais.ts`, e as exportações também dizem Ligação.
+- **`completed` virou dois números.** `entregues` é o que a pessoa fez, sem teto; `cobertura` é
+  quanto disso fecha meta, com teto por escopo. `remaining` passou a ser a soma dos déficits por
+  escopo, nunca `target − entregues`. Os dois existem juntos para que trabalho acima da quota
+  continue visível em vez de sumir da tela.
+- **`MetaColaboradora`** é uma união discriminada — `nenhuma | geral | por-canal` — na qual
+  "geral + por canal" é irrepresentável: a exclusividade deixou de depender de disciplina e
+  passou a depender do compilador.
+- `constants/criteria.ts` deixou de manter sua própria lista de canais. Efeito cosmético: a
+  ordem dos canais no modal de critérios mudou.
+
+### Fixed
+- **Salvar a meta de um canal sobrescrevia a de outro.** A busca por meta existente ignorava o
+  escopo, comparando apenas monitor, colaboradora e período — cadastrar 5 de WhatsApp e 5 de
+  Ligação era impossível, porque a segunda apagava a primeira.
+- **Meta geral e meta por canal podiam coexistir**, sem resposta definida para qual prevalece.
+  Agora há bloqueio na tela, com explicação do caminho, e recusa no handler para o caso de o
+  envio ser forçado por outro caminho.
+- O Dashboard exibia "5 (6 validadas)" — mais validadas do que realizadas —, porque as
+  validadas contavam sem teto e a cobertura tem teto.
+
+### Notas de operação
+- **As metas de agosto devem ser cadastradas no formato definitivo:** Nathalia e Allanis com
+  5 de WhatsApp e 5 de Ligação cada; Susana e Ana Carla com meta geral de 5. Total da
+  carteira: **30**.
+- `DATABASE_VERSION` permanece em 10. Metas já gravadas continuam válidas como metas gerais.
+
 ## [0.10.0] - 2026-08-22 — Dados operacionais destravados (Fatia 2A)
 
 > Cinco correções estruturais que preparam a futura fila operacional de Monitorias. Nenhuma
