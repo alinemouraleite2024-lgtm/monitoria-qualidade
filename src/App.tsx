@@ -78,7 +78,6 @@ import { RolesManagement } from './modules/admin/RolesManagement';
 import { AuditLogs } from './modules/admin/AuditLogs';
 import { MyProfile } from './modules/profile/MyProfile';
 
-import { MonitoringList } from './modules/monitoring/MonitoringList';
 import { MonitoringQueueScreen } from './features/monitorings/MonitoringQueueScreen';
 import { MonitoringForm } from './modules/monitoring/MonitoringForm';
 import { MonitoringHistory } from './modules/monitoring/MonitoringHistory';
@@ -882,6 +881,10 @@ function AppContent() {
     }));
   };
 
+  // Sem consumidor entre a 2B.4 e a 2B.2: a listagem que o usava saiu de /monitorings e a
+  // ação de cancelar reaparece com a tabela em Relatórios, aí sim com o gate de
+  // DELETE_MONITORING que hoje ela não tem.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleCancelMonitoring = (monId: string) => {
     if (confirm('Deseja realmente cancelar esta monitoria?')) {
       const updated = monitorings.map(m => {
@@ -1148,7 +1151,6 @@ function AppContent() {
 
             <Route path="/monitorings" element={
               <Screen tab="monitorings" role={currentUser.role}>
-                {currentUser.role === 'MONITOR' ? (
                   <MonitoringQueueScreen
                     currentUser={currentUser}
                     monitorings={monitorings}
@@ -1166,24 +1168,16 @@ function AppContent() {
                       setShowDetailModal(true);
                     }}
                     onEditar={(m) => navigate(`/monitorings/${m.id}/edit`)}
+                    onValidar={handleApproveMonitoring}
                     onVerRelatorios={() => navigate('/reports')}
                   />
-                ) : (
-                  <MonitoringList 
-                    monitorings={monitorings}
-                    users={users}
-                    collaborators={getCollaborators()}
-                    onNewMonitoring={() => { setSeedNovaMonitoria({ colaboradorId: '', canal: '' }); navigate('/monitorings/new'); }}
-                    onView={(m) => {
-                      setSelectedMonitoringDetail(m);
-                      setShowDetailModal(true);
-                    }}
-                    onEdit={(m) => navigate(`/monitorings/${m.id}/edit`)}
-                    onDelete={handleCancelMonitoring}
-                  />
-                )}
               </Screen>
             } />
+
+            {/* A Central de Monitorias saiu de /monitorings. A tabela, a busca e os cinco
+                filtros passam a viver em Relatórios na 2B.2 — histórico e análise pertencem
+                lá, não à agenda do dia. O componente segue no repositório, sem rota, até a
+                migração fechar. */}
 
             <Route path="/monitorings/new" element={
               <Screen tab="monitoring-new" role={currentUser.role}>

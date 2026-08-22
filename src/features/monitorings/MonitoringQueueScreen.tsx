@@ -17,10 +17,14 @@ import {
   getPendencias,
   getAguardandoValidacao,
   getForaDaQuota,
+  getFilaDeValidacao,
+  getRitmoDaEquipe,
+  getRiscoDoMes,
   matchesBusca,
 } from '../../domain/queueService';
 import { PeriodProgress } from './PeriodProgress';
 import { MonitorQueue } from './MonitorQueue';
+import { ManagerQueue } from './ManagerQueue';
 
 interface MonitoringQueueScreenProps {
   currentUser: User;
@@ -33,6 +37,7 @@ interface MonitoringQueueScreenProps {
   onNovaMonitoria: (colaboradorId?: string, canal?: string | null) => void;
   onAbrir: (m: Monitoring) => void;
   onEditar: (m: Monitoring) => void;
+  onValidar: (id: string) => void;
   onVerRelatorios: () => void;
 }
 
@@ -47,9 +52,14 @@ export const MonitoringQueueScreen = ({
   onNovaMonitoria,
   onAbrir,
   onEditar,
+  onValidar,
   onVerRelatorios,
 }: MonitoringQueueScreenProps) => {
   const [busca, setBusca] = useState('');
+
+  // Gestora e administradora veem a mesma fila: as duas aprovam, devolvem e gerenciam os
+  // mesmos registros, e divergir aqui criaria um caso especial sem motivo.
+  const ehGestao = currentUser.role === 'GESTOR' || currentUser.role === 'ADMIN';
 
   const periodo = getCurrentPeriod();
   const hoje = todayISO();
@@ -74,6 +84,9 @@ export const MonitoringQueueScreen = ({
       validadasNaCobertura,
       aguardandoNaCobertura,
       ritmo: diasUteis > 0 ? (progresso.remaining / diasUteis).toFixed(1) : String(progresso.remaining),
+      filaValidacao: getFilaDeValidacao(monitorings, periodo, hoje),
+      ritmoEquipe: getRitmoDaEquipe(ctx, users.filter((u) => u.role === 'MONITOR'), periodo, hoje),
+      risco: getRiscoDoMes(ctx, users.filter((u) => u.role === 'MONITOR'), periodo, hoje),
       fila: getFilaDaCarteira(ctx, monitorId, periodo, hoje),
       pendencias: getPendencias(monitorings, monitorId, periodo),
       aguardando: getAguardandoValidacao(monitorings, monitorId, periodo, hoje),
@@ -98,6 +111,9 @@ export const MonitoringQueueScreen = ({
     outroTipo: filtra(dados.foraDaQuota.outroTipo),
     semMeta: filtra(dados.foraDaQuota.semMeta),
   };
+  const filaValidacao = dados.filaValidacao.filter((x) =>
+    matchesBusca(x.monitoring, busca, nomeDe(x.monitoring.colaboradorId))
+  );
 
   return (
     <div className="animate-fade-in" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -105,13 +121,32 @@ export const MonitoringQueueScreen = ({
       <div className="page-header">
         <div>
           <h1 className="page-title">Monitorias · {rotulo}</h1>
-          <p className="page-subtitle">O que você precisa monitorar neste mês.</p>
+          <p className="page-subtitle">
+            {ehGestao
+              ? 'O que precisa da sua validação neste mês.'
+              : 'O que você precisa monitorar neste mês.'}
+          </p>
         </div>
         <button className="btn btn-primary" onClick={() => onNovaMonitoria()}>
           <Plus size={16} /> Nova Monitoria
         </button>
       </div>
 
+      {ehGestao ? (
+        <ManagerQueue
+          fila={filaValidacao}
+          ritmo={dados.ritmoEquipe}
+          risco={dados.risco}
+          colaboradorasPorId={porId(collaborators)}
+          monitoresPorId={porId(users)}
+          busca={busca}
+          onBusca={setBusca}
+          onValidar={onValidar}
+          onAbrir={onAbrir}
+          onVerRelatorios={onVerRelatorios}
+        />
+      ) : (
+        <>
       <PeriodProgress
         periodoLabel={rotulo}
         hasGoal={dados.progresso.hasGoal}
@@ -138,6 +173,12 @@ export const MonitoringQueueScreen = ({
         onEditar={onEditar}
         onVerRelatorios={onVerRelatorios}
       />
+        </>
+      )}
     </div>
   );
 };
+
+/** Índice por id, para a tela não varrer a lista a cada linha. */
+const porId = <T extends { id: string }>(lista: T[]): Record<string, T | undefined> =>
+  Object.fromEntries(lista.map((x) => [x.id, x]));

@@ -17,8 +17,8 @@
 
 import type { Canal, Collaborator, Holiday, Monitoring, User } from '../types/domain';
 import type { Period } from './period';
-import { isInPeriod, parseData } from './period';
-import { getCarteira } from './allocationService';
+import { isInPeriod, parseData, businessDaysRemainingIn } from './period';
+import { getCarteira, getSemVinculo } from './allocationService';
 import {
   countsForCarteiraGoal,
   countsOutsideCarteira,
@@ -27,6 +27,8 @@ import {
 import {
   getMetaDaColaboradora,
   getEscoposDaColaboradora,
+  getCarteiraProgress,
+  type CarteiraProgress,
   type EscopoProgresso,
   type MetaColaboradora,
 } from './goalService';
@@ -275,6 +277,83 @@ export const getForaDaQuota = (
   return {
     outroTipo: doPeriodo.filter(countsOutsideCarteira),
     semMeta,
+  };
+};
+
+// ---------------------------------------------------------------------------
+// Visão da gestora
+// ---------------------------------------------------------------------------
+
+export interface RitmoDoMonitor {
+  monitor: User;
+  progresso: CarteiraProgress;
+  diasUteis: number;
+  /** Quantas por dia útil restante para fechar o mês. */
+  ritmo: number;
+}
+
+/**
+ * Progresso de cada monitor no período, do mais atrasado para o menos.
+ *
+ * "Atrasado" aqui é o ritmo necessário, não a lacuna absoluta: quem precisa de 3 por dia está
+ * em situação pior do que quem precisa de 1, mesmo que a lacuna do segundo seja maior.
+ */
+export const getRitmoDaEquipe = (
+  ctx: FilaContexto,
+  monitores: User[],
+  period: Period,
+  hojeISO: string
+): RitmoDoMonitor[] => {
+  const diasUteis = businessDaysRemainingIn(period, hojeISO);
+  return monitores
+    .map((monitor) => {
+      const progresso = getCarteiraProgress(ctx.goals, ctx.monitorings, monitor.id, period);
+      return {
+        monitor,
+        progresso,
+        diasUteis,
+        ritmo: diasUteis > 0 ? progresso.remaining / diasUteis : progresso.remaining,
+      };
+    })
+    .sort((a, b) => b.ritmo - a.ritmo);
+};
+
+export interface ColaboradoraEmRisco {
+  colaborador: Collaborator;
+  monitor: User | null;
+  alvo: number;
+}
+
+export interface RiscoDoMes {
+  /** Com meta definida e nenhuma monitoria que conte. */
+  semCobertura: ColaboradoraEmRisco[];
+  /**
+   * Sem vínculo de carteira vigente. Não é falta de monitoria: é falta de carteira, e o
+   * conserto é outro — resolver o vínculo em Equipe. Por isso vem separada.
+   */
+  semVinculo: Collaborator[];
+}
+
+export const getRiscoDoMes = (
+  ctx: FilaContexto,
+  monitores: User[],
+  period: Period,
+  hojeISO: string
+): RiscoDoMes => {
+  const { collaborators, allocations = [], holidays = [], users = [] } = ctx;
+  const semCobertura: ColaboradoraEmRisco[] = [];
+
+  for (const monitor of monitores) {
+    for (const linha of getFilaDaCarteira(ctx, monitor.id, period, hojeISO)) {
+      if (linha.meta.tipo !== 'nenhuma' && linha.cobertura === 0) {
+        semCobertura.push({ colaborador: linha.colaborador, monitor, alvo: linha.alvo });
+      }
+    }
+  }
+
+  return {
+    semCobertura,
+    semVinculo: getSemVinculo({ allocations, holidays, users }, collaborators, hojeISO),
   };
 };
 
