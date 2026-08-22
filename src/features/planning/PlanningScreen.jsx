@@ -1,5 +1,5 @@
-import { isInPeriod } from '../../domain/period';
-import { countsForCarteiraGoal, isValidated } from '../../domain/monitoringRules';
+import { getEscopoProgresso } from '../../domain/goalService';
+import { canalLabel } from '../../constants/canais';
 
 export const PlanningScreen = ({
   users = /** @type {import('../../types/domain').User[]} */ ([]),
@@ -109,15 +109,12 @@ export const PlanningScreen = ({
                         const mon = users.find(u => u.id === goal.monitorId)?.name || 'N/A';
                         const col = users.find(u => u.id === goal.colaboradorId)?.name || 'N/A';
 
-                        // Feito conta no envio; validado aparece à parte, na coluna ao lado.
-                        const feitas = monitorings.filter(m =>
-                          m.monitorId === goal.monitorId
-                          && m.colaboradorId === goal.colaboradorId
-                          && isInPeriod(m.date, periodoAtual)
-                          && countsForCarteiraGoal(m)
-                        );
-                        const completed = feitas.length;
-                        const validadas = feitas.filter(isValidated).length;
+                        // Cada linha do quadro é um escopo de meta: geral, ou de um canal. A
+                        // contagem respeita o escopo — meta de WhatsApp só é abatida por
+                        // monitoria de WhatsApp.
+                        const e = getEscopoProgresso(goal, monitorings, periodoAtual);
+                        const completed = e.entregues;
+                        const validadas = e.validadas;
 
                         return (
                           <tr key={goal.id}>
@@ -132,17 +129,22 @@ export const PlanningScreen = ({
                                 {renderUserAvatar(col)}
                                 <span>{col}</span>
                               </div>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                                {goal.canal ? canalLabel(goal.canal) : 'Meta geral'}
+                              </span>
                             </td>
                             <td style={{ fontWeight: 'bold' }}>{goal.targetQty}</td>
                             <td style={{ fontWeight: 'bold' }}>{completed}</td>
                             <td style={{ color: 'var(--text-muted)' }}>{validadas}</td>
-                            <td>{Math.max(0, goal.targetQty - completed)}</td>
+                            <td>{e.falta}</td>
                             <td>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <div className="progress-container" style={{ width: '80px', margin: 0, height: '4px' }}>
-                                  <div className="progress-fill" style={{ width: `${Math.min(100, Math.round((completed/goal.targetQty)*100))}%`, backgroundColor: completed >= goal.targetQty ? '#10b981' : 'var(--primary)' }} />
+                                  {/* Progresso pela COBERTURA, não pelo entregue: entregar
+                                      além do alvo não faz o escopo passar de 100%. */}
+                                  <div className="progress-fill" style={{ width: `${Math.round((e.cobertura/goal.targetQty)*100)}%`, backgroundColor: e.falta === 0 ? '#10b981' : 'var(--primary)' }} />
                                 </div>
-                                <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>{Math.min(100, Math.round((completed/goal.targetQty)*100))}%</span>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>{Math.round((e.cobertura/goal.targetQty)*100)}%</span>
                               </div>
                             </td>
                           </tr>

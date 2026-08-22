@@ -1,6 +1,5 @@
 import { FileSpreadsheet, CheckCircle2, AlertTriangle, Layers, Award, TrendingUp, Clock } from 'lucide-react';
-import { isInPeriod } from '../../domain/period';
-import { countsForCarteiraGoal } from '../../domain/monitoringRules';
+import { getMetaDaColaboradora, getEscoposDaColaboradora } from '../../domain/goalService';
 import { canalLabel } from '../../constants/canais';
 
 export const DashboardScreen = ({
@@ -86,7 +85,7 @@ export const DashboardScreen = ({
                 
                 allMonitors.forEach(m => {
                   const s = getMonitorStats(m.id);
-                  totalRealizadas += s.completed;
+                  totalRealizadas += s.cobertura;
                   totalMeta += s.target;
                 });
                 
@@ -101,7 +100,7 @@ export const DashboardScreen = ({
                 pace = Math.ceil((totalMeta - totalRealizadas) / Math.max(businessDaysRemaining, 1));
               } else {
                 const stats = getMonitorStats(currentUser.id);
-                totalRealizadas = stats.completed;
+                totalRealizadas = stats.cobertura;
                 totalMeta = stats.target;
                 // Monitor's unmonitored colabs
                 const myUnmonitored = getUnmonitoredCollaborators(currentUser.id);
@@ -282,11 +281,12 @@ export const DashboardScreen = ({
                                         <>
                                           <td style={{ fontWeight: 'bold' }}>{s.target}</td>
                                           <td style={{ fontWeight: 'bold' }}>
-                                            {s.completed}
-                                            {s.completed > 0 && (
-                                              <span style={{ fontWeight: '500', fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: '0.35rem' }}>
-                                                ({s.validated} validadas)
-                                              </span>
+                                            {s.cobertura}
+                                            {s.entregues > 0 && (
+                                              <div style={{ fontWeight: '500', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                                                {s.entregues} entregues · {s.validated} validadas
+                                                {(s.excedente + s.outOfGoal) > 0 && ` · ${s.excedente + s.outOfGoal} fora da quota`}
+                                              </div>
                                             )}
                                           </td>
                                           <td>{s.remaining}</td>
@@ -309,10 +309,12 @@ export const DashboardScreen = ({
                                 })
                               ) : (
                                 getCarteiraDe(currentUser.id).map(c => {
-                                  const completed = monitorings.filter(m => m.colaboradorId === c.id && m.monitorId === currentUser.id && isInPeriod(m.date, periodoAtual) && countsForCarteiraGoal(m)).length;
-                                  // 2A.2: sem `|| 5`. A ausência de meta é informada, não preenchida com um número.
-                                  const goal = colaboradorGoals.find(g => g.monitorId === currentUser.id && g.colaboradorId === c.id && g.year === periodoAtual.year && g.month === periodoAtual.month);
-                                  const goalVal = goal ? goal.targetQty : null;
+                                  // Sem `|| 5`: a ausência de meta é informada, não preenchida com um número.
+                                  const meta = getMetaDaColaboradora(colaboradorGoals, currentUser.id, c.id, periodoAtual);
+                                  const escopos = getEscoposDaColaboradora(colaboradorGoals, monitorings, currentUser.id, c.id, periodoAtual);
+                                  const goalVal = meta.tipo === 'nenhuma' ? null : meta.alvo;
+                                  // Cobertura, e não total entregue: excedente num canal não cobre déficit em outro.
+                                  const completed = escopos.reduce((s, e) => s + e.cobertura, 0);
                                   const prog = goalVal ? Math.min(100, Math.round((completed / goalVal) * 100)) : 0;
                                   return (
                                     <tr key={c.id}>
