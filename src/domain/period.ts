@@ -33,9 +33,27 @@ export const getCurrentPeriod = (): Period => {
   return { year: d.getFullYear(), month: d.getMonth() };
 };
 
+/**
+ * Converte uma data do sistema em Date, no fuso LOCAL.
+ *
+ * `new Date('2026-08-01')` é interpretado pelo JavaScript como meia-noite UTC — que em
+ * Brasília (UTC-3) é 31 de julho às 21h. Sem este tratamento, `periodOf('2026-08-01')`
+ * devolve julho, `isInPeriod` recusa o primeiro dia do mês e os dias úteis restantes zeram
+ * no dia 1º. As monitorias escapam por acaso, porque são gravadas com `T12:00:00Z` e meio-dia
+ * UTC cai no mesmo dia do calendário em qualquer fuso do Brasil; as datas puras, não.
+ *
+ * String com hora é entregue ao construtor como está; `YYYY-MM-DD` é montada componente a
+ * componente, que é a única forma de obter meia-noite local.
+ */
+export const parseData = (dateStr: string): Date => {
+  const soData = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+  if (!soData) return new Date(dateStr);
+  return new Date(Number(soData[1]), Number(soData[2]) - 1, Number(soData[3]));
+};
+
 /** Período a que uma data pertence. Aceita tanto `YYYY-MM-DD` quanto ISO com hora. */
 export const periodOf = (dateStr: string): Period => {
-  const d = new Date(dateStr);
+  const d = parseData(dateStr);
   return { year: d.getFullYear(), month: d.getMonth() };
 };
 
