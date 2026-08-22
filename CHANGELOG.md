@@ -5,6 +5,64 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] - 2026-08-22 — Fila operacional de Monitorias (Fatia 2B)
+
+> Monitorias deixou de ser uma central de busca e virou a **agenda de trabalho do mês**.
+> Relatórios virou a consulta e o histórico. A pergunta da tela mudou de "quais monitorias
+> existem" para **"o que eu preciso fazer agora"**.
+>
+> Nenhuma capacidade foi perdida na mudança: o que saiu de Monitorias chegou em Relatórios.
+
+### Added
+- **Fila da Monitora.** Ao abrir Monitorias, a tela mostra a meta do mês, o progresso, quem
+  falta monitorar e **de qual canal**, o que voltou para correção e o que aguarda validação.
+  Sem filtros: a ordem das linhas já é a resposta — quem tem zero primeiro, depois a maior
+  lacuna, depois quem está há mais tempo sem avaliação.
+- **O botão nomeia o canal.** Com meta por canal, a unidade de trabalho é o par
+  (colaboradora, canal): Allanis com WhatsApp 1/5 e Ligação 4/5 recebe **"Monitorar
+  WhatsApp"**. Clicar abre o formulário já com a colaboradora e o canal preenchidos — e como
+  os critérios são filtrados por canal, o checklist certo já vem junto.
+- **Fila da Gestora**, na mesma rota. Fila de validação ordenada por antiguidade, com
+  **Validar na própria linha**; ritmo da equipe pelo ritmo necessário, não pela lacuna
+  absoluta; e risco do mês separando "tem meta e nenhuma monitoria" de "não tem carteira".
+  Administradora vê a mesma fila.
+- **Monitoria com critério eliminatório sinalizado não oferece "Validar"**, só *Analisar*:
+  zerar a nota é decisão da gestora e não pode sair de um clique de rotina numa fila.
+- **Busca por protocolo na fila**, discreta. O protocolo é a chave que liga a monitoria ao
+  atendimento — e adiante ao CSAT e ao NPS. Ela restringe as listas de registros, nunca a
+  lista de quem falta monitorar.
+- Dois módulos de domínio: `queueService`, que compõe os quatro serviços da 2A sem regra
+  própria, e `historyFilter`, o predicado único do histórico.
+
+### Changed
+- **A Central de Monitorias mudou de endereço.** A tabela de oito colunas, a busca, os cinco
+  filtros e as ações agora vivem em **Relatórios**, que passou a se chamar *Relatórios e
+  Histórico de Qualidade*. O componente não foi reescrito — reescrever custaria os detalhes já
+  corretos: os badges de Zerada e Eliminatório Pendente, o conceito abaixo da nota, o N/A para
+  rascunho.
+- **Um conjunto único de registros alimenta a tabela, o CSV e o PDF.** O que aparece na tela é
+  exatamente o que será exportado, com os filtros aplicados.
+- Relatórios distingue duas ausências que pareciam uma: competência sem registro esconde a
+  tabela; filtro que não achou nada **não** esconde — sem os controles, o usuário não consegue
+  desfazer o próprio filtro.
+
+### Fixed
+- **Bug de fuso horário publicado na 0.10.0.** `new Date('2026-08-01')` é interpretado como
+  meia-noite UTC, que em Brasília é 31 de julho às 21h. `periodOf('2026-08-01')` devolvia
+  **julho**, e os dias úteis restantes zeravam **no dia 1º de cada mês** — o que faria o ritmo
+  diário dividir a meta inteira por 1. As monitorias escapavam por acaso, gravadas com
+  `T12:00:00Z`; as datas puras, não.
+- **A ação de excluir aparecia para os três papéis**, mas `DELETE_MONITORING` é `['ADMIN']`.
+  O botão nunca foi barrado. Ao migrar para Relatórios, ganhou o gate que já deveria ter.
+
+### Notas
+- A fila responde **sempre sobre o mês corrente**, sem seletor. Consultar meses anteriores é
+  papel de Relatórios.
+- **Melhoria futura registrada:** o registro não guarda a data de *envio*, só a do
+  atendimento, então "na fila há N dias" conta a partir do atendimento. Um campo
+  `submittedAt` opcional resolve, sem migração. Marcado no código como `referenciaExata`.
+- `DATABASE_VERSION` permanece em 10. Nenhuma mudança de formato de dado.
+
 ## [0.11.0] - 2026-08-22 — Metas por canal (Fatia 2A.6)
 
 > Algumas colaboradoras precisam de meta por canal — 5 de WhatsApp e 5 de Ligação —, e outras
