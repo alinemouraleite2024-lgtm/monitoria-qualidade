@@ -5,6 +5,68 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-08-22 — Dados operacionais destravados (Fatia 2A)
+
+> Cinco correções estruturais que preparam a futura fila operacional de Monitorias. Nenhuma
+> tela nova: o que muda é a **verdade dos números**.
+>
+> O sistema estava preso em **junho de 2026** por seis caminhos independentes, e três regras de
+> negócio não existiam como regra — existiam como expressões copiadas inline em treze pontos do
+> código. Esta versão dá um dono a cada uma delas.
+
+### Added
+- **Quatro módulos de domínio**, funções puras, testáveis sem montar React:
+  `period.ts` (que mês é este e o que cai dentro dele), `monitoringRules.ts` (o que conta, o que
+  conta à parte, o que não conta), `goalService.ts` (qual a meta e quanto já foi feito) e
+  `getCarteira`/`getSemVinculo` em `allocationService.ts` (de quem é esta colaboradora).
+- **Coluna "Validadas"** no quadro de metas do Planejamento: o que foi entregue e o que já
+  passou pela gestora deixaram de ser o mesmo número.
+- **Seletor de competência em Relatórios**, com as setas nomeando o mês de destino.
+
+### Changed
+- **Feito conta no envio.** A regra considerava concluída apenas a monitoria `Validada` ou
+  `Concluída`. Como a monitoria da monitora nasce `Pendente`, o trabalho feito não aparecia no
+  progresso até alguém validar — o contador exibiria zero depois de um mês inteiro de trabalho.
+  E `Concluída` nunca é gravada por caminho nenhum: metade da condição era letra morta.
+- **Meta por colaboradora virou a única fonte da verdade.** O alvo era
+  `Math.max(metaGlobalDoMonitor, somaDasMetasPorColaboradora)` — duas metas concorrentes
+  resolvidas escolhendo a maior, sem que nada na tela dissesse qual venceu.
+- **"Quem falta monitorar" passou a respeitar a carteira vigente.** Antes varria todas as
+  colaboradoras cadastradas, inclusive quem não tem vínculo com ninguém e por isso jamais
+  poderia ser monitorada por quem estivesse olhando a lista.
+- **Sem meta no período, o sistema diz que não há meta** em vez de exibir um número. O
+  Dashboard preenchia a ausência com `|| 5`, inventando meta 5 onde não havia nenhuma.
+- Exportações nomeiam a competência: `monitorias_2026-08.csv`, e o PDF traz a competência no
+  cabeçalho.
+
+### Fixed
+- **Metas eram gravadas sempre em junho.** Os dois handlers fixavam `month: 5`: definir uma meta
+  em agosto gravava a meta de junho, em silêncio. O passo em que a gestora define quanto
+  precisa ser monitorado era, na prática, impossível de executar.
+- **Relatórios exportava apenas junho, sempre.** O período estava fixo em 01/06–30/06 num estado
+  cujo setter estava comentado no código. Em agosto, os dois botões devolviam um arquivo vazio,
+  sem mensagem. Era a mais silenciosa das cinco travas.
+- **Home do monitor comparava só o mês, sem o ano** — agosto de 2025 contaria junto com agosto
+  de 2026, erro invisível no primeiro ano de uso.
+- **Formulário de alocação pré-preenchia 05/06/2026** como início e 12/06/2026 como fim, e
+  encerrar um vínculo gravava 05/06/2026 no `endDate` e no log de auditoria — no fluxo que o
+  roteiro de operação manda usar em Menu → Equipe.
+- **Quadro de metas exibia metas de outro mês** sob o rótulo do mês corrente. Enquanto o título
+  também dizia "Junho/2026" fixo, o erro passava despercebido.
+
+### Removed
+- **Formulário "Meta Global (Volume Mensal)"** do Planejamento, junto com seu handler e estado.
+  Pedir um número que o sistema não usa é pior do que não pedir nada. Os registros já gravados
+  em `pm2_mgoals` permanecem intocados.
+- Três props do Dashboard que deixaram de ser necessárias com a regra de carteira centralizada.
+
+### Notas de operação
+- **Agosto aparece sem meta até a Raquel cadastrá-las.** Não é regressão: a semente só tem
+  junho, e a versão anterior exibia os números de junho como se fossem do mês corrente. São
+  quatro cadastros em Planejamento.
+- Nenhuma mudança de formato de dado. `DATABASE_VERSION` permanece em 10 — bumpá-la apagaria
+  todas as chaves `pm2_`, incluindo as monitorias reais do piloto.
+
 ## [0.9.0] - 2026-08-21 — Navegação da plataforma de qualidade
 
 > Reorganização do menu em torno dos três pilares da Qualidade e primeira preparação de dados
