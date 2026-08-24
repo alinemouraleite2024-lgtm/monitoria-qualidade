@@ -23,10 +23,13 @@ import {
   countsForCarteiraGoal,
   countsOutsideCarteira,
   isAwaitingValidation,
+  isValidated,
 } from './monitoringRules';
 import {
   getMetaDaColaboradora,
   getEscoposDaColaboradora,
+  getGoalsDaColaboradora,
+  getEscopoProgresso,
   getCarteiraProgress,
   type CarteiraProgress,
   type EscopoProgresso,
@@ -61,7 +64,13 @@ export interface LinhaDaFila {
   /** Canal a monitorar em seguida. `null` com meta geral; indefinido quando em dia. */
   proximaAcao: { canal: Canal | null } | undefined;
   emDia: boolean;
+  /** O que compõe a meta desta colaboradora. Alimenta a expansão da linha. */
+  detalhe: DetalheDaColaboradora;
 }
+
+/** Devolvida pela gestora: voltou a Rascunho COM motivo registrado. */
+const foiDevolvida = (m: Monitoring): boolean =>
+  m.status === 'Rascunho' && Boolean(m.adjustmentReason && m.adjustmentReason.trim());
 
 const dataDaUltima = (
   monitorings: Monitoring[],
@@ -129,6 +138,7 @@ export const getFilaDaCarteira = (
       ultimaEm: dataDaUltima(monitorings, monitorId, colaborador.id, period),
       proximaAcao: proximo ? { canal: proximo.canal } : undefined,
       emDia: meta.tipo !== 'nenhuma' && falta === 0,
+      detalhe: getDetalheDaColaboradora(ctx, monitorId, colaborador.id, period),
     };
   });
 
@@ -152,6 +162,123 @@ export const getFilaDaCarteira = (
 };
 
 // ---------------------------------------------------------------------------
+// Detalhe de uma colaboradora — a meta como VAGAS, não como contador
+// ---------------------------------------------------------------------------
+//
+// A meta de 5 não é um número que sobe: são cinco vagas, cada uma preenchida ou aberta. É a
+// diferença entre um contador e uma agenda — a monitora precisa ver O QUE compõe o 2 de 5, e
+// não apenas que faltam três.
+//
+// Só ocupam vaga as monitorias que contam para a meta (enviada ou validada, do tipo certo,
+// no canal do escopo). Devolvida, rascunho e reprovada NÃO ocupam vaga: elas explicam por que
+// a vaga está aberta, e por isso aparecem à parte em vez de desaparecer.
+
+export type EstadoDaVaga = 'validada' | 'em-validacao' | 'aberta';
+
+export interface VagaDaMeta {
+  /** 1..alvo. É a posição na agenda, não o id de nada. */
+  posicao: number;
+  estado: EstadoDaVaga;
+  monitoring?: Monitoring;
+}
+
+export interface EscopoDetalhado {
+  progresso: EscopoProgresso;
+  vagas: VagaDaMeta[];
+  /** Entregues além do alvo. Não ocupam vaga, mas foram feitas. */
+  excedentes: Monitoring[];
+  /** Devolvidas pela gestora neste escopo: exigem correção. */
+  devolvidas: Monitoring[];
+  /** Rascunhos começados e não terminados neste escopo. */
+  rascunhos: Monitoring[];
+  /** Reprovadas: não contam e reabrem a vaga. */
+  reprovadas: Monitoring[];
+}
+
+export interface DetalheDaColaboradora {
+  escopos: EscopoDetalhado[];
+  /** Entregues em canal sem meta, ou de colaboradora sem meta. */
+  foraDeMeta: Monitoring[];
+  /** Direcionadas e calibrações: contam à parte por decisão de produto. */
+  outroTipo: Monitoring[];
+}
+
+const porData = (a: Monitoring, b: Monitoring) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+
+const daColaboradoraNoPeriodo = (
+  monitorings: Monitoring[],
+  monitorId: string,
+  colaboradorId: string,
+  period: Period
+): Monitoring[] =>
+  monitorings
+    .filter(
+      (m) => m.monitorId === monitorId && m.colaboradorId === colaboradorId && isInPeriod(m.date, period)
+    )
+    .sort(porData);
+
+/**
+ * O que compõe a meta de uma colaboradora, escopo por escopo.
+ *
+ * As vagas são preenchidas em ordem de data: a monitoria mais antiga ocupa a vaga 1. Quem
+ * passar do alvo vira excedente — não some, mas também não inventa uma sexta vaga numa meta
+ * de cinco.
+ */
+export const getDetalheDaColaboradora = (
+  ctx: FilaContexto,
+  monitorId: string,
+  colaboradorId: string,
+  period: Period
+): DetalheDaColaboradora => {
+  const { monitorings, goals } = ctx;
+  const doPeriodo = daColaboradoraNoPeriodo(monitorings, monitorId, colaboradorId, period);
+  const metas = getGoalsDaColaboradora(goals, monitorId, colaboradorId, period);
+
+  const consumidas = new Set<string>();
+
+  const escopos: EscopoDetalhado[] = metas.map((goal) => {
+    const doEscopo = doPeriodo.filter((m) => !goal.canal || m.canal === goal.canal);
+    const contam = doEscopo.filter(countsForCarteiraGoal);
+
+    const vagas: VagaDaMeta[] = [];
+    for (let i = 0; i < goal.targetQty; i += 1) {
+      const m = contam[i];
+      if (m) consumidas.add(m.id);
+      vagas.push({
+        posicao: i + 1,
+        estado: m ? (isValidated(m) ? 'validada' : 'em-validacao') : 'aberta',
+        monitoring: m,
+      });
+    }
+
+    const excedentes = contam.slice(goal.targetQty);
+    excedentes.forEach((m) => consumidas.add(m.id));
+
+    const devolvidas = doEscopo.filter(foiDevolvida);
+    const rascunhos = doEscopo.filter((m) => m.status === 'Rascunho' && !foiDevolvida(m));
+    const reprovadas = doEscopo.filter((m) => m.status === 'Reprovada');
+    [...devolvidas, ...rascunhos, ...reprovadas].forEach((m) => consumidas.add(m.id));
+
+    return {
+      progresso: getEscopoProgresso(goal, monitorings, period),
+      vagas,
+      excedentes,
+      devolvidas,
+      rascunhos,
+      reprovadas,
+    };
+  });
+
+  return {
+    escopos,
+    foraDeMeta: doPeriodo.filter(
+      (m) => countsForCarteiraGoal(m) && !consumidas.has(m.id)
+    ),
+    outroTipo: doPeriodo.filter(countsOutsideCarteira),
+  };
+};
+
+// ---------------------------------------------------------------------------
 // Zona 3 — o que precisa da ação da monitora
 // ---------------------------------------------------------------------------
 
@@ -161,9 +288,6 @@ export interface Pendencias {
   /** Rascunhos comuns: começados e não terminados. */
   rascunhos: Monitoring[];
 }
-
-const foiDevolvida = (m: Monitoring): boolean =>
-  m.status === 'Rascunho' && Boolean(m.adjustmentReason && m.adjustmentReason.trim());
 
 /**
  * Separa devolvida de rascunho comum.

@@ -7,7 +7,9 @@
 // Só apresentação. Nenhuma comparação de status, nenhuma aritmética de data, nenhuma soma de
 // meta e nenhuma ordenação acontecem aqui.
 
-import { Search, PlusCircle, RotateCcw, Pencil, Clock } from 'lucide-react';
+import { useState } from 'react';
+import { Search, PlusCircle, RotateCcw, Pencil, Clock, ChevronDown, ChevronRight } from 'lucide-react';
+import { ColaboradoraDetalhe } from './ColaboradoraDetalhe';
 import type { Monitoring } from '../../types/domain';
 import type { LinhaDaFila, NaFilaDeValidacao, Pendencias, ForaDaQuota } from '../../domain/queueService';
 import { canalLabel } from '../../constants/canais';
@@ -40,6 +42,13 @@ export const MonitorQueue = ({
   onEditar,
   onVerRelatorios,
 }: MonitorQueueProps) => {
+  const [expandidas, setExpandidas] = useState<Set<string>>(new Set());
+  const alternar = (id: string) => setExpandidas((atual) => {
+    const proximo = new Set(atual);
+    if (proximo.has(id)) proximo.delete(id); else proximo.add(id);
+    return proximo;
+  });
+
   const precisamDeAcao = pendencias.devolvidas.length + pendencias.rascunhos.length;
   const nadaFora = foraDaQuota.outroTipo.length + foraDaQuota.semMeta.length === 0;
 
@@ -54,18 +63,31 @@ export const MonitorQueue = ({
           <Vazio texto="Nenhuma colaboradora vinculada à sua carteira neste mês." />
         )}
 
-        {fila.map((linha) => (
+        {fila.map((linha) => {
+          const aberta = expandidas.has(linha.colaborador.id);
+          return (
+          <div key={linha.colaborador.id}>
           <div
-            key={linha.colaborador.id}
+            onClick={() => alternar(linha.colaborador.id)}
             style={{
               display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap',
-              padding: '0.9rem 1.15rem',
+              padding: '0.9rem 1.15rem', cursor: 'pointer',
               borderTop: '1px solid var(--border-color)',
               borderLeft: `3px solid ${linha.cobertura === 0 && !linha.emDia ? 'var(--danger)' : 'transparent'}`,
               backgroundColor: linha.cobertura === 0 && !linha.emDia ? 'var(--danger-light)' : undefined,
               opacity: linha.emDia ? 0.72 : 1,
             }}
           >
+            <button
+              type="button"
+              aria-expanded={aberta}
+              aria-label={aberta ? `Recolher ${linha.colaborador.name}` : `Expandir ${linha.colaborador.name}`}
+              onClick={(e) => { e.stopPropagation(); alternar(linha.colaborador.id); }}
+              style={{ background: 'none', border: 0, cursor: 'pointer', color: 'var(--text-muted)', padding: 0, flex: 'none' }}
+            >
+              {aberta ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+            </button>
+
             <div style={{ flex: '1 1 220px', minWidth: '200px' }}>
               <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{linha.colaborador.name}</div>
               <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{linha.colaborador.cargo}</div>
@@ -95,7 +117,7 @@ export const MonitorQueue = ({
               )}
             </div>
 
-            <div style={{ flex: '0 0 auto' }}>
+            <div style={{ flex: '0 0 auto' }} onClick={(e) => e.stopPropagation()}>
               {linha.emDia ? (
                 <span className="badge-pill badge-success">Em dia</span>
               ) : (
@@ -111,7 +133,20 @@ export const MonitorQueue = ({
               )}
             </div>
           </div>
-        ))}
+
+          {aberta && (
+            <ColaboradoraDetalhe
+              detalhe={linha.detalhe}
+              semMeta={linha.meta.tipo === 'nenhuma'}
+              nome={linha.colaborador.name}
+              onMonitorar={(canal) => onMonitorar(linha.colaborador.id, canal)}
+              onAbrir={onAbrir}
+              onEditar={onEditar}
+            />
+          )}
+          </div>
+          );
+        })}
       </div>
 
       {/* ---------------- Zona 3: precisa da sua ação ---------------- */}
