@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2026-08-22 — A meta vira agenda
+
+> A fila mostrava o contador. Agora mostra **o que compõe o contador**.
+>
+> Mudança de modelo mental: uma meta de 5 não é um número que sobe — são **cinco vagas**, cada
+> uma preenchida ou aberta. É a diferença entre um contador de metas e uma agenda de trabalho.
+
+### Added
+- **Linha expansível por colaboradora.** Ao abrir, a agenda do mês daquela pessoa: a meta como
+  vagas numeradas, cada vaga preenchida mostrando código, data e estado, e cada vaga aberta com
+  seu próprio botão **Monitorar**.
+- **Um bloco por canal** para quem tem meta por canal. Nathalia e Allanis veem WhatsApp e
+  Ligação separados, cada um com suas cinco vagas. Quem tem meta geral vê um bloco só, com o
+  canal informado em cada vaga preenchida — ali o canal é informação, não critério.
+- **O botão da vaga leva o canal do bloco.** Clicar na vaga 1 do bloco Ligação abre o
+  formulário já com a colaboradora e o canal certos — e, como os critérios são filtrados por
+  canal, com o checklist certo.
+- **Excedente aparece** quando alguém entrega além do alvo: não ocupa uma sexta vaga numa meta
+  de cinco, mas também não some da tela.
+
+### Changed
+- **Devolvida, rascunho e reprovada não ocupam vaga.** Aparecem logo abaixo do bloco,
+  explicando por que a vaga está aberta. A monitoria reprovada diz literalmente *"não conta, a
+  vaga segue aberta"* — a regra de que reprovação reabre a lacuna deixou de ser só cálculo e
+  passou a ser texto na tela.
+- **Monitorias em validação são visíveis na agenda**, na vaga que ocupam, marcadas como *Em
+  validação*. Contam para a meta (feito conta no envio) e continuam distinguíveis do que já foi
+  validado.
+
+### Notas
+- O vocabulário permanece **Validada** e **Em validação**. O sistema já exibe *Validada* em
+  todos os badges; um terceiro termo para o mesmo estado faria a mesma monitoria ler diferente
+  na fila e em Relatórios.
+- `DATABASE_VERSION` permanece em 10. Nenhuma mudança de formato de dado.
+
 ## [0.12.0] - 2026-08-22 — Fila operacional de Monitorias (Fatia 2B)
 
 > Monitorias deixou de ser uma central de busca e virou a **agenda de trabalho do mês**.
