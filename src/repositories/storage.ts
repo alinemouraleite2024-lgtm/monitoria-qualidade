@@ -25,6 +25,9 @@ export const KEYS = {
   // Versão do catálogo de categorias, deliberadamente separada de DATABASE_VERSION: trocar o
   // vocabulário do catálogo não pode disparar a limpeza geral do armazenamento.
   catalogCategoriasVersion: 'pm2_catalog_categorias_version',
+  // Mesma ideia da versão do catálogo, e pelo mesmo motivo: alcançar critérios já gravados
+  // sem recorrer a DATABASE_VERSION, que apagaria a base inteira para corrigir um campo.
+  criteriaVersion: 'pm2_criteria_version',
   authSession: 'pm2_auth_session',
 } as const;
 

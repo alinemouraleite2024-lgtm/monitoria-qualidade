@@ -22,7 +22,7 @@ import {
   OFFICIAL_CATEGORIAS,
   OFFICIAL_CATEGORIAS_V1,
 } from '../constants/catalogData';
-import type { LegacyMonitoring, Monitoring } from '../types/domain';
+import type { Criterion, LegacyMonitoring, Monitoring } from '../types/domain';
 
 // Migrações silenciosas aplicadas no carregamento de monitorias.
 // Transcritas do inicializador anterior à F0-12 sem alteração de regra: convertem dados
@@ -110,11 +110,52 @@ const migrateCategorias: Loader<string[]> = (stored, persist) => {
   return next;
 };
 
+/**
+ * Classificação dos critérios de FORMAS DO CONTATO (0.16.0).
+ *
+ * Os três critérios de classificação nasceram `MULTIPLA_ESCOLHA` mas sem lugar para guardar as
+ * opções — elas só existiam em prosa, dentro de `orientacao`. Sem opções, a tela caía na escala
+ * pontuável e o motivo do contato aparecia como 2/1/0/N/A, como se fosse nota.
+ *
+ * Este loader leva `opcoes` para os critérios já gravados e desativa o critério 3, cujo dado o
+ * Canal da etapa 1 já captura.
+ *
+ * **Só toca esses três, e só nesses campos.** Orientação, peso, âncoras e qualquer edição feita
+ * pelo Admin em qualquer critério ficam intactas: o cadastro da 3A.0 vai morar aqui, e uma
+ * migração que sobrescrevesse o registro inteiro apagaria esse trabalho.
+ */
+const CRITERIA_VERSION = 2;
+
+const CLASSIFICACAO_0_16: Record<string, { opcoes: string[]; active?: boolean }> = {
+  'crit-01': { opcoes: ['Informação', 'Solicitação', 'Reclamação', 'Sugestão'] },
+  'crit-02': { opcoes: ['Ativo', 'Receptivo'] },
+  'crit-03': { opcoes: ['WhatsApp', 'Telefone', 'Presencial', 'E-mail'], active: false },
+};
+
+const migrateCriterios: Loader<Criterion[]> = (stored, persist) => {
+  if (read<number>(KEYS.criteriaVersion, 0) >= CRITERIA_VERSION) return stored;
+  if (!Array.isArray(stored)) return stored;
+
+  const next = stored.map((c) => {
+    const patch = CLASSIFICACAO_0_16[c.id];
+    if (!patch) return c;
+    return {
+      ...c,
+      opcoes: c.opcoes && c.opcoes.length > 0 ? c.opcoes : patch.opcoes,
+      active: patch.active === undefined ? c.active : patch.active,
+    };
+  });
+
+  persist(next);
+  write(KEYS.criteriaVersion, CRITERIA_VERSION);
+  return next;
+};
+
 // --- Coleções ---
 export const areasRepository = createRepository(KEYS.areas, INITIAL_AREAS);
 export const collaboratorsRepository = createRepository(KEYS.collaborators, OFFICIAL_COLLABORATORS);
 export const usersRepository = createRepository(KEYS.users, OFFICIAL_USERS);
-export const criteriaRepository = createRepository(KEYS.criteria, INITIAL_CRITERIA);
+export const criteriaRepository = createRepository(KEYS.criteria, INITIAL_CRITERIA, migrateCriterios);
 export const allocationsRepository = createRepository(KEYS.allocations, INITIAL_ALLOCATIONS);
 export const allocationHistoryRepository = createRepository(KEYS.allocationHistory, INITIAL_ALLOCATION_HISTORY);
 export const monitorGoalsRepository = createRepository(KEYS.monitorGoals, INITIAL_MONITOR_GOALS);

@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.0] - 2026-08-25 — FORMAS DO CONTATO volta a ser classificação
+
+> O motivo do contato aparecia como 2 / 1 / 0 / N-A, como se fosse nota. Não era: os três itens
+> do bloco são classificadores de peso 0.
+
+### Fixed
+
+- **`MULTIPLA_ESCOLHA` ganhou renderização própria.** O formulário decide o widget em cascata —
+  eliminatório, depois checklist, depois um fallback — e a classificação caía no fallback, que é
+  a escala pontuável. O motivo do contato passa a listar **Informação · Solicitação · Reclamação
+  · Sugestão**, e o ativo/receptivo, **Ativo · Receptivo**.
+- **Justificativa deixou de ser exigida em classificação.** O campo aparecia sempre que a
+  resposta não fosse "2" — então classificar um contato como Reclamação obrigava a monitora a
+  escrever uma justificativa para avançar.
+
+### Added
+
+- `Criterion.opcoes?: string[]` — antes as opções só existiam em prosa, dentro do texto de
+  `orientacao`, e não havia de onde a tela lê-las. É essa ausência que causava o defeito acima.
+- Loader `migrateCriterios`, com marcador `pm2_criteria_version`, para alcançar os critérios já
+  gravados no navegador. **Só toca os três de classificação, e só em `opcoes` e `active`** —
+  orientação, peso, canais e qualquer edição feita pelo Admin ficam intactas, porque é ali que o
+  cadastro da 3A.0 vai morar.
+
+### Changed
+
+- **Critério 3 (canal) fica inativo.** O Canal já é campo obrigatório da etapa 1 — e é ele que
+  decide quais critérios aparecem na etapa 3, via `channels.includes(canal)`. Perguntá-lo de
+  novo dentro da lista que ele mesmo filtrou era redundância. O critério permanece cadastrado,
+  com as opções: reativá-lo é uma decisão de uma tela só, no Admin.
+- `MonitoringScore.score` passa a aceitar texto, para guardar a opção escolhida. Não afeta a
+  nota: os três classificadores têm peso 0 e a aritmética do cálculo está toda dentro de
+  `if (weight > 0)`.
+- A exigência de justificativa em `validateStep3` ganhou guarda explícita por tipo. Sem ela a
+  expressão ainda funcionaria — `'Reclamação' < 2` é falso — mas por comparação com `NaN`, não
+  por regra.
+
+### Notas de operação
+
+- **Monitorias já gravadas não foram alteradas.** As que têm 2/1/0 nesses três critérios
+  continuam exatamente como estão; a correção vale daqui para frente.
+- Um critério `MULTIPLA_ESCOLHA` criado pelo Admin nasce sem opções, porque a tela de critérios
+  ainda não tem campo para elas. Nesse caso o formulário diz o que houve e aponta a saída
+  possível — desativar o critério — em vez de mostrar um controle vazio.
+
 ## [0.15.0] - 2026-08-25 — Protocolo gerado e identificadores sem sorteio
 
 > A monitora informa o que ela sabe — atendimento e título. O que identifica a monitoria, o

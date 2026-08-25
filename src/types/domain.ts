@@ -80,9 +80,14 @@ export interface Area {
 /**
  * Tipos de resposta de um critério.
  *
- * MULTIPLA_ESCOLHA e SIM_NAO não têm renderização própria no MonitoringForm: caem no
- * fallback da escala padrão. MULTIPLA_ESCOLHA é usado pelos 3 critérios de classificação
- * (peso 0) e SIM_NAO pelos 4 eliminatórios — ambos funcionam, mas pela escala genérica.
+ * Cada um tem renderização própria no MonitoringForm desde a 0.16.0:
+ * - `ESCALA_4` e `FAIXA_TEMPO` usam a escala pontuável (valores diferentes, mesmo widget).
+ * - `CHECKLIST_SIM_NAO` abre uma linha Sim/Não por sub-pergunta.
+ * - `SIM_NAO` é dos eliminatórios, com os rótulos "Não ocorreu" / "Sim, ocorreu" — tratado
+ *   pela flag `eliminatorio`, que vem antes do tipo na decisão de renderização.
+ * - `MULTIPLA_ESCOLHA` é classificação pura: lista as `opcoes` do critério, não pontua e não
+ *   pede justificativa. Até a 0.15.0 caía no fallback da escala e aparecia como 2/1/0/N/A,
+ *   o que fazia o motivo do contato ser exibido como se fosse nota.
  */
 export type TipoResposta =
   | 'ESCALA_4' | 'CHECKLIST_SIM_NAO' | 'FAIXA_TEMPO' | 'MULTIPLA_ESCOLHA' | 'SIM_NAO';
@@ -109,6 +114,12 @@ export interface Criterion {
   active: boolean;
   channels: Canal[];
   subPerguntas?: SubPergunta[];
+  /**
+   * Opções de um critério `MULTIPLA_ESCOLHA`. Antes da 0.16.0 elas só existiam em prosa,
+   * dentro do texto de `orientacao` — não havia onde a tela buscá-las, e por isso o critério
+   * caía na escala pontuável.
+   */
+  opcoes?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -132,10 +143,22 @@ export type MonitoringStatus =
 /** Tipos oficiais. Fluxo e "Fluxo / Processo" são migrados para Processo no carregamento. */
 export type TipoMonitoria = 'Regular' | 'Direcionada' | 'Processo' | 'Calibração';
 
-/** Resposta de um critério. score é '' enquanto o checklist estiver incompleto. */
+/**
+ * Resposta de um critério.
+ *
+ * `score` carrega quatro coisas diferentes, por tipo de critério:
+ * - **número** (0 a 2, fracionário em checklist e faixa de tempo) — critérios pontuáveis;
+ * - **`'N/A'`** — não se aplica: sai do denominador, não penaliza nem premia;
+ * - **`''`** — ainda não respondido, ou checklist incompleto;
+ * - **texto da opção** — critérios `MULTIPLA_ESCOLHA`, desde a 0.16.0.
+ *
+ * O texto não corrompe a nota porque os três critérios de classificação têm peso 0, e a
+ * aritmética do cálculo está toda dentro de `if (weight > 0)`. Foi por isso que a mudança
+ * coube sem tocar no cálculo.
+ */
 export interface MonitoringScore {
   criterionId: string;
-  score: number | 'N/A' | '';
+  score: number | string;
   lowScoreReason: string;
   subRespostas: Record<string, 'SIM' | 'NAO'> | null;
 }

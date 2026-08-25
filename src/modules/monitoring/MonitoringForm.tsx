@@ -90,7 +90,8 @@ interface CategoriaAgregada {
 
 /** Resposta em edição, antes de virar MonitoringScore. */
 interface ScoreEmEdicao {
-  score: number | 'N/A' | '';
+  /** Mesmas quatro formas de `MonitoringScore.score` — ver o tipo em types/domain. */
+  score: number | string;
   lowScoreReason: string;
   subRespostas: Record<string, 'SIM' | 'NAO'>;
 }
@@ -367,9 +368,19 @@ export const MonitoringForm = ({
     let error = null;
     applicableCriteria.forEach(c => {
       const item = scores[c.id];
+      // Resposta continua obrigatória em todos os critérios aplicáveis, classificação
+      // inclusive: o que muda por tipo é o que conta como resposta, não se ela é exigida.
       if (!item || item.score === '') {
         error = 'Por favor, avalie todos os critérios antes de avançar.';
-      } else if (item.score !== 'N/A' && item.score < 2 && !item.lowScoreReason.trim()) {
+      } else if (
+        // A guarda por tipo é explícita de propósito. Sem ela a expressão ainda funcionaria,
+        // porque `'Reclamação' < 2` é falso — mas por comparação com NaN, não por regra. Um
+        // acerto que ninguém escreveu é um acerto que a próxima mudança desfaz sem avisar.
+        c.tipoResposta !== 'MULTIPLA_ESCOLHA' &&
+        item.score !== 'N/A' &&
+        Number(item.score) < 2 &&
+        !item.lowScoreReason.trim()
+      ) {
         error = 'Justificativa obrigatória para notas menores que a máxima.';
       }
     });
@@ -943,6 +954,42 @@ export const MonitoringForm = ({
                                         );
                                       })}
                                     </div>
+                                  ) : c.tipoResposta === 'MULTIPLA_ESCOLHA' ? (
+                                    /* Classificação, não avaliação: as opções do próprio
+                                       critério, sem escala e sem cor de desempenho. O valor
+                                       gravado é o texto da opção — peso 0, então não entra na
+                                       nota. */
+                                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                      {(c.opcoes || []).map(opcao => {
+                                        const isSelected = scores[c.id]?.score === opcao;
+                                        return (
+                                          <button
+                                            key={opcao}
+                                            type="button"
+                                            onClick={() => setScores({...scores, [c.id]: { ...scores[c.id], score: isSelected ? '' : opcao }})}
+                                            style={{
+                                              padding: '0.6rem 1.1rem', borderRadius: '8px', fontWeight: '600', fontSize: '0.85rem', cursor: 'pointer',
+                                              border: `2px solid ${isSelected ? '#3b82f6' : '#e5e7eb'}`,
+                                              backgroundColor: isSelected ? '#eff6ff' : '#fff',
+                                              color: isSelected ? '#1d4ed8' : '#374151',
+                                              transition: 'all 0.15s'
+                                            }}
+                                          >
+                                            {opcao}
+                                          </button>
+                                        );
+                                      })}
+                                      {/* Um MULTIPLA_ESCOLHA criado pelo Admin nasce sem opções:
+                                          a tela de critérios ainda não tem campo para elas. Em
+                                          vez de um controle vazio e mudo, diz o que houve e a
+                                          saída possível — desativar é ação que o Admin tem. */}
+                                      {(c.opcoes || []).length === 0 && (
+                                        <span style={{ fontSize: '0.8rem', color: '#b45309', fontStyle: 'italic' }}>
+                                          Critério de classificação sem opções cadastradas: não há o que responder.
+                                          Desative-o em Administração para liberar o preenchimento.
+                                        </span>
+                                      )}
+                                    </div>
                                   ) : c.tipoResposta === 'CHECKLIST_SIM_NAO' ? (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                       {(c.subPerguntas || []).map(sub => {
@@ -1002,8 +1049,12 @@ export const MonitoringForm = ({
                                     </div>
                                   )}
 
-                                  {/* Mostrar Justificativa somente se < 2 ou N/A */}
-                                  {(scores[c.id]?.score !== '' && scores[c.id]?.score !== 2) && (
+                                  {/* Justificativa só faz sentido onde existe desempenho a
+                                      justificar: abaixo de 2, ou N/A. Critério de
+                                      classificação fica de fora — não há nota baixa a explicar,
+                                      e sem esta guarda escolher "Reclamação" passaria a exigir
+                                      texto obrigatório para avançar. */}
+                                  {(c.tipoResposta !== 'MULTIPLA_ESCOLHA' && scores[c.id]?.score !== '' && scores[c.id]?.score !== 2) && (
                                     <div className="animate-fade-in">
                                       <label className="form-label" style={{ fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between' }}>
                                         <span>Justificativa / Comentário</span>

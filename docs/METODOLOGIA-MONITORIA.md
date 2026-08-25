@@ -92,7 +92,7 @@ sub-pergunta**, não por nível.
 
 | # | Bloco | Critérios | Peso somado | Papel |
 |---|---|---|---|---|
-| 1 | FORMAS DO CONTATO | 1–3 | 0 | Classificação |
+| 1 | FORMAS DO CONTATO | 1–2 · o 3 está inativo | 0 | Classificação |
 | 2 | ABERTURA | 4–5 | 2,0 | Como o atendimento começa |
 | 3 | COMUNICAÇÃO | 6–14 | 11,0 | Como o atendente conduz |
 | 4 | CONHECIMENTO DO PRODUTO/SERVIÇO | 15–17 | 5,0 | O que o atendente sabe |
@@ -157,7 +157,12 @@ que a origem da demanda seja do cliente. O que se classifica é quem iniciou *es
 ---
 
 #### 3. Atendimento realizado por qual canal?
-`crit-03` · MULTIPLA_ESCOLHA · peso 0
+`crit-03` · MULTIPLA_ESCOLHA · peso 0 · **inativo desde a 0.16.0**
+
+> **Não aparece mais no formulário.** O Canal é campo obrigatório da etapa 1, e é ele que decide
+> quais critérios entram na etapa 3 — perguntá-lo de novo dentro da lista que ele mesmo filtrou
+> era redundância. O dado continua sendo capturado, em `Monitoring.canal`. O critério segue
+> cadastrado, com as opções, e reativá-lo é uma decisão de uma tela só, no Admin.
 
 **O que mede.** O canal do atendimento.
 
