@@ -10,19 +10,23 @@ Esta pasta contém a documentação técnica, manuais e guias do projeto.
 | Documento | Responde |
 |---|---|
 | [`OPERACAO.md`](OPERACAO.md) | **Contexto oficial.** Estado atual, modelo de operação, regras diárias, travas conhecidas, pendências, estratégia dos pilotos e decisões de produto |
+| [`BACKUP-RESTAURACAO.md`](BACKUP-RESTAURACAO.md) | **Procedimento obrigatório antes de qualquer publicação que mexa em modelo, catálogo ou migração.** Como exportar e restaurar a base — a persistência é `localStorage`, então não existe cópia em servidor |
+| [`METODOLOGIA-MONITORIA.md`](METODOLOGIA-MONITORIA.md) | **Régua oficial de avaliação (Fatia 3A.0).** Os 28 critérios com orientação completa, âncoras 2/1/0, eliminatórios, regras por tipo de atendimento e estrutura do relatório. Base única do MonitorIA, do `instructionBuilder`, do assistente e do treinamento. **Aguardando validação** |
+| [`VISAO-PRODUTO.md`](VISAO-PRODUTO.md) | Direção de produto: o cliente como entidade central e o NPS como processo operacional. Nada implementado |
 | [`RELATORIO-SPRINT-0.md`](RELATORIO-SPRINT-0.md) | Relatório final da Sprint 0: versão, entregas, métricas, checklist de homologação, pendências e riscos. **Publicada em 19/08/2026** |
 | [`STATUS-SPRINT-0.md`](STATUS-SPRINT-0.md) | Estado técnico do código: histórias, bugs, componentes, métricas, débitos e arquitetura. Inclui as publicações posteriores ao fechamento |
 | [`../CHANGELOG.md`](../CHANGELOG.md) | Histórico de versões |
 
-## Estado em 20/08/2026
+## Estado em 24/08/2026
 
 | | |
 |---|---|
 | Sistema | em produção — https://monitoria-qualidade.vercel.app |
-| Versão | 0.8.1 · commit `3756071` |
-| Sprint aberta | nenhuma |
-| Funcionalidade nova aprovada | nenhuma |
-| Próximo marco | pilotos de 20 e 21/08 |
+| Versão | 0.13.0 · commit `a8467c9` |
+| Publicado | agenda operacional · relatórios e histórico · metas por canal · fila expansível |
+| Frente aberta | **3A — Assistente de Avaliação** |
+| Fatia em curso | 3A.0 (metodologia) — documento escrito, aguardando validação |
+| Próximo marco | validação da régua e início da 3A.1 (`instructionBuilder`) |
 
 ## Estrutura planejada
 - Arquitetura
