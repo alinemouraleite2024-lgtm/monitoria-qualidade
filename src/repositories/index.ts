@@ -50,7 +50,13 @@ const migrateMonitorings = (
       if (m.finalScore <= 10) {
         m.finalScore = m.finalScore * 10;
         if (m.scores) {
-          m.scores = m.scores.map((s) => ({ ...s, score: s.score <= 10 ? s.score * 10 : s.score }));
+          // O `typeof number` é da 0.16.0 e não é zelo excessivo: `score` também guarda ''
+          // (não respondido) e, desde a 0.16.0, o texto de uma classificação. Sem a guarda,
+          // `'' <= 10` é verdadeiro e `'' * 10` vale 0 — o que transformaria "não respondido"
+          // em zero, e zero num eliminatório significa "Sim, ocorreu".
+          m.scores = m.scores.map((s) =>
+            typeof s.score === 'number' && s.score <= 10 ? { ...s, score: s.score * 10 } : s,
+          );
         }
       }
       return m;

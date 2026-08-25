@@ -19,6 +19,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Justificativa deixou de ser exigida em classificação.** O campo aparecia sempre que a
   resposta não fosse "2" — então classificar um contato como Reclamação obrigava a monitora a
   escrever uma justificativa para avançar.
+- **Rascunho reaberto acusava eliminatório que ninguém marcou.** O salvamento gravava
+  `score || 0`, então critério não respondido virava `0` — e `0`, num eliminatório, significa
+  "Sim, ocorreu". Ao reabrir o rascunho o formulário lia esse zero como marcação da monitora, e
+  o salvamento seguinte ligava `eliminatoryPending`: a monitoria passava a acusar, por exemplo,
+  "Faltou com respeito ao cliente", e ia para a gestora confirmar o zeramento. Salvar rascunho
+  antes de responder os eliminatórios é uso normal, então o caminho era alcançável.
+
+  Corrigido em quatro pontos, porque o zero entrava por mais de uma porta: a gravação passa a
+  usar `?? ''` e preserva "não respondido"; a tela de detalhe compara `score === 0` em vez de
+  `Number(score) === 0`, já que `Number('')` também é zero; a migração legada de 0-10 para 0-100
+  só transforma valores que são números; e o detalhe passa a exibir "não respondido" em vez de
+  uma célula vazia. **Eliminatório agora só é sinalizado por marcação explícita.**
 
 ### Added
 
@@ -45,7 +57,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Notas de operação
 
 - **Monitorias já gravadas não foram alteradas.** As que têm 2/1/0 nesses três critérios
-  continuam exatamente como estão; a correção vale daqui para frente.
+  continuam exatamente como estão; a correção vale daqui para frente. O mesmo para rascunhos
+  gravados antes desta versão com `0` em eliminatório não respondido: o valor permanece, e
+  reabri-los ainda mostrará o eliminatório como marcado. São registros de teste, e reescrevê-los
+  seria inventar a resposta que a monitora não deu.
 - Um critério `MULTIPLA_ESCOLHA` criado pelo Admin nasce sem opções, porque a tela de critérios
   ainda não tem campo para elas. Nesse caso o formulário diz o que houve e aponta a saída
   possível — desativar o critério — em vez de mostrar um controle vazio.

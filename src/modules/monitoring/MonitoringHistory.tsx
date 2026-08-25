@@ -63,7 +63,10 @@ export const MonitoringHistory = ({
   const triggeredCriteriaNames = (monitoring.scores || [])
     .filter(s => {
       const crit = criteria.find(c => c.id === s.criterionId);
-      return crit?.eliminatorio && Number(s.score) === 0;
+      // Comparação estrita, e não `Number(s.score) === 0`: `Number('')` também é 0, então a
+      // versão anterior lia "não respondido" como "Sim, ocorreu" e listava o eliminatório como
+      // sinalizado. Só o zero literal — que é o que o botão "Sim, ocorreu" grava — conta.
+      return crit?.eliminatorio && s.score === 0;
     })
     .map(s => getCriterionName(s.criterionId));
 
@@ -197,7 +200,11 @@ export const MonitoringHistory = ({
                     <div style={{ fontWeight: '600', fontSize: '0.85rem' }}>{getCriterionName(s.criterionId)}</div>
                     {s.lowScoreReason && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>"{s.lowScoreReason}"</div>}
                   </div>
-                  <div style={{ fontWeight: '700' }}>{s.score}</div>
+                  {/* '' é "não respondido" e renderizaria uma célula vazia, indistinguível de
+                      falha de tela. Diz-se que não foi respondido. */}
+                  <div style={{ fontWeight: '700', color: s.score === '' ? 'var(--text-muted)' : undefined }}>
+                    {s.score === '' ? 'não respondido' : s.score}
+                  </div>
                 </div>
               ))}
             </div>

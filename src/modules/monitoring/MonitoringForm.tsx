@@ -417,7 +417,14 @@ export const MonitoringForm = ({
     const protocolo = formData.protocolo || gerarProtocolo(monitorings, formData.date);
     const formattedScores = applicableCriteria.map(c => ({
       criterionId: c.id,
-      score: scores[c.id]?.score || 0,
+      // `?? ''` e não `|| 0`: "não respondido" é '' e precisa continuar sendo ''.
+      //
+      // Com `|| 0`, um rascunho salvo antes de responder os eliminatórios gravava 0 neles — e 0,
+      // num eliminatório, significa "Sim, ocorreu". Ao reabrir o rascunho o formulário lia esse
+      // 0 como marcação do usuário, e o salvamento seguinte marcava `eliminatoryPending`: a
+      // monitoria passava a acusar um eliminatório que ninguém apontou, e ia para a gestora
+      // confirmar o zeramento. Eliminatório só pode ser sinalizado por marcação explícita.
+      score: scores[c.id]?.score ?? '',
       lowScoreReason: scores[c.id]?.lowScoreReason || '',
       subRespostas: scores[c.id]?.subRespostas || null
     }));
