@@ -486,11 +486,14 @@ export const getRiscoDoMes = (
 // ---------------------------------------------------------------------------
 
 /**
- * Busca discreta da fila: protocolo, código e colaboradora.
+ * Busca discreta da fila: os três identificadores do atendimento, o código e a colaboradora.
  *
- * O protocolo vem primeiro de propósito — é a chave que liga a monitoria ao atendimento e,
- * adiante, ao CSAT e ao NPS. A busca existe na fila para que a monitora não precise ir a
- * Relatórios só para localizar um protocolo.
+ * Os identificadores vêm primeiro de propósito — são as chaves que ligam a monitoria ao
+ * atendimento e, adiante, ao CSAT e ao NPS. A busca existe na fila para que a monitora não
+ * precise ir a Relatórios só para localizar um atendimento.
+ *
+ * Desde a 0.14.0 são três, e não um: número do atendimento, protocolo e número do título são
+ * coisas diferentes na operação, e quem procura pode ter em mãos qualquer um deles.
  */
 export const matchesBusca = (
   m: Monitoring,
@@ -500,7 +503,9 @@ export const matchesBusca = (
   const t = termo.trim().toLowerCase();
   if (!t) return true;
   return (
+    (m.numeroAtendimento ?? '').toLowerCase().includes(t) ||
     (m.protocolo ?? '').toLowerCase().includes(t) ||
+    (m.numeroTitulo ?? '').toLowerCase().includes(t) ||
     m.id.toLowerCase().includes(t) ||
     (nomeColaboradora ?? '').toLowerCase().includes(t)
   );

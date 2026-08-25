@@ -118,7 +118,6 @@ import {
   demandsRepository,
   announcementsRepository,
   agendaRepository,
-  catalogEmpreendimentosRepository,
   catalogCategoriasRepository,
   monitoringsRepository,
   sessionRepository,
@@ -146,6 +145,7 @@ import {
   type FiltrosHistorico,
 } from './domain/historyFilter';
 import { canalLabel } from './constants/canais';
+import { exibirDuracao } from './domain/duracao';
 import { getCarteiraProgress } from './domain/goalService';
 import { isManagerRole as isManagerUser } from './domain/authorizationService';
 
@@ -267,19 +267,13 @@ function AppContent() {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [demands, setDemands] = useState(() => demandsRepository.load());
 
-  const [catalogEmpreendimentos, setCatalogEmpreendimentos] = useState(
-    () => catalogEmpreendimentosRepository.load()
-  );
+  // O catálogo de empreendimentos deixou de ser carregado na 0.14.0, quando o campo saiu da
+  // tela de Nova Monitoria. O repositório e a chave continuam existindo, dormentes: o valor
+  // gravado em monitorias anteriores permanece legível, e reativar o campo seria uma linha.
 
   const [catalogCategorias, setCatalogCategorias] = useState(
     () => catalogCategoriasRepository.load()
   );
-
-  const handleAddEmpreendimento = (novo: string) => {
-    const next = [...catalogEmpreendimentos, novo];
-    setCatalogEmpreendimentos(next);
-    catalogEmpreendimentosRepository.save(next);
-  };
 
   const handleAddCategoria = (nova: string) => {
     const next = [...catalogCategorias, nova];
@@ -960,14 +954,18 @@ function AppContent() {
   // Export handlers
   const handleExportExcel = () => {
     let csvContent = 'data:text/csv;charset=utf-8,';
-    csvContent += 'ID,Data,Monitor,Colaborador,Canal,Tipo,Status,Nota Final,Comentarios\n';
+    // 0.14.0: o CSV passou a levar os identificadores, a categoria e a janela do atendimento.
+    // Até aqui ele exportava a monitoria sem nenhuma chave que a ligasse ao atendimento — quem
+    // recebia a planilha não tinha como cruzá-la com nada.
+    csvContent += 'ID,Data,Monitor,Colaborador,No Atendimento,No Protocolo,No Titulo,Categoria,Canal,Tipo,Inicio,Encerramento,Duracao,Status,Nota Final,Comentarios\n';
     const filtered = getFilteredMonitorings();
     filtered.forEach(m => {
       const mon = users.find(u => u.id === m.monitorId)?.name || 'N/A';
       const col = users.find(u => u.id === m.colaboradorId)?.name || 'N/A';
       const formattedDate = new Date(m.date).toLocaleDateString('pt-BR');
       const cleanComments = (m.comments ?? '').replace(/"/g, '""');
-      csvContent += `"${m.id}","${formattedDate}","${mon}","${col}","${canalLabel(m.canal)}","${m.tipo}","${m.status}","${m.finalScore.toFixed(2)}%","${cleanComments}"\n`;
+      const fmtDataHora = (v?: string) => (v ? new Date(v).toLocaleString('pt-BR') : '');
+      csvContent += `"${m.id}","${formattedDate}","${mon}","${col}","${m.numeroAtendimento ?? ''}","${m.protocolo ?? ''}","${m.numeroTitulo ?? ''}","${m.categoriaAtendimento ?? ''}","${canalLabel(m.canal)}","${m.tipo}","${fmtDataHora(m.inicioAtendimento)}","${fmtDataHora(m.fimAtendimento)}","${exibirDuracao(m.duracaoMinutos, m.tempo)}","${m.status}","${m.finalScore.toFixed(2)}%","${cleanComments}"\n`;
     });
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
@@ -1183,9 +1181,7 @@ function AppContent() {
                       collaborators={getCollaborators()}
                       criteria={criteria}
                       currentUser={currentUser}
-                      catalogEmpreendimentos={catalogEmpreendimentos}
                       catalogCategorias={catalogCategorias}
-                      onAddEmpreendimento={handleAddEmpreendimento}
                       onAddCategoria={handleAddCategoria}
                       onClose={() => navigate('/monitorings')}
                       onSave={handleSaveFormMonitoring}
@@ -1204,9 +1200,7 @@ function AppContent() {
                         collaborators={getCollaborators()}
                         criteria={criteria}
                         currentUser={currentUser}
-                        catalogEmpreendimentos={catalogEmpreendimentos}
                         catalogCategorias={catalogCategorias}
-                        onAddEmpreendimento={handleAddEmpreendimento}
                         onAddCategoria={handleAddCategoria}
                         onClose={() => navigate('/monitorings')}
                         onSave={handleSaveFormMonitoring}

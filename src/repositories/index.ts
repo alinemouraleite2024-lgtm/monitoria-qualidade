@@ -1,5 +1,6 @@
-import { KEYS } from './storage';
+import { KEYS, read, write } from './storage';
 import { createRepository } from './createRepository';
+import type { Loader } from './createRepository';
 import {
   DEFAULT_BRAND_CONFIG,
   INITIAL_SYSTEM_SETTINGS,
@@ -16,7 +17,11 @@ import {
   INITIAL_AGENDA,
 } from '../mockData';
 import { OFFICIAL_USERS, OFFICIAL_COLLABORATORS } from '../teamData';
-import { OFFICIAL_EMPREENDIMENTOS, OFFICIAL_CATEGORIAS } from '../constants/catalogData';
+import {
+  OFFICIAL_EMPREENDIMENTOS,
+  OFFICIAL_CATEGORIAS,
+  OFFICIAL_CATEGORIAS_V1,
+} from '../constants/catalogData';
 import type { LegacyMonitoring, Monitoring } from '../types/domain';
 
 // Migrações silenciosas aplicadas no carregamento de monitorias.
@@ -71,6 +76,40 @@ const migrateMonitorings = (
   return migradas;
 };
 
+/**
+ * Troca do vocabulário do catálogo de categorias (0.14.0).
+ *
+ * O seed de um repositório só vale quando a chave NÃO existe no armazenamento. Como
+ * `pm2_catalog_categorias` passa a existir assim que alguém cria uma categoria pelo formulário,
+ * trocar a constante não bastaria: em um navegador que já gravou a chave, a lista antiga
+ * ficaria congelada para sempre.
+ *
+ * O único mecanismo existente para forçar releitura era `DATABASE_VERSION` — que apaga TODAS as
+ * chaves `pm2_*`, incluindo monitorias, metas, vínculos e critérios. Usá-lo para atualizar um
+ * catálogo seria destruir a base para trocar uma lista. Daí este loader, com marcador de versão
+ * próprio: ele escreve exatamente duas chaves e não lê nenhuma outra.
+ *
+ * O marcador é uma versão, não uma inspeção de conteúdo — diferente da limitação registrada em
+ * `migrateMonitorings`, aqui a migração sabe se já rodou e é idempotente de fato.
+ */
+const CATEGORIAS_VERSION = 2;
+
+const migrateCategorias: Loader<string[]> = (stored, persist) => {
+  if (read<number>(KEYS.catalogCategoriasVersion, 0) >= CATEGORIAS_VERSION) return stored;
+  if (!Array.isArray(stored)) return stored;
+
+  // Sobrevive só o que a operação criou à mão: nem lista velha (descartada), nem lista nova
+  // (já presente). Categoria inventada no formulário é decisão de quem usa, não ruído.
+  const extras = stored.filter(
+    (c) => !OFFICIAL_CATEGORIAS_V1.includes(c) && !OFFICIAL_CATEGORIAS.includes(c),
+  );
+  const next = [...OFFICIAL_CATEGORIAS, ...extras];
+
+  persist(next);
+  write(KEYS.catalogCategoriasVersion, CATEGORIAS_VERSION);
+  return next;
+};
+
 // --- Coleções ---
 export const areasRepository = createRepository(KEYS.areas, INITIAL_AREAS);
 export const collaboratorsRepository = createRepository(KEYS.collaborators, OFFICIAL_COLLABORATORS);
@@ -86,7 +125,11 @@ export const demandsRepository = createRepository(KEYS.demands, INITIAL_DEMANDS)
 export const announcementsRepository = createRepository(KEYS.announcements, INITIAL_ANNOUNCEMENTS);
 export const agendaRepository = createRepository(KEYS.agenda, INITIAL_AGENDA);
 export const catalogEmpreendimentosRepository = createRepository(KEYS.catalogEmpreendimentos, OFFICIAL_EMPREENDIMENTOS);
-export const catalogCategoriasRepository = createRepository(KEYS.catalogCategorias, OFFICIAL_CATEGORIAS);
+export const catalogCategoriasRepository = createRepository(
+  KEYS.catalogCategorias,
+  OFFICIAL_CATEGORIAS,
+  migrateCategorias,
+);
 
 // --- Singletons de configuração ---
 export const brandRepository = createRepository(KEYS.brand, DEFAULT_BRAND_CONFIG);

@@ -99,7 +99,7 @@ export const MonitoringList = ({
               <Search size={16} style={{ color: 'var(--text-muted)' }} />
               <input
                 type="text"
-                placeholder="Código, Colaborador ou Protocolo..."
+                placeholder="Código, colaboradora, atendimento, protocolo ou título..."
                 value={filtros.busca}
                 onChange={(e) => set({ busca: e.target.value })}
               />

@@ -22,6 +22,9 @@ export const KEYS = {
   agenda: 'pm2_agenda',
   catalogEmpreendimentos: 'pm2_catalog_empreendimentos',
   catalogCategorias: 'pm2_catalog_categorias',
+  // Versão do catálogo de categorias, deliberadamente separada de DATABASE_VERSION: trocar o
+  // vocabulário do catálogo não pode disparar a limpeza geral do armazenamento.
+  catalogCategoriasVersion: 'pm2_catalog_categorias_version',
   authSession: 'pm2_auth_session',
 } as const;
 

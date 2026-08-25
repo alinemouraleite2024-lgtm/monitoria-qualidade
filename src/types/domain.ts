@@ -152,10 +152,34 @@ export interface Monitoring {
   finalScore: number;
   scores: MonitoringScore[];
   comments?: string;
+  /**
+   * Legado. Deixou de ser preenchido na 0.14.0, quando o campo saiu da tela de Nova Monitoria.
+   * O valor gravado em registros anteriores é preservado de propósito — nunca foi lido fora do
+   * formulário, então remover a coluna não ganharia nada e apagar dado é irreversível.
+   */
   empreendimento?: string;
   categoriaAtendimento?: string;
+
+  // Identificadores do atendimento. São três coisas diferentes na operação, e os três entram
+  // na busca do Histórico e da Fila. `protocolo` é o mais antigo (0.9.0); os outros dois
+  // nasceram na 0.14.0, então registros anteriores não os têm.
+  numeroAtendimento?: string;
   protocolo?: string;
+  numeroTitulo?: string;
+
+  /**
+   * Legado. Até a 0.13.0 a duração era digitada à mão como texto livre ("00:05"). Substituído
+   * na 0.14.0 por inicioAtendimento/fimAtendimento com duracaoMinutos calculado. Continua
+   * sendo exibido quando duracaoMinutos não existe — ver formatarDuracao em domain/duracao.
+   */
   tempo?: string;
+  /** Data e hora locais do início do atendimento, formato de datetime-local: "2026-08-25T14:20". */
+  inicioAtendimento?: string;
+  /** Idem para o encerramento. Pode cair em outro dia — atendimento de WhatsApp atravessa o dia. */
+  fimAtendimento?: string;
+  /** Duração em minutos, derivada do par acima. Calculada pelo sistema; nunca editável. */
+  duracaoMinutos?: number;
+
   gestorId?: string;
   /** Campos de feedback livre. Os nomes são em inglês no dado, embora os rótulos da UI
    *  sejam "Pontos Fortes" e "Oportunidades" — mantidos como estão. */

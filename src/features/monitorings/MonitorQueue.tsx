@@ -250,7 +250,7 @@ export const MonitorQueue = ({
           <Search size={16} style={{ color: 'var(--text-muted)' }} />
           <input
             type="text"
-            placeholder="Buscar por protocolo ou colaboradora..."
+            placeholder="Buscar por atendimento, protocolo, título ou colaboradora..."
             value={busca}
             onChange={(e) => onBusca(e.target.value)}
           />

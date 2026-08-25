@@ -5,6 +5,62 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0] - 2026-08-25 — Identificadores do atendimento e duração calculada
+
+> Três mudanças na tela de Nova Monitoria, todas sobre **o que identifica um atendimento** e
+> **quanto tempo ele durou**. Nenhuma delas reescreve registro antigo.
+
+### Added
+
+- **Três identificadores do atendimento**, obrigatórios: `numeroAtendimento`, `protocolo` (que
+  já existia) e `numeroTitulo`. São chaves distintas na operação, e os três entram na busca do
+  Histórico (`historyFilter`) e da Fila (`queueService`).
+- **Janela do atendimento**: `inicioAtendimento` e `fimAtendimento` como `datetime-local`, com
+  `duracaoMinutos` derivado e **não editável**. Data completa, e não só hora, porque atendimento
+  de WhatsApp atravessa o dia.
+- `domain/duracao.ts` — `calcularDuracao`, `formatarDuracao` e `exibirDuracao`, fonte única do
+  cálculo e da apresentação. Duração zero é válida ("menos de 1 minuto"): um atendimento pode
+  durar menos de um minuto, e tratá-lo como erro obrigaria a monitora a mentir no registro.
+- **Bloco "Identificação do Atendimento"** na tela de detalhe — os três números, a janela, a
+  duração, a categoria e o tipo. Corresponde ao bloco `🔎 Identificação` do Padrão Relatório de
+  Monitoria, que até aqui não existia em tela nenhuma.
+- **Aviso de competência divergente** no formulário: quando o atendimento é de um mês diferente
+  da Data da monitoria, a tela avisa. Não corrige — `date` continua sendo o eixo de competência
+  de metas, fila e relatórios, e derivá-lo do atendimento moveria monitorias entre competências
+  e reescreveria metas já batidas.
+- O CSV de Relatórios passou a levar os três identificadores, a categoria, início, encerramento
+  e duração. Até aqui exportava a monitoria sem nenhuma chave que a ligasse ao atendimento.
+
+### Changed
+
+- **Catálogo de categorias: 6 → 27**, adotando o vocabulário da operação. `Renegociação` passa a
+  `NEGOCIAÇÃO DE DÍVIDA`; `2ª Via de Boleto` passa a `BOLETOS`. `Dúvida`, `Solicitação`,
+  `Reclamação` e `Elogio` deixam de ser categoria: são **motivo do contato**, que o critério 1 da
+  monitoria já classifica — manter os dois eixos no mesmo campo era duplicação.
+- A migração é um `loader` no `catalogCategoriasRepository`, com marcador próprio
+  (`pm2_catalog_categorias_version`). Escreve exatamente duas chaves e **não toca
+  `DATABASE_VERSION`**, que apagaria monitorias, metas, vínculos e critérios junto. Preserva
+  categoria criada à mão pela operação.
+
+### Removed
+
+- **Campo Empreendimento** sai da tela de Nova Monitoria. O valor gravado em monitorias
+  anteriores é preservado, e o repositório continua existindo, dormente.
+
+### Notas de operação
+
+- **`EMPREENDIMENTO` continua existindo — como categoria de atendimento.** Não confundir com o
+  campo Empreendimento, que saiu nesta versão. O campo dizia de qual loteamento era o cliente; a
+  categoria diz que o assunto do atendimento foi o empreendimento. São coisas diferentes.
+- **Monitoria anterior à 0.14.0 abre normalmente**, com a categoria antiga preservada mesmo fora
+  do catálogo novo e o tempo legado exibido como estava. Ao **salvar**, os campos novos passam a
+  ser exigidos — sem exceção e sem validação condicional. A alternativa (opcionais para registro
+  antigo) foi descartada: só havia registros de teste a proteger, e o ramo seria bifurcação
+  permanente na parte mais sensível do formulário.
+- `REGISTRO (I)` ficou **fora** da lista até a operação definir o que o distingue de `REGISTRO`.
+  Incluir depois é adição pura; remover uma categoria já usada deixaria valor órfão. Enquanto
+  isso, o formulário permite criar categoria na hora e a migração a preserva.
+
 ## [0.13.0] - 2026-08-22 — A meta vira agenda
 
 > A fila mostrava o contador. Agora mostra **o que compõe o contador**.

@@ -15,7 +15,7 @@
 import type { Collaborator, Monitoring } from '../types/domain';
 
 export interface FiltrosHistorico {
-  /** Código, protocolo ou nome da colaboradora. Vazio não filtra. */
+  /** Código, qualquer um dos três identificadores do atendimento, ou nome da colaboradora. Vazio não filtra. */
   busca: string;
   /** Id da monitora, ou 'ALL'. */
   monitorId: string;
@@ -66,7 +66,9 @@ export const aplicaFiltrosDeHistorico = (
       const alvo = [
         colab?.name ?? '',
         m.id,
+        m.numeroAtendimento ?? '',
         m.protocolo ?? '',
+        m.numeroTitulo ?? '',
       ].join(' ').toLowerCase();
       if (!alvo.includes(termo)) return false;
     }

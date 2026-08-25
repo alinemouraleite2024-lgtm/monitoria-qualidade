@@ -37,7 +37,7 @@ Uma única régua, quatro consumidores:
 |---|---|
 | `CYF© Quality Management System` (PDF) | **Validação da estrutura.** Define os 28 critérios, os 7 blocos e quais são eliminatórios. Não é lido em execução — já está cadastrado em `INITIAL_CRITERIA`. |
 | `Padrão Relatório de Monitoria` (DOCX) | **Régua e narrativa.** Traz a orientação detalhada de cada critério e a estrutura dos blocos do relatório. |
-| `ORIENTAÇÕES TIPOS DE ATENDIMENTO/` | **Processo.** Regras de sequência específicas de cada tipo de atendimento. Hoje só existe *Antecipação de Parcelas*. |
+| `ORIENTAÇÕES TIPOS DE ATENDIMENTO/` | **Processo.** Regras de sequência específicas de cada tipo de atendimento. Hoje só existe *ANTECIPAÇÃO PAGAMENTOS*. |
 
 ### O que este documento **não** decide
 
@@ -891,7 +891,7 @@ Cada tipo de atendimento se descreve com quatro campos:
 | `falhasGraves` | Omissões que caracterizam erro de processo |
 | `naoMede` | O que explicitamente **não** é avaliado — evita cobrança de decoreba |
 
-### 6.1 Antecipação de Parcelas
+### 6.1 ANTECIPAÇÃO PAGAMENTOS
 
 *Fonte: `📌 ORIENTAÇÕES PARA AVALIAÇÃO – ANTECIPAÇÃO DE PARCELAS.docx`*
 
@@ -950,7 +950,7 @@ informação · cumprimento da estrutura.
 ### 6.2 Demais tipos — a preencher
 
 `OFFICIAL_CATEGORIAS` traz hoje: Dúvida · Reclamação · Solicitação · Elogio · 2ª Via de Boleto ·
-Renegociação. **Nenhum tem orientação documentada** — e *Antecipação de Parcelas*, que tem,
+Renegociação. **Nenhum tem orientação documentada** — e *ANTECIPAÇÃO PAGAMENTOS*, que tem,
 **não está na lista de categorias do sistema**.
 
 Duas providências ficam pendentes de decisão sua (§9, decisão 3): incluir Antecipação de
@@ -969,7 +969,7 @@ vive — ou viveria — no modelo `Monitoring`.
 
 | # | Bloco | Campo | Existe? |
 |---|---|---|---|
-| 1 | 🔎 Identificação | `date`, `colaboradorId`, `canal`, `protocolo`, `tempo` | parcial |
+| 1 | 🔎 Identificação | `date`, `colaboradorId`, `canal`, `numeroAtendimento`, `protocolo`, `numeroTitulo`, `inicioAtendimento`, `fimAtendimento`, `duracaoMinutos` | sim, menos `cliente` |
 | 2 | 🧩 Contexto do Atendimento | `contexto` | **não** |
 | 3 | ✅ Pontos Positivos | `strengths` | sim |
 | 4 | ⚠️ Pontos de Atenção | `opportunities` | sim |
@@ -983,9 +983,14 @@ vive — ou viveria — no modelo `Monitoring`.
 
 Atendente · Cliente · Canal · Título · Data · Início · Encerramento · Tempo total.
 
-**Lacuna.** O sistema não tem `cliente` (o `protocolo` é a única chave disponível — ver
-[VISAO-PRODUTO.md](VISAO-PRODUTO.md)) nem `inicio` / `encerramento`; só o campo agregado
-`tempo`. Decisão pendente em §9, decisão 5.
+**Resolvido na 0.14.0.** O bloco passou a existir em tela, no detalhe da monitoria. `Título`
+virou `numeroTitulo`, e `Início` / `Encerramento` / `Tempo total` são agora
+`inicioAtendimento`, `fimAtendimento` e `duracaoMinutos` — este último calculado, nunca
+digitado.
+
+**Lacuna remanescente:** o sistema ainda não tem `cliente`. Os três identificadores são as
+chaves disponíveis, e o `numeroTitulo` é a mais próxima do cliente, por ser do contrato — ver
+[VISAO-PRODUTO.md](VISAO-PRODUTO.md).
 
 ### 2. Contexto do Atendimento
 
@@ -1091,9 +1096,9 @@ ENCERRAMENTO e de novo no critério 25. Tratada uma vez só, no 25.
 |---|---|---|
 | 1 | Validar as âncoras 2/1/0 dos 24 critérios ponderáveis | Bloqueia 3A.1 — a instrução se monta a partir delas |
 | 2 | Validar a régua nova dos critérios 14 e 27 | Bloqueia o cadastro desses dois |
-| 3 | Incluir *Antecipação de Parcelas* em `OFFICIAL_CATEGORIAS` e definir a ordem de escrita das demais orientações | Bloqueia §6.2 |
+| 3 | ~~Incluir *ANTECIPAÇÃO PAGAMENTOS* em `OFFICIAL_CATEGORIAS`~~ — **feito na 0.14.0.** Resta definir a ordem de escrita das demais orientações | Bloqueia §6.2 |
 | 4 | Exigir justificativa também no `N/A`? Hoje o formulário não pede | Mudança em `validateStep3` |
-| 5 | Criar `inicio` / `encerramento` no modelo, ou manter só `tempo`? | Bloco 1 do relatório |
+| 5 | ~~Criar `inicio` / `encerramento` no modelo~~ — **resolvida na 0.14.0**, com data e hora completas e duração calculada | — |
 | 6 | Diferenciar `channels` por critério? Hoje os 28 se aplicam aos 6 canais | Muda quais critérios entram na instrução por canal |
 
 ---
@@ -1105,6 +1110,6 @@ validado, a 3A.0 se completa em três movimentos, nesta ordem:
 
 1. Cadastrar as orientações completas nos 28 critérios, via Admin.
 2. Criar o campo `ancoras` em `Criterion` e preenchê-lo.
-3. Criar a entidade `OrientacaoAtendimento` e registrar *Antecipação de Parcelas*.
+3. Criar a entidade `OrientacaoAtendimento` e registrar *ANTECIPAÇÃO PAGAMENTOS*.
 
 Só então a 3A.1 (`instructionBuilder`) tem o que ler.

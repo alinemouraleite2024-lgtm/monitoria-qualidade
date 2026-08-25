@@ -8,6 +8,7 @@ import {
 import { SearchableSelect } from '../../components/SearchableSelect';
 import { CANAIS, canalLabel } from '../../constants/canais';
 import { getScoreConcept } from '../../scoreUtils';
+import { calcularDuracao, formatarDuracao } from '../../domain/duracao';
 import type { Collaborator, Criterion, Monitoring, User } from '../../types/domain';
 
 /**
@@ -33,9 +34,7 @@ export interface MonitoringFormProps {
   collaborators?: Collaborator[];
   criteria?: Criterion[];
   currentUser?: User | null;
-  catalogEmpreendimentos?: string[];
   catalogCategorias?: string[];
-  onAddEmpreendimento?: (novo: string) => void;
   onAddCategoria?: (nova: string) => void;
   onClose: () => void;
   onSave: (monitoring: Monitoring) => void;
@@ -49,10 +48,12 @@ interface FormDataMonitoria {
   gestorId?: string;
   date: string;
   canal: string;
-  empreendimento?: string;
   categoriaAtendimento?: string;
+  numeroAtendimento?: string;
   protocolo?: string;
-  tempo?: string;
+  numeroTitulo?: string;
+  inicioAtendimento?: string;
+  fimAtendimento?: string;
   tipo: string;
   evidencias: Evidencia[];
   links: string[];
@@ -115,9 +116,7 @@ export const MonitoringForm = ({
   collaborators = [],
   criteria = [],
   currentUser = null,
-  catalogEmpreendimentos = [],
   catalogCategorias = [],
-  onAddEmpreendimento = () => {},
   onAddCategoria = () => {},
   colaboradorIdInicial = '',
   canalInicial = '',
@@ -135,10 +134,12 @@ export const MonitoringForm = ({
     gestorId: '',
     date: new Date().toISOString().split('T')[0],
     canal: canalInicial,
-    empreendimento: '',
     categoriaAtendimento: '',
+    numeroAtendimento: '',
     protocolo: '',
-    tempo: '00:05',
+    numeroTitulo: '',
+    inicioAtendimento: '',
+    fimAtendimento: '',
     tipo: 'Regular',
     
     // Evidencias (Mock)
@@ -178,12 +179,16 @@ export const MonitoringForm = ({
         evidencias: (initialData.evidencias || []) as Evidencia[],
         links: (initialData.links || []) as string[],
         evidenciaObservacoes: initialData.evidenciaObservacoes || '',
-        // Sem este fallback, abrir uma monitoria gravada antes de o protocolo existir traz
+        // Sem estes fallbacks, abrir uma monitoria gravada antes de o campo existir traz
         // `undefined` para dentro do estado e o campo deixa de ser controlado ("A component is
-        // changing a controlled input to be uncontrolled"). Com a regra que passou a exigir o
-        // protocolo também na edição, esse é justamente o caminho mais percorrido: toda
-        // monitoria antiga aberta para ajuste passa por aqui.
+        // changing a controlled input to be uncontrolled"). Com a regra que exige os
+        // identificadores e as datas também na edição, esse é justamente o caminho mais
+        // percorrido: toda monitoria antiga aberta para ajuste passa por aqui.
+        numeroAtendimento: initialData.numeroAtendimento || '',
         protocolo: initialData.protocolo || '',
+        numeroTitulo: initialData.numeroTitulo || '',
+        inicioAtendimento: initialData.inicioAtendimento || '',
+        fimAtendimento: initialData.fimAtendimento || '',
         strengths: initialData.strengths || '',
         opportunities: initialData.opportunities || '',
         comments: initialData.comments || ''
@@ -289,6 +294,24 @@ export const MonitoringForm = ({
 
   const conceito = getScoreConcept(finalScore);
 
+  // Duração derivada do par de datas. Nunca vem do estado do formulário: não existe caminho
+  // pelo qual a monitora digite este número.
+  const duracaoMinutos = useMemo(
+    () => calcularDuracao(formData.inicioAtendimento, formData.fimAtendimento),
+    [formData.inicioAtendimento, formData.fimAtendimento],
+  );
+
+  // `date` é o eixo de competência do sistema — metas, fila e relatórios são recortados por
+  // ele — e é independente de quando o atendimento aconteceu: avaliar hoje um atendimento de
+  // ontem é o caso normal. Derivar um do outro moveria monitorias entre competências e
+  // reescreveria metas já batidas. Então aqui não se corrige nada: só se avisa, porque mês
+  // diferente costuma significar ou competência errada, ou atendimento antigo sendo avaliado
+  // agora — e a monitora precisa saber qual dos dois é.
+  const competenciaDivergente = useMemo(() => {
+    if (!formData.inicioAtendimento || !formData.date) return false;
+    return formData.inicioAtendimento.slice(0, 7) !== formData.date.slice(0, 7);
+  }, [formData.inicioAtendimento, formData.date]);
+
   // Registra a resposta de uma sub-pergunta de um critério do tipo CHECKLIST_SIM_NAO.
   // O score agregado (0-2) só é calculado quando todas as sub-perguntas estiverem respondidas;
   // enquanto incompleto, score permanece '' para que validateStep3 continue bloqueando o avanço
@@ -308,17 +331,29 @@ export const MonitoringForm = ({
 
   const validateStep1 = () => {
     if (!formData.colaboradorId) return 'Por favor, selecione o Colaborador Avaliado.';
-    if (!formData.empreendimento) return 'O Empreendimento é obrigatório.';
     if (!formData.categoriaAtendimento) return 'A Categoria do Atendimento é obrigatória.';
-    // O protocolo passou a ser obrigatório: é a única chave que liga uma monitoria ao
-    // atendimento e, por consequência, ao cliente. Enquanto era opcional, o campo era gravado
-    // e nunca lido — nem na busca, nem em relatório. A regra vale também na edição, de
-    // propósito: as monitorias registradas antes desta mudança ganham a chave ao serem
-    // abertas, em vez de deixar a base com dois padrões. Preparação para a visão de Cliente
-    // como entidade central (ver docs/VISAO-PRODUTO.md).
-    if (!formData.protocolo || !formData.protocolo.trim()) return 'O Nº do Protocolo é obrigatório.';
+
+    // Os três identificadores são obrigatórios, inclusive na edição, e sem exceção para
+    // registro antigo. A alternativa considerada — deixá-los opcionais ao reabrir monitoria
+    // anterior à 0.14.0 — foi descartada: só existiam registros de teste para proteger, e o
+    // ramo condicional seria bifurcação permanente na parte mais sensível do formulário.
+    // São chaves distintas na operação; juntas ligam a monitoria ao atendimento, ao contrato
+    // e, adiante, ao cliente (ver docs/VISAO-PRODUTO.md).
+    if (!formData.numeroAtendimento?.trim()) return 'O Nº do Atendimento é obrigatório.';
+    if (!formData.protocolo?.trim()) return 'O Nº do Protocolo é obrigatório.';
+    if (!formData.numeroTitulo?.trim()) return 'O Nº do Título é obrigatório.';
+
     if (!formData.canal) return 'O Canal é obrigatório.';
     if (!formData.date) return 'A Data é obrigatória.';
+
+    if (!formData.inicioAtendimento) return 'O Início do atendimento é obrigatório.';
+    if (!formData.fimAtendimento) return 'O Encerramento do atendimento é obrigatório.';
+    // calcularDuracao devolve null quando o encerramento é anterior ao início. Duração zero é
+    // válida — atendimento pode durar menos de um minuto — então o teste é sobre o null, não
+    // sobre o valor.
+    if (duracaoMinutos === null) {
+      return 'O Encerramento precisa ser igual ou posterior ao Início do atendimento.';
+    }
     return null;
   };
 
@@ -374,6 +409,10 @@ export const MonitoringForm = ({
       tipo: formData.tipo as Monitoring['tipo'],
       id,
       date: formData.date + 'T12:00:00Z',
+      // Gravada, e não recalculada na leitura, para que relatório e tela leiam o mesmo número
+      // sem repetir a regra. `?? undefined` porque o campo é opcional em Monitoring: um
+      // rascunho pode ser salvo antes das datas estarem completas.
+      duracaoMinutos: duracaoMinutos ?? undefined,
       finalScore,
       scores: formattedScores,
       status: (isDraft ? 'Rascunho'
@@ -557,28 +596,56 @@ export const MonitoringForm = ({
                       </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginTop: '1.5rem' }}>
-                      <div className="form-group">
-                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>🏘 Empreendimento *</label>
-                        <SearchableSelect 
-                          options={catalogEmpreendimentos}
-                          value={formData.empreendimento}
-                          onChange={(val) => setFormData({...formData, empreendimento: val})}
-                          hasError={hasAttemptedNext && !formData.empreendimento}
-                          allowCreate={true}
-                          onCreate={(novo) => onAddEmpreendimento(novo)}
-                        />
-                      </div>
-                      
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem', marginTop: '1.5rem' }}>
                       <div className="form-group">
                         <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>📂 Categoria *</label>
-                        <SearchableSelect 
+                        <SearchableSelect
                           options={catalogCategorias}
                           value={formData.categoriaAtendimento}
                           onChange={(val) => setFormData({...formData, categoriaAtendimento: val})}
                           hasError={hasAttemptedNext && !formData.categoriaAtendimento}
                           allowCreate={true}
                           onCreate={(nova) => onAddCategoria(nova)}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Os três identificadores ficam na mesma linha de propósito: são chaves
+                        distintas do mesmo atendimento e lêem-se como um bloco só. */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.5rem', marginTop: '1.5rem' }}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>🔖 Nº do Atendimento *</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Nº do atendimento"
+                          value={formData.numeroAtendimento}
+                          onChange={(e) => setFormData({...formData, numeroAtendimento: e.target.value})}
+                          style={{ borderColor: (hasAttemptedNext && !formData.numeroAtendimento?.trim()) ? '#ef4444' : '#d1d5db', backgroundColor: '#f9fafb' }}
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>📝 Nº do Protocolo *</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Nº do protocolo"
+                          value={formData.protocolo}
+                          onChange={(e) => setFormData({...formData, protocolo: e.target.value})}
+                          style={{ borderColor: (hasAttemptedNext && !formData.protocolo?.trim()) ? '#ef4444' : '#d1d5db', backgroundColor: '#f9fafb' }}
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>📄 Nº do Título *</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Nº do título"
+                          value={formData.numeroTitulo}
+                          onChange={(e) => setFormData({...formData, numeroTitulo: e.target.value})}
+                          style={{ borderColor: (hasAttemptedNext && !formData.numeroTitulo?.trim()) ? '#ef4444' : '#d1d5db', backgroundColor: '#f9fafb' }}
                         />
                       </div>
                     </div>
@@ -624,40 +691,81 @@ export const MonitoringForm = ({
                       </div>
                       
                       <div className="form-group">
-                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>📝 Nº do Protocolo *</label>
-                        <input 
-                          type="text" 
-                          className="form-control"
-                          placeholder="Nº do atendimento..."
-                          value={formData.protocolo}
-                          onChange={(e) => setFormData({...formData, protocolo: e.target.value})}
-                          style={{ borderColor: (hasAttemptedNext && !formData.protocolo) ? '#ef4444' : '#d1d5db', backgroundColor: '#f9fafb' }}
-                        />
-                      </div>
-                    </div>
-                    
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.5rem', marginTop: '1.5rem' }}>
-                      <div className="form-group">
                         <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>📅 Data *</label>
-                        <input 
-                          type="date" 
+                        <input
+                          type="date"
                           className="form-control"
                           value={formData.date}
                           onChange={(e) => setFormData({...formData, date: e.target.value})}
                           style={{ borderColor: (hasAttemptedNext && !formData.date) ? '#ef4444' : '#d1d5db', backgroundColor: '#f9fafb' }}
                         />
                       </div>
+                    </div>
+
+                    {/* Início, encerramento e duração na mesma linha: a conta fica visível.
+                        Data completa, e não só hora, porque atendimento de WhatsApp atravessa
+                        o dia — começar às 16h de terça e encerrar às 8h de quarta é normal. */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.5rem', marginTop: '1.5rem' }}>
                       <div className="form-group">
-                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>⏱ Tempo *</label>
-                        <input 
-                          type="time" 
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>▶️ Início do atendimento *</label>
+                        <input
+                          type="datetime-local"
                           className="form-control"
-                          value={formData.tempo}
-                          onChange={(e) => setFormData({...formData, tempo: e.target.value})}
-                          style={{ backgroundColor: '#f9fafb' }}
+                          value={formData.inicioAtendimento}
+                          onChange={(e) => setFormData({...formData, inicioAtendimento: e.target.value})}
+                          style={{ borderColor: (hasAttemptedNext && !formData.inicioAtendimento) ? '#ef4444' : '#d1d5db', backgroundColor: '#f9fafb' }}
                         />
                       </div>
+
+                      <div className="form-group">
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>⏹ Encerramento *</label>
+                        <input
+                          type="datetime-local"
+                          className="form-control"
+                          value={formData.fimAtendimento}
+                          onChange={(e) => setFormData({...formData, fimAtendimento: e.target.value})}
+                          style={{
+                            borderColor: (hasAttemptedNext && (!formData.fimAtendimento || duracaoMinutos === null)) ? '#ef4444' : '#d1d5db',
+                            backgroundColor: '#f9fafb'
+                          }}
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>⏱ Tempo de atendimento</label>
+                        <div
+                          className="form-control"
+                          aria-readonly="true"
+                          style={{
+                            backgroundColor: '#f3f4f6',
+                            color: duracaoMinutos === null ? '#9ca3af' : '#111827',
+                            fontWeight: duracaoMinutos === null ? '400' : '600',
+                            display: 'flex',
+                            alignItems: 'center',
+                            cursor: 'not-allowed'
+                          }}
+                        >
+                          {duracaoMinutos === null ? 'Calculado automaticamente' : formatarDuracao(duracaoMinutos)}
+                        </div>
+                      </div>
                     </div>
+
+                    {formData.inicioAtendimento && formData.fimAtendimento && duracaoMinutos === null && (
+                      <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '8px', color: '#b91c1c', fontSize: '0.85rem' }}>
+                        <AlertTriangle size={16} />
+                        O encerramento precisa ser igual ou posterior ao início do atendimento.
+                      </div>
+                    )}
+
+                    {competenciaDivergente && (
+                      <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'flex-start', gap: '8px', color: '#92400e', fontSize: '0.85rem', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '0.6rem 0.75rem' }}>
+                        <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
+                        <span>
+                          O atendimento é de um mês diferente da Data da monitoria. A Data define a
+                          competência — metas, fila e relatórios. Confirme se é isso mesmo.
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -924,8 +1032,8 @@ export const MonitoringForm = ({
                           <span style={{ fontWeight: '600', color: '#111827' }}>{qtdAvaliados + qtdNA} de {applicableCriteria.length}</span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                          <span style={{ color: '#6b7280' }}>Tempo de análise</span>
-                          <span style={{ fontWeight: '600', color: '#111827' }}>{formData.tempo}</span>
+                          <span style={{ color: '#6b7280' }}>Tempo de atendimento</span>
+                          <span style={{ fontWeight: '600', color: '#111827' }}>{formatarDuracao(duracaoMinutos)}</span>
                         </div>
                       </div>
                     </div>
@@ -1029,9 +1137,11 @@ export const MonitoringForm = ({
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Colaborador:</span> <span style={{ fontWeight: '600', color: '#111827' }}>{collaborators.find(c => c.id === formData.colaboradorId)?.name || '-'}</span></div>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Monitor:</span> <span style={{ fontWeight: '600', color: '#111827' }}>{users.find(u => u.id === formData.monitorId)?.name || '-'}</span></div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Empreendimento:</span> <span style={{ fontWeight: '600', color: '#111827' }}>{formData.empreendimento || '-'}</span></div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Protocolo:</span> <span style={{ fontWeight: '600', color: '#111827' }}>{formData.protocolo || '-'}</span></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Nº do Atendimento:</span> <span style={{ fontWeight: '600', color: '#111827' }}>{formData.numeroAtendimento || '-'}</span></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Nº do Protocolo:</span> <span style={{ fontWeight: '600', color: '#111827' }}>{formData.protocolo || '-'}</span></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Nº do Título:</span> <span style={{ fontWeight: '600', color: '#111827' }}>{formData.numeroTitulo || '-'}</span></div>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Canal / Data:</span> <span style={{ fontWeight: '600', color: '#111827' }}>{formData.canal} • {formData.date.split('-').reverse().join('/')}</span></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Duração:</span> <span style={{ fontWeight: '600', color: '#111827' }}>{formatarDuracao(duracaoMinutos)}</span></div>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Evidências:</span> <span style={{ fontWeight: '600', color: '#111827' }}>{formData.evidencias.length} arquivos</span></div>
                       </div>
                     </div>
@@ -1044,8 +1154,8 @@ export const MonitoringForm = ({
                       
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginTop: '1.5rem', width: '100%' }}>
                         <div style={{ textAlign: 'center', backgroundColor: '#f9fafb', padding: '0.75rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-                          <div style={{ fontSize: '1.25rem', fontWeight: '700', color: '#111827' }}>{formData.tempo}</div>
-                          <div style={{ fontSize: '0.7rem', color: '#6b7280', textTransform: 'uppercase', marginTop: '4px' }}>Tempo</div>
+                          <div style={{ fontSize: '1.05rem', fontWeight: '700', color: '#111827' }}>{formatarDuracao(duracaoMinutos)}</div>
+                          <div style={{ fontSize: '0.7rem', color: '#6b7280', textTransform: 'uppercase', marginTop: '4px' }}>Duração</div>
                         </div>
                         <div style={{ textAlign: 'center', backgroundColor: '#f9fafb', padding: '0.75rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
                           <div style={{ fontSize: '1.25rem', fontWeight: '700', color: '#111827' }}>{qtdAvaliados}</div>

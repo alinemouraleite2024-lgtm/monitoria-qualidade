@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, CheckCircle2, User as UserIcon, Clock, FileText, Check, AlertCircle } from 'lucide-react';
 import { getScoreConcept } from '../../scoreUtils';
 import { canalLabel } from '../../constants/canais';
+import { exibirDuracao } from '../../domain/duracao';
 import type { Collaborator, Criterion, Monitoring, User } from '../../types/domain';
 
 interface MonitoringHistoryProps {
@@ -100,6 +101,54 @@ export const MonitoringHistory = ({
               <span className={`badge-pill badge-${monitoring.status === 'Validada' ? 'success' : monitoring.status === 'Reprovada' ? 'danger' : 'warning'}`}>
                 {monitoring.status}
               </span>
+            </div>
+          </div>
+
+          {/* Identificação do atendimento — bloco correspondente ao "🔎 Identificação" do
+              Padrão Relatório de Monitoria, que até a 0.13.0 não existia em tela nenhuma.
+              Campo ausente aparece como "—": registro anterior à 0.14.0 não tem os
+              identificadores nem a janela de atendimento, e mentir um valor seria pior. */}
+          <div>
+            <h3 style={{ fontSize: '0.95rem', fontWeight: '700', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <FileText size={16} style={{ color: 'var(--text-muted)' }} /> Identificação do Atendimento
+            </h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', backgroundColor: '#fafbfc', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>Nº do Atendimento</div>
+                <div style={{ fontSize: '0.9rem', fontWeight: '500' }}>{monitoring.numeroAtendimento || '—'}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>Nº do Protocolo</div>
+                <div style={{ fontSize: '0.9rem', fontWeight: '500' }}>{monitoring.protocolo || '—'}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>Nº do Título</div>
+                <div style={{ fontSize: '0.9rem', fontWeight: '500' }}>{monitoring.numeroTitulo || '—'}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>Início</div>
+                <div style={{ fontSize: '0.9rem', fontWeight: '500' }}>
+                  {monitoring.inicioAtendimento ? new Date(monitoring.inicioAtendimento).toLocaleString('pt-BR') : '—'}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>Encerramento</div>
+                <div style={{ fontSize: '0.9rem', fontWeight: '500' }}>
+                  {monitoring.fimAtendimento ? new Date(monitoring.fimAtendimento).toLocaleString('pt-BR') : '—'}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>Tempo de atendimento</div>
+                <div style={{ fontSize: '0.9rem', fontWeight: '500' }}>{exibirDuracao(monitoring.duracaoMinutos, monitoring.tempo)}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>Categoria</div>
+                <div style={{ fontSize: '0.9rem', fontWeight: '500' }}>{monitoring.categoriaAtendimento || '—'}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>Tipo</div>
+                <div style={{ fontSize: '0.9rem', fontWeight: '500' }}>{monitoring.tipo}</div>
+              </div>
             </div>
           </div>
 
