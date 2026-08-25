@@ -1181,6 +1181,8 @@ function AppContent() {
                       collaborators={getCollaborators()}
                       criteria={criteria}
                       currentUser={currentUser}
+
+                      monitorings={monitorings}
                       catalogCategorias={catalogCategorias}
                       onAddCategoria={handleAddCategoria}
                       onClose={() => navigate('/monitorings')}
@@ -1200,6 +1202,8 @@ function AppContent() {
                         collaborators={getCollaborators()}
                         criteria={criteria}
                         currentUser={currentUser}
+
+                        monitorings={monitorings}
                         catalogCategorias={catalogCategorias}
                         onAddCategoria={handleAddCategoria}
                         onClose={() => navigate('/monitorings')}

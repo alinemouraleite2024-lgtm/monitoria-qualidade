@@ -22,8 +22,8 @@ Esta pasta contém a documentação técnica, manuais e guias do projeto.
 | | |
 |---|---|
 | Sistema | em produção — https://monitoria-qualidade.vercel.app |
-| Versão em produção | 0.13.0 · commit `a8467c9` · tag `v0.13.0` |
-| Em branch | **0.14.0** — identificadores do atendimento e duração calculada, aguardando preview |
+| Versão em produção | 0.14.0 · commit `8e53533` · tag `v0.14.0` |
+| Em branch | **0.15.0** — protocolo gerado e identificadores sem sorteio, aguardando preview |
 | Frente aberta | **3A — Assistente de Avaliação** |
 | Fatia em curso | 3A.0 (metodologia) — documento escrito, aguardando validação |
 | Próximo marco | merge da 0.14.0 e validação da régua para liberar a 3A.1 |

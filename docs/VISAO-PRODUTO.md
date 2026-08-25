@@ -48,7 +48,7 @@ Três consequências diretas:
 
 ```
 Cliente
- ├── Atendimentos          (chave: protocolo · empreendimento · canal · data)
+ ├── Atendimentos          (chave: nº do atendimento · nº do título · canal · data)
  │    ├── Monitoria        → avaliação interna do atendimento
  │    ├── CSAT             → percepção do cliente sobre aquele atendimento
  │    └── NPS              → percepção do cliente sobre a relação
@@ -62,13 +62,34 @@ atendimento.
 
 ## O que já foi preparado (versão 0.9.0)
 
-**O `protocolo` virou campo obrigatório e pesquisável.** É a única chave hoje disponível para
-ligar uma monitoria ao atendimento e, por consequência, ao cliente.
+**O `protocolo` virou campo obrigatório e pesquisável.** Era, então, a única chave disponível
+para ligar uma monitoria ao atendimento e, por consequência, ao cliente.
 
 A decisão de torná-lo obrigatório **também na edição** foi deliberada: monitorias registradas
 antes desta versão ganham a chave quando forem abertas, em vez de deixar a base com dois
 padrões. O objetivo é construir o histórico corretamente desde agora — a chave que não for
 capturada no registro não se recupera depois.
+
+> **Superado em 0.14.0 e 0.15.0 — ver abaixo.** O papel de chave externa passou para
+> `numeroAtendimento` e `numeroTitulo`, e o `protocolo` deixou de ser digitado.
+
+## Como as chaves ficaram (0.14.0 e 0.15.0)
+
+A **0.14.0** trouxe os identificadores que a operação de fato usa, e com isso o `protocolo`
+deixou de carregar sozinho a ligação com o atendimento:
+
+- `numeroAtendimento` — identifica o atendimento no sistema de origem.
+- `numeroTitulo` — identifica o **título do contrato**, e é por isso a chave mais próxima do
+  cliente que o modelo já tem. É o gancho concreto para a virada descrita neste documento: a
+  entidade Cliente, quando existir, pendura por aqui.
+- `protocolo` — desde a **0.15.0** é **gerado pelo sistema** (`MON-2026-0001`), no primeiro
+  salvamento e nunca reescrito. Deixou de apontar para fora: passou a nomear a monitoria.
+
+O `id` continua sendo a chave técnica — usada em rotas e no `relatedId` das demandas — e desde
+a 0.15.0 é gerado por sequência verificada contra a base, não por sorteio.
+
+Protocolos digitados antes da 0.15.0 permanecem como estão, em formato livre. Não foram
+migrados: eram registros de teste, e reescrevê-los inventaria dado que ninguém informou.
 
 Na mesma linha, o modelo de demandas (`INITIAL_DEMANDS`, `demandsRepository`) foi
 **preservado** mesmo com "Central de Demandas" e "Minhas Demandas" fora do menu. Ele já tem

@@ -9,6 +9,7 @@ import { SearchableSelect } from '../../components/SearchableSelect';
 import { CANAIS, canalLabel } from '../../constants/canais';
 import { getScoreConcept } from '../../scoreUtils';
 import { calcularDuracao, formatarDuracao } from '../../domain/duracao';
+import { gerarIdMonitoria, gerarProtocolo } from '../../domain/identificadores';
 import type { Collaborator, Criterion, Monitoring, User } from '../../types/domain';
 
 /**
@@ -34,6 +35,11 @@ export interface MonitoringFormProps {
   collaborators?: Collaborator[];
   criteria?: Criterion[];
   currentUser?: User | null;
+  /**
+   * Base atual de monitorias. Existe só para garantir unicidade de `id` e `protocolo` no
+   * momento da geração — o formulário não lê nada mais daqui.
+   */
+  monitorings?: Monitoring[];
   catalogCategorias?: string[];
   onAddCategoria?: (nova: string) => void;
   onClose: () => void;
@@ -116,6 +122,7 @@ export const MonitoringForm = ({
   collaborators = [],
   criteria = [],
   currentUser = null,
+  monitorings = [],
   catalogCategorias = [],
   onAddCategoria = () => {},
   colaboradorIdInicial = '',
@@ -333,14 +340,13 @@ export const MonitoringForm = ({
     if (!formData.colaboradorId) return 'Por favor, selecione o Colaborador Avaliado.';
     if (!formData.categoriaAtendimento) return 'A Categoria do Atendimento é obrigatória.';
 
-    // Os três identificadores são obrigatórios, inclusive na edição, e sem exceção para
-    // registro antigo. A alternativa considerada — deixá-los opcionais ao reabrir monitoria
-    // anterior à 0.14.0 — foi descartada: só existiam registros de teste para proteger, e o
-    // ramo condicional seria bifurcação permanente na parte mais sensível do formulário.
-    // São chaves distintas na operação; juntas ligam a monitoria ao atendimento, ao contrato
-    // e, adiante, ao cliente (ver docs/VISAO-PRODUTO.md).
+    // Os dois identificadores informados pela operação são obrigatórios, inclusive na edição e
+    // sem exceção para registro antigo. São chaves distintas; juntas ligam a monitoria ao
+    // atendimento, ao contrato e, adiante, ao cliente (ver docs/VISAO-PRODUTO.md).
+    //
+    // O protocolo NÃO entra aqui desde a 0.15.0: deixou de ser digitado e passou a ser gerado
+    // no primeiro salvamento. Exigi-lo bloquearia justamente a gravação que o cria.
     if (!formData.numeroAtendimento?.trim()) return 'O Nº do Atendimento é obrigatório.';
-    if (!formData.protocolo?.trim()) return 'O Nº do Protocolo é obrigatório.';
     if (!formData.numeroTitulo?.trim()) return 'O Nº do Título é obrigatório.';
 
     if (!formData.canal) return 'O Canal é obrigatório.';
@@ -393,7 +399,11 @@ export const MonitoringForm = ({
   };
 
   const buildFinalData = (isDraft: boolean): Monitoring => {
-    const id = formData.id || `MON-${Math.floor(Math.random() * 90000) + 10000}`;
+    // Ambos gerados uma única vez, no primeiro salvamento — inclusive de rascunho — e nunca
+    // regerados: `formData.id` e `formData.protocolo` já estarão preenchidos nas gravações
+    // seguintes. Rascunho abandonado não queima número porque nada é gerado antes de salvar.
+    const id = formData.id || gerarIdMonitoria(monitorings);
+    const protocolo = formData.protocolo || gerarProtocolo(monitorings, formData.date);
     const formattedScores = applicableCriteria.map(c => ({
       criterionId: c.id,
       score: scores[c.id]?.score || 0,
@@ -408,6 +418,7 @@ export const MonitoringForm = ({
       canal: formData.canal as Monitoring['canal'],
       tipo: formData.tipo as Monitoring['tipo'],
       id,
+      protocolo,
       date: formData.date + 'T12:00:00Z',
       // Gravada, e não recalculada na leitura, para que relatório e tela leiam o mesmo número
       // sem repetir a regra. `?? undefined` porque o campo é opcional em Monitoring: um
@@ -438,7 +449,7 @@ export const MonitoringForm = ({
     if (window.confirm("Deseja concluir esta monitoria? Após salvar ela seguirá para validação.")) {
       const data = buildFinalData(false);
       onSave(data);
-      alert(`Monitoria salva com sucesso!\nCódigo: ${data.id}\nNota: ${data.finalScore}% (${getScoreConcept(data.finalScore).label})`);
+      alert(`Monitoria salva com sucesso!\nProtocolo: ${data.protocolo}\nCódigo: ${data.id}\nNota: ${data.finalScore}% (${getScoreConcept(data.finalScore).label})`);
     }
   };
 
@@ -610,8 +621,9 @@ export const MonitoringForm = ({
                       </div>
                     </div>
 
-                    {/* Os três identificadores ficam na mesma linha de propósito: são chaves
-                        distintas do mesmo atendimento e lêem-se como um bloco só. */}
+                    {/* Os três identificadores na mesma linha: são chaves do mesmo atendimento
+                        e lêem-se como um bloco. Os dois primeiros a operação informa; o
+                        protocolo o sistema gera — por isso ele vem por último e não é campo. */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.5rem', marginTop: '1.5rem' }}>
                       <div className="form-group">
                         <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>🔖 Nº do Atendimento *</label>
@@ -626,18 +638,6 @@ export const MonitoringForm = ({
                       </div>
 
                       <div className="form-group">
-                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>📝 Nº do Protocolo *</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          placeholder="Nº do protocolo"
-                          value={formData.protocolo}
-                          onChange={(e) => setFormData({...formData, protocolo: e.target.value})}
-                          style={{ borderColor: (hasAttemptedNext && !formData.protocolo?.trim()) ? '#ef4444' : '#d1d5db', backgroundColor: '#f9fafb' }}
-                        />
-                      </div>
-
-                      <div className="form-group">
                         <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>📄 Nº do Título *</label>
                         <input
                           type="text"
@@ -647,6 +647,26 @@ export const MonitoringForm = ({
                           onChange={(e) => setFormData({...formData, numeroTitulo: e.target.value})}
                           style={{ borderColor: (hasAttemptedNext && !formData.numeroTitulo?.trim()) ? '#ef4444' : '#d1d5db', backgroundColor: '#f9fafb' }}
                         />
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>📝 Nº do Protocolo</label>
+                        <div
+                          className="form-control"
+                          aria-readonly="true"
+                          title={formData.protocolo ? 'Gerado pelo sistema. Não é editável.' : 'O sistema gera o protocolo ao salvar.'}
+                          style={{
+                            backgroundColor: '#f3f4f6',
+                            color: formData.protocolo ? '#111827' : '#9ca3af',
+                            fontWeight: formData.protocolo ? '600' : '400',
+                            fontStyle: formData.protocolo ? 'normal' : 'italic',
+                            display: 'flex',
+                            alignItems: 'center',
+                            cursor: 'not-allowed'
+                          }}
+                        >
+                          {formData.protocolo || 'Gerado automaticamente ao salvar'}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1138,7 +1158,7 @@ export const MonitoringForm = ({
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Colaborador:</span> <span style={{ fontWeight: '600', color: '#111827' }}>{collaborators.find(c => c.id === formData.colaboradorId)?.name || '-'}</span></div>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Monitor:</span> <span style={{ fontWeight: '600', color: '#111827' }}>{users.find(u => u.id === formData.monitorId)?.name || '-'}</span></div>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Nº do Atendimento:</span> <span style={{ fontWeight: '600', color: '#111827' }}>{formData.numeroAtendimento || '-'}</span></div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Nº do Protocolo:</span> <span style={{ fontWeight: '600', color: '#111827' }}>{formData.protocolo || '-'}</span></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Nº do Protocolo:</span> <span style={{ fontWeight: '600', color: formData.protocolo ? '#111827' : '#6b7280', fontStyle: formData.protocolo ? 'normal' : 'italic' }}>{formData.protocolo || 'gerado ao salvar'}</span></div>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Nº do Título:</span> <span style={{ fontWeight: '600', color: '#111827' }}>{formData.numeroTitulo || '-'}</span></div>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Canal / Data:</span> <span style={{ fontWeight: '600', color: '#111827' }}>{formData.canal} • {formData.date.split('-').reverse().join('/')}</span></div>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Duração:</span> <span style={{ fontWeight: '600', color: '#111827' }}>{formatarDuracao(duracaoMinutos)}</span></div>

@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] - 2026-08-25 — Protocolo gerado e identificadores sem sorteio
+
+> A monitora informa o que ela sabe — atendimento e título. O que identifica a monitoria, o
+> sistema gera.
+
+### Added
+
+- `domain/identificadores.ts` — `gerarProtocolo` e `gerarIdMonitoria`. Ambos derivam do maior
+  valor já existente e **conferem contra a base** antes de devolver.
+- **Protocolo gerado**, no formato `MON-2026-0001`. Sequência por ano, tirada do ano da
+  monitoria (`date`) e não do momento da geração: uma monitoria de 2025 avaliada em 2026 entra
+  na sequência de 2025.
+
+### Changed
+
+- **O Nº do Protocolo deixou de ser digitado.** Sai da lista de obrigatórios e vira campo
+  derivado, exibido como *"Gerado automaticamente ao salvar"* enquanto não existe. Obrigatórios
+  na criação passam a ser apenas **Nº do Atendimento** e **Nº do Título**.
+- Gerado **no primeiro salvamento**, inclusive de rascunho, e **nunca reescrito** depois —
+  rascunho abandonado não queima número, e reabrir uma monitoria não troca seu protocolo.
+- O protocolo passa a aparecer no alerta de confirmação, acima do código interno: é ele o número
+  que a operação usa para se referir à monitoria.
+
+### Fixed
+
+- **O código interno da monitoria podia sobrescrever um registro existente.** Ele era
+  `MON-${Math.random()*90000+10000}`, sem verificação de unicidade, e o salvamento decide entre
+  criar e atualizar comparando o id com os existentes — então um sorteio repetido fazia uma
+  monitoria nova ser gravada **por cima** de outra, sem erro e sem aviso. Com 90.000 valores, a
+  chance de ao menos uma colisão passava de 20% em 200 registros e de 50% em 350. Agora o id é
+  sucessor do maior existente, com laço de verificação contra a base.
+
+### Notas de operação
+
+- **Protocolos anteriores permanecem como estão.** Os registros gravados até aqui têm protocolo
+  digitado à mão, em formato livre; eles continuam legíveis e pesquisáveis, e não entram na
+  sequência nova. Não foram migrados por serem registros de teste — reescrevê-los inventaria
+  dado que ninguém informou.
+- O `protocolo` mudou de significado: era referência ao atendimento no sistema de origem, virou
+  identidade da monitoria. Quem faz a ligação com o atendimento agora são `numeroAtendimento` e
+  `numeroTitulo`, desde a 0.14.0. `docs/VISAO-PRODUTO.md` foi atualizado.
+- A sequência é por navegador, como todo o resto da persistência. Se a operação passar a
+  registrar em mais de uma máquina, duas monitorias podem receber o mesmo protocolo — a mesma
+  limitação que já vale para a base inteira.
+
 ## [0.14.0] - 2026-08-25 — Identificadores do atendimento e duração calculada
 
 > Três mudanças na tela de Nova Monitoria, todas sobre **o que identifica um atendimento** e
