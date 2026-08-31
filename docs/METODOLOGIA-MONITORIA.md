@@ -1,10 +1,14 @@
 # Metodologia de Monitoria — Base Única
 
-> **Fatia 3A.0.** Formalização da régua de avaliação. Nenhuma linha de código depende deste
-> documento ainda: ele existe para ser **validado primeiro** e só então virar cadastro no
-> sistema e insumo do `instructionBuilder` (3A.1).
+> **Fatia 3A.0.** Formalização da régua de avaliação. Ele existe para ser **validado primeiro**
+> e só então virar cadastro no sistema e insumo do `instructionBuilder` (3A.1).
 >
-> Registrado em 24/08/2026. Produção atual: versão 0.13.0, commit `a8467c9`.
+> Escrito em 24/08/2026. **Revisado em 25/08/2026 para o estado da 0.17.0** — quatro versões
+> publicadas no intervalo mexeram no que a régua descreve. As marcas de revisão estão em §2
+> (quarta forma de resposta), §4 (critério 3 inativo e opções cadastradas), §7 (o protocolo
+> mudou de natureza) e no Estado da fatia, ao final.
+>
+> Produção atual: **0.17.0**, commit `fa5a5e0`.
 
 ## Sumário
 
@@ -86,6 +90,19 @@ sub-perguntas respondidas com SIM — `(SIM ÷ total) × 2`. O critério 4 tem 4
 (0 · 0,5 · 1 · 1,5 · 2); o 24 tem 3 (0 · 0,67 · 1,33 · 2). **Nestes dois, a âncora é por
 sub-pergunta**, não por nível.
 
+**Exceção 3 — `MULTIPLA_ESCOLHA`** *(a partir da 0.16.0)*: **não tem nota.** Os critérios de
+classificação guardam o **texto da opção escolhida** — "Reclamação", "Receptivo" — e não um
+número. Não pontuam, não pedem justificativa e não entram no denominador.
+
+Até a 0.15.0 eles caíam na escala pontuável e apareciam como 2 / 1 / 0 / N/A, como se o motivo
+do contato fosse desempenho. Por isso a régua deles, no Bloco 1, é uma **régua de classificação**
+— quando usar cada opção — e não âncoras de nível.
+
+> **O campo `score` carrega quatro coisas**, então: número (critérios pontuáveis), `'N/A'`,
+> `''` (não respondido) e texto (classificação). Quem for escrever regra sobre ele precisa
+> comparar de forma estrita — `''` e texto se comportam como zero em coerção numérica, e zero
+> tem significado próprio nos eliminatórios.
+
 ---
 
 ## 3. Estrutura da avaliação
@@ -124,6 +141,11 @@ conversa para sustentar a nota.
 Critérios de **classificação**. Peso 0: não movem a nota. Existem para segmentar relatórios e
 para dar contexto ao restante da avaliação — um contato de Reclamação lê-se diferente de um de
 Informação.
+
+> **Estado na 0.16.0.** As opções dos três estão **cadastradas no sistema** (campo
+> `Criterion.opcoes`), e a tela as apresenta como botões de escolha única — sem escala e sem
+> justificativa. O **critério 3 está inativo**: não aparece mais no formulário. O que se valida
+> aqui, portanto, é a **régua de classificação** — quando usar cada opção — e não âncoras.
 
 #### 1. Qual o motivo do contato?
 `crit-01` · MULTIPLA_ESCOLHA · peso 0
@@ -993,6 +1015,12 @@ virou `numeroTitulo`, e `Início` / `Encerramento` / `Tempo total` são agora
 `inicioAtendimento`, `fimAtendimento` e `duracaoMinutos` — este último calculado, nunca
 digitado.
 
+**O protocolo mudou de natureza na 0.15.0.** Era referência ao atendimento no sistema de origem;
+passou a ser **gerado pelo sistema** (`MON-2026-0001`), no primeiro salvamento e nunca reescrito.
+Não é mais digitado, e não é mais o elo com o atendimento — quem faz esse papel são
+`numeroAtendimento` e `numeroTitulo`. Para a régua isso muda uma coisa só: **o protocolo deixou
+de ser algo que a monitora informa**, e portanto não é objeto de avaliação nem de conferência.
+
 **Lacuna remanescente:** o sistema ainda não tem `cliente`. Os três identificadores são as
 chaves disponíveis, e o `numeroTitulo` é a mais próxima do cliente, por ser do contrato — ver
 [VISAO-PRODUTO.md](VISAO-PRODUTO.md).
@@ -1104,17 +1132,56 @@ ENCERRAMENTO e de novo no critério 25. Tratada uma vez só, no 25.
 | 3 | ~~Incluir *ANTECIPAÇÃO PAGAMENTOS* em `OFFICIAL_CATEGORIAS`~~ — **feito na 0.14.0.** Resta definir a ordem de escrita das demais orientações | Bloqueia §6.2 |
 | 4 | Exigir justificativa também no `N/A`? Hoje o formulário não pede | Mudança em `validateStep3` |
 | 5 | ~~Criar `inicio` / `encerramento` no modelo~~ — **resolvida na 0.14.0**, com data e hora completas e duração calculada | — |
-| 6 | Diferenciar `channels` por critério? Hoje os 28 se aplicam aos 6 canais | Muda quais critérios entram na instrução por canal |
+| 6 | Diferenciar `channels` por critério? Hoje os 27 ativos se aplicam aos 6 canais | Muda quais critérios entram na instrução por canal |
+| 7 | *(nova, 0.16.0)* `REGISTRO (I)` existe como categoria própria, ou consolida com `REGISTRO`? | Bloqueia só o catálogo, não a régua |
+| 8 | *(nova, 0.17.0)* Criar os 4 campos narrativos do relatório em `Monitoring` | Bloqueia a 3A.3, não a 3A.1 |
 
 ---
 
 ## Estado desta fatia
 
-Este documento **não altera código nem dados**. É o insumo de validação da 3A.0. Depois de
-validado, a 3A.0 se completa em três movimentos, nesta ordem:
+Este documento **não altera código nem dados**. É o insumo de validação da 3A.0.
 
-1. Cadastrar as orientações completas nos 28 critérios, via Admin.
-2. Criar o campo `ancoras` em `Criterion` e preenchê-lo.
-3. Criar a entidade `OrientacaoAtendimento` e registrar *ANTECIPAÇÃO PAGAMENTOS*.
+### O que as versões 0.14.0 a 0.17.0 mudaram aqui
 
-Só então a 3A.1 (`instructionBuilder`) tem o que ler.
+| Versão | Efeito na régua |
+|---|---|
+| **0.14.0** | Resolveu a decisão 5 (início/encerramento) e alinhou o nome `ANTECIPAÇÃO PAGAMENTOS` |
+| **0.15.0** | O protocolo virou identidade gerada — deixou de ser algo que a monitora informa |
+| **0.16.0** | Critério 3 inativo; `MULTIPLA_ESCOLHA` virou a quarta forma de resposta |
+| **0.17.0** | Não tocou a régua, mas apagou e recriou `pm2_criteria` |
+
+**A 0.16.0 removeu a maior incerteza técnica da fatia.** O campo `opcoes` foi o primeiro campo
+novo de `Criterion` a alcançar uma base já gravada, por loader com marcador de versão, e o teste
+confirmou que **as edições feitas no Admin sobrevivem à migração**. Era exatamente a dúvida que
+pairava sobre `ancoras`: como levar um campo novo para uma base que já contém trabalho de
+cadastro. O caminho está provado.
+
+**A 0.17.0 fechou uma janela.** `pm2_criteria` foi apagado com o `DATABASE_VERSION`. Nada se
+perdeu porque o cadastro não tinha começado — mas **do primeiro critério salvo em diante esse
+dado é insubstituível**, e o backup de [BACKUP-RESTAURACAO.md](BACKUP-RESTAURACAO.md) volta a ser
+obrigatório antes de qualquer publicação que mexa em modelo ou migração.
+
+### O que falta, na ordem revisada
+
+A ordem original mandava cadastrar as orientações antes de criar `ancoras`. Isso obrigaria a
+percorrer os 28 critérios duas vezes. Invertido:
+
+1. **Validar a régua** — os 32 itens, no artefato de revisão.
+2. **Aplicar os ajustes** aprovados neste documento.
+3. **Criar o campo `ancoras` em `Criterion`** e o campo correspondente no Admin.
+4. **Cadastrar a régua validada** numa passagem só.
+5. **Criar a entidade `OrientacaoAtendimento`** e registrar *ANTECIPAÇÃO PAGAMENTOS*.
+
+**Obstáculo no passo 3:** o Admin edita `orientacao`, mas **não tem campo para `ancoras`,
+`opcoes` nem `subPerguntas`. Sem essa tela, metade da régua só entra por código** — e a 3A.0
+deixa de ser cadastro para virar deploy.
+
+### Fora da régua, mas dentro da 3A
+
+Os quatro campos narrativos do relatório — `contexto`, `leituraTecnica`, `errosIdentificados` e
+`conclusao` (§7) — **continuam não existindo** em `Monitoring`. São o destino do que o assistente
+escreve na 3A.3. Sem eles a sugestão não tem onde ser colada, e o relatório segue sendo montado
+à mão fora do sistema.
+
+Só depois disso a 3A.1 (`instructionBuilder`) tem o que ler.
