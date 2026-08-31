@@ -1,6 +1,7 @@
 import { FileSpreadsheet, CheckCircle2, AlertTriangle, Layers, Award, TrendingUp, Clock } from 'lucide-react';
 import { getMetaDaColaboradora, getEscoposDaColaboradora } from '../../domain/goalService';
 import { canalLabel } from '../../constants/canais';
+import { getEquipeDoGestor } from '../../domain/scopeService';
 
 export const DashboardScreen = ({
   settings,
@@ -75,12 +76,21 @@ export const DashboardScreen = ({
               
               if (isGestor) {
                 // Gestor stats across all monitors, filtered by area if selected
-                let allMonitors = getMonitors().filter(m => m.role === 'MONITOR');
+                // getMonitors() já exclui o GESTOR desde a 0.17.0 — filtrar por role aqui de
+                // novo excluiria também o ADMIN, que opera.
+                let allMonitors = getMonitors();
+
+                // Escopo: o GESTOR acompanha apenas os monitores das áreas em que é o gestor
+                // responsável. `null` significa sem restrição (ADMIN).
+                const equipe = getEquipeDoGestor(currentUser, areas);
+                if (equipe !== null) {
+                  allMonitors = allMonitors.filter(m => equipe.includes(m.id));
+                }
+
                 if (dashboardAreaId !== 'ALL') {
                   const area = areas.find(a => a.id === dashboardAreaId);
-                  if (area && area.monitorId) {
-                    allMonitors = allMonitors.filter(m => m.id === area.monitorId);
-                  }
+                  const daArea = area?.monitorIds || [];
+                  allMonitors = allMonitors.filter(m => daArea.includes(m.id));
                 }
                 
                 allMonitors.forEach(m => {
@@ -267,7 +277,10 @@ export const DashboardScreen = ({
                             </thead>
                             <tbody>
                               {isGestor ? (
-                                getMonitors().filter(m => m.role === 'MONITOR').map(monitor => {
+                                getMonitors().filter(m => {
+                                  const equipe = getEquipeDoGestor(currentUser, areas);
+                                  return equipe === null || equipe.includes(m.id);
+                                }).map(monitor => {
                                   const s = getMonitorStats(monitor.id);
                                   return (
                                     <tr key={monitor.id}>
@@ -364,8 +377,13 @@ export const DashboardScreen = ({
                         
                         <ul className="timeline-root" style={{ marginTop: '1.5rem' }}>
                           {(() => {
-                            let recentMon = isGestor 
-                              ? [...monitorings]
+                            // O gestor vê a atividade da própria equipe; o ADMIN, de todos
+                            // (getEquipeDoGestor devolve null para ele).
+                            const escopoRecentes = getEquipeDoGestor(currentUser, areas);
+                            let recentMon = isGestor
+                              ? (escopoRecentes === null
+                                  ? [...monitorings]
+                                  : monitorings.filter(m => escopoRecentes.includes(m.monitorId)))
                               : monitorings.filter(m => m.monitorId === currentUser.id);
                             recentMon.sort((a,b) => new Date(b.date) - new Date(a.date));
                             

@@ -45,28 +45,14 @@ export const HomeGestor = ({ currentUser, demands, users }) => (
     
     <div className="grid-2-1">
       <div className="section-card">
-        <h2 className="section-card-title"><Clock size={18} /> Próximas Aprovações (Mock)</h2>
-        <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          <div className="executive-card" style={{ padding: '1rem', flexDirection: 'row', alignItems: 'center', gap: '1rem' }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: '600' }}>Revisão de Monitoria - Atendente Allanis</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Solicitado por Nathalia - Prazo: Hoje</div>
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button className="btn btn-outline btn-sm" style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}>Recusar</button>
-              <button className="btn btn-primary btn-sm">Aprovar</button>
-            </div>
-          </div>
-          <div className="executive-card" style={{ padding: '1rem', flexDirection: 'row', alignItems: 'center', gap: '1rem' }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: '600' }}>Nova Demanda: Ajuste de Script</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Solicitado por Aline - Prazo: Amanhã</div>
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button className="btn btn-outline btn-sm" style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}>Recusar</button>
-              <button className="btn btn-primary btn-sm">Aprovar</button>
-            </div>
-          </div>
+        {/* 0.17.0: este bloco era JSX fixo — duas aprovações inventadas, com nomes de pessoas
+            reais e botões que não faziam nada. Um gestor novo abria a Home e via trabalho que
+            não existe. A fila de validação de verdade mora em Monitorias; aqui fica só o
+            caminho até ela. */}
+        <h2 className="section-card-title"><Clock size={18} /> Aprovações pendentes</h2>
+        <div style={{ marginTop: '1rem', height: '200px', backgroundColor: 'var(--bg-app)', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', color: 'var(--text-muted)', border: '1px dashed var(--border-color)', textAlign: 'center', padding: '1rem' }}>
+          <span>A fila de validação da sua equipe fica em Monitorias.</span>
+          <span style={{ fontSize: '0.8rem' }}>Lá aparece o que está aguardando você, em ordem de espera.</span>
         </div>
       </div>
       <div className="section-card">

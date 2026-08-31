@@ -377,7 +377,7 @@ export interface ForaDaQuota {
  * O que foi entregue e não abate quota.
  *
  * Existe para que nenhum trabalho desapareça da tela — o mesmo princípio que fez `entregues` e
- * `cobertura` serem dois números no goalService. Uma direcionada da Allanis não fecha a quota
+ * `cobertura` serem dois números no goalService. Uma direcionada não fecha a quota
  * dela, mas foi feita, e a tela precisa poder explicar por que o número não fechou.
  */
 export const getForaDaQuota = (

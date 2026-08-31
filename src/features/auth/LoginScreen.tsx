@@ -211,9 +211,10 @@ export const LoginScreen = ({
 
             {showDevTools && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', marginTop: '0.85rem', padding: '0.85rem', backgroundColor: '#f7f9f8', borderRadius: '8px' }}>
-                <button className="btn btn-outline btn-sm" onClick={() => { setLoginEmail('admin@mouraleite.com.br'); setLoginPassword('Admin@123'); }}>Preencher Admin</button>
-                <button className="btn btn-outline btn-sm" onClick={() => { setLoginEmail('raquel@mouraleite.com.br'); setLoginPassword('Gestor@123'); }}>Preencher Gestor (Raquel)</button>
-                <button className="btn btn-outline btn-sm" onClick={() => { setLoginEmail('aline@mouraleite.com.br'); setLoginPassword('Monitor@123'); }}>Preencher Monitor (Aline)</button>
+                {/* Atalhos por perfil, não por pessoa. Nomeá-los com nomes próprios amarrava a
+                    tela de login a quem ocupava o cargo — e quebrava quando a pessoa saía. */}
+                <button className="btn btn-outline btn-sm" onClick={() => { setLoginEmail('admin@mouraleite.com.br'); setLoginPassword('Admin@123'); }}>Preencher Administrador do Sistema</button>
+                <button className="btn btn-outline btn-sm" onClick={() => { setLoginEmail('aline@mouraleite.com.br'); setLoginPassword('Admin@123'); }}>Preencher Administrador da Qualidade</button>
               </div>
             )}
           </div>

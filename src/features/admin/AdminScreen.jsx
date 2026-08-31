@@ -103,7 +103,7 @@ export const AdminScreen = ({
                     Áreas Cadastradas
                   </h3>
                   <button className="btn btn-primary btn-sm" onClick={() => {
-                    setNewArea({ id: '', name: '', gestorId: '', monitorId: '', active: true });
+                    setNewArea({ id: '', name: '', gestorId: '', monitorIds: [], active: true });
                     setShowAreaModal(true);
                   }}>
                     <Plus size={15} /> Adicionar Área
@@ -126,7 +126,14 @@ export const AdminScreen = ({
                         <tr key={a.id}>
                           <td style={{ fontWeight: '600' }}>{a.name}</td>
                           <td>{users.find(u => u.id === a.gestorId)?.name || 'N/A'}</td>
-                          <td>{users.find(u => u.id === a.monitorId)?.name || 'N/A'}</td>
+                          <td>
+                            {(a.monitorIds || []).length === 0
+                              ? '—'
+                              : (a.monitorIds || [])
+                                  .map(id => users.find(u => u.id === id)?.name)
+                                  .filter(Boolean)
+                                  .join(', ')}
+                          </td>
                           <td>
                             <span className={`badge-pill ${a.active ? 'badge-success' : 'badge-danger'}`}>
                               {a.active ? 'Ativo' : 'Inativo'}

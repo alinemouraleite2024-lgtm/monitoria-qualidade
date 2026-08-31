@@ -2,35 +2,35 @@ import { ROLES, USER_STATUS } from './constants/auth';
 import type { Collaborator, User } from './types/domain';
 
 // Base oficial da Equipe de Relacionamento (Single Source of Truth)
+//
+// 0.17.0 — limpeza de estrutura antes da entrada em operação.
+//
+// O que mudou e por quê: até aqui o seed descrevia uma equipe específica, e uma pessoa (a
+// supervisora) aparecia como gestora da área E como monitora de quatro das cinco carteiras.
+// Remover essa pessoa quebrava vínculos, metas e dashboards de uma vez — sinal de que a
+// estrutura estava presa a quem a ocupava, e não aos papéis.
+//
+// A regra agora é: **o seed traz apenas o que o sistema não consegue existir sem**. Uma conta
+// de administração, para configurar tudo o mais, e as colaboradoras avaliadas, que são o objeto
+// da monitoria. Gestores e monitores são cadastrados pelo Admin, quantos forem necessários —
+// nenhum papel tem titular fixo no código.
 export const OFFICIAL_USERS: User[] = [
   {
     id: 'usr-1',
     email: 'aline@mouraleite.com.br',
     login: 'aline.verneck',
-    password: 'Monitor@123',
+    password: 'Admin@123',
     name: 'Aline Oliveira Verneck',
-    role: ROLES.MONITOR,
+    // ADMIN acumula a administração e a operação de monitoria: `getMonitors()` inclui ADMIN
+    // justamente para que uma conta só receba carteira, meta e fila. Ela também consta em
+    // OFFICIAL_COLLABORATORS — faz atendimento e é avaliada como as demais.
+    role: ROLES.ADMIN,
     cargo: 'Backoffice de Relacionamento e Monitora da Qualidade',
-    area: 'Relacionamento',
-    gestor: 'raquel.lopes',
-    status: USER_STATUS.ACTIVE,
-    provider: 'INTERNAL',
-    lastAccess: '2026-06-05T09:15:00Z',
-    photoUrl: ''
-  },
-  {
-    id: 'usr-2',
-    email: 'raquel@mouraleite.com.br',
-    login: 'raquel.lopes',
-    password: 'Gestor@123',
-    name: 'Raquel Lopes',
-    role: ROLES.GESTOR,
-    cargo: 'Supervisora de Relacionamento',
     area: 'Relacionamento',
     gestor: null,
     status: USER_STATUS.ACTIVE,
     provider: 'INTERNAL',
-    lastAccess: '2026-06-04T15:30:00Z',
+    lastAccess: '',
     photoUrl: ''
   },
   {
@@ -42,10 +42,10 @@ export const OFFICIAL_USERS: User[] = [
     role: 'COLABORADOR',
     cargo: 'Front Office de Relacionamento',
     area: 'Relacionamento',
-    gestor: 'raquel.lopes',
+    gestor: null,
     status: USER_STATUS.ACTIVE,
     provider: 'INTERNAL',
-    lastAccess: '2026-06-04T10:00:00Z',
+    lastAccess: '',
     photoUrl: ''
   },
   {
@@ -57,10 +57,10 @@ export const OFFICIAL_USERS: User[] = [
     role: 'COLABORADOR',
     cargo: 'Front Office de Relacionamento',
     area: 'Relacionamento',
-    gestor: 'raquel.lopes',
+    gestor: null,
     status: USER_STATUS.ACTIVE,
     provider: 'INTERNAL',
-    lastAccess: '2026-06-04T10:00:00Z',
+    lastAccess: '',
     photoUrl: ''
   },
   {
@@ -72,10 +72,10 @@ export const OFFICIAL_USERS: User[] = [
     role: 'COLABORADOR',
     cargo: 'Backoffice de Relacionamento',
     area: 'Relacionamento',
-    gestor: 'raquel.lopes',
+    gestor: null,
     status: USER_STATUS.ACTIVE,
     provider: 'INTERNAL',
-    lastAccess: '2026-06-04T10:00:00Z',
+    lastAccess: '',
     photoUrl: ''
   },
   {
@@ -87,29 +87,32 @@ export const OFFICIAL_USERS: User[] = [
     role: 'COLABORADOR',
     cargo: 'Assistente de Gestão de Contratos',
     area: 'Relacionamento',
-    gestor: 'raquel.lopes',
+    gestor: null,
     status: USER_STATUS.ACTIVE,
     provider: 'INTERNAL',
-    lastAccess: '2026-06-04T10:00:00Z',
+    lastAccess: '',
     photoUrl: ''
   },
   {
     id: 'usr-7',
     email: 'admin@mouraleite.com.br',
-    login: 'admin.homolog',
+    login: 'admin.sistema',
     password: 'Admin@123',
-    name: 'Administrador (Homologação)',
+    name: 'Administrador do Sistema',
     role: ROLES.ADMIN,
     cargo: 'Administrador do Sistema',
     area: 'Relacionamento',
     gestor: null,
     status: USER_STATUS.ACTIVE,
     provider: 'INTERNAL',
-    lastAccess: '2026-06-05T09:15:00Z',
+    lastAccess: '',
     photoUrl: ''
   }
 ];
 
+// Colaboradoras avaliadas. A Aline consta aqui e também em OFFICIAL_USERS: ela monitora e é
+// monitorada, e os dois lados são registros diferentes de propósito — `User` é quem acessa,
+// `Collaborator` é quem é avaliado.
 export const OFFICIAL_COLLABORATORS: Collaborator[] = [
   { id: 'usr-1', email: 'aline@mouraleite.com.br', name: 'Aline Oliveira Verneck', cargo: 'Backoffice de Relacionamento e Monitora da Qualidade', active: true, areaId: 'area-1' },
   { id: 'usr-3', email: 'nathalia@mouraleite.com.br', name: 'Nathalia Perger Oyan', cargo: 'Front Office de Relacionamento', active: true, areaId: 'area-1' },

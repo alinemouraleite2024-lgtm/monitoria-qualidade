@@ -38,18 +38,35 @@ export const AreaModal = ({
           </select>
         </div>
 
+        {/* Era um select único ("Monitor Principal") até a 0.16.0. Uma área pode ter vários
+            monitores, e o singular chegava a colapsar a equipe inteira no filtro do Dashboard. */}
         <div className="form-group">
-          <label className="form-label">Monitor Principal</label>
-          <select 
-            className="form-control"
-            value={newArea.monitorId}
-            onChange={(e) => setNewArea({ ...newArea, monitorId: e.target.value })}
-          >
-            <option value="">Selecione...</option>
-            {users.filter(u => u.role === 'MONITOR' || u.role === 'ADMIN').map(u => (
-              <option key={u.id} value={u.id}>{u.name}</option>
-            ))}
-          </select>
+          <label className="form-label">Monitores da Área</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '180px', overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.6rem 0.75rem' }}>
+            {users.filter(u => u.role === 'MONITOR' || u.role === 'ADMIN').map(u => {
+              const marcado = (newArea.monitorIds || []).includes(u.id);
+              return (
+                <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={marcado}
+                    onChange={() => setNewArea({
+                      ...newArea,
+                      monitorIds: marcado
+                        ? (newArea.monitorIds || []).filter(id => id !== u.id)
+                        : [...(newArea.monitorIds || []), u.id],
+                    })}
+                  />
+                  {u.name}
+                </label>
+              );
+            })}
+            {users.filter(u => u.role === 'MONITOR' || u.role === 'ADMIN').length === 0 && (
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                Nenhum monitor cadastrado. Cadastre em Usuários antes de compor a área.
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="switch-group">

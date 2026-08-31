@@ -22,11 +22,11 @@ Esta pasta contém a documentação técnica, manuais e guias do projeto.
 | | |
 |---|---|
 | Sistema | em produção — https://monitoria-qualidade.vercel.app |
-| Versão em produção | 0.15.0 · commit `80a5dac` · tag `v0.15.0` |
-| Em branch | **0.16.0** — FORMAS DO CONTATO volta a ser classificação, aguardando preview |
+| Versão em produção | 0.16.0 · commit `c946e11` · tag `v0.16.0` |
+| Em branch | **0.17.0** — estrutura por perfil e limpeza da base, aguardando preview |
 | Frente aberta | **3A — Assistente de Avaliação** |
 | Fatia em curso | 3A.0 (metodologia) — documento escrito, aguardando validação |
-| Próximo marco | merge da 0.14.0 e validação da régua para liberar a 3A.1 |
+| Próximo marco | merge da 0.17.0 e validação da régua para liberar a 3A.1 |
 
 ## Estrutura planejada
 - Arquitetura

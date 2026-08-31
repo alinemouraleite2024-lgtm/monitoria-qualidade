@@ -329,7 +329,9 @@ function AppContent() {
   const [adminSubTab, setAdminSubTab] = useState('criteria');
 
   // Form States (Admin & Management)
-  const [selectedAllocationMonitor, setSelectedAllocationMonitor] = useState('usr-1');
+  // Sem id fixo: um usuário semeado em código vira referência quebrada assim que a pessoa sai.
+  // Vazio significa "nenhum selecionado", e a tela resolve isso pedindo a seleção.
+  const [selectedAllocationMonitor, setSelectedAllocationMonitor] = useState('');
   const [newAllocColaboradorId, setNewAllocColaboradorId] = useState('');
   const [newAllocStartDate, setNewAllocStartDate] = useState(todayISO());
   const [newAllocEndDate, setNewAllocEndDate] = useState('');
@@ -337,8 +339,8 @@ function AppContent() {
  
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [newHoliday, setNewHoliday] = useState({
-    originalMonitorId: 'usr-1',
-    substituteMonitorId: 'usr-2',
+    originalMonitorId: '',
+    substituteMonitorId: '',
     startDate: todayISO(),
     endDate: ''
   });
@@ -374,7 +376,7 @@ function AppContent() {
     active: true
   });
 
-  const [newArea, setNewArea] = useState<Area>({ id: '', name: '', gestorId: '', monitorId: '', active: true });
+  const [newArea, setNewArea] = useState<Area>({ id: '', name: '', gestorId: '', monitorIds: [], active: true });
   const [newCollaborator, setNewCollaborator] = useState<Collaborator>({ id: '', email: '', name: '', cargo: '', areaId: '', active: true });
 
   const [newUser, setNewUser] = useState({
@@ -388,7 +390,7 @@ function AppContent() {
   // Contexto que a fila passa ao formulário: abrir já sabendo quem monitorar e de que canal.
   const [seedNovaMonitoria, setSeedNovaMonitoria] = useState<{ colaboradorId: string; canal: string }>({ colaboradorId: '', canal: '' });
 
-  const [newCGoalVal, setNewCGoalVal] = useState({ monitorId: 'usr-1', colaboradorId: 'ag-1', canal: '', targetQty: 5 });
+  const [newCGoalVal, setNewCGoalVal] = useState({ monitorId: '', colaboradorId: '', canal: '', targetQty: 5 });
 
   // Filtros de Relatórios.
   //
@@ -448,7 +450,16 @@ function AppContent() {
   }, [brand]);
 
   // Helper utility functions
-  const getMonitors = () => users.filter(u => u.role === 'MONITOR' || u.role === 'GESTOR');
+  /**
+   * Quem realiza monitorias — recebe carteira, meta e fila.
+   *
+   * 0.17.0: o GESTOR saiu desta lista. Ele valida e acompanha; não avalia. Estava aqui porque a
+   * mesma pessoa ocupava os dois papéis, e a lista imitava a pessoa em vez do papel.
+   *
+   * O ADMIN entra porque acumula administração e operação: é uma conta só, que configura o
+   * sistema e também monitora. Excluí-lo esvaziaria a carteira de quem opera hoje.
+   */
+  const getMonitors = () => users.filter(u => u.role === 'MONITOR' || u.role === 'ADMIN');
   const getCollaborators = () => collaborators;
 
   // Resolve o monitor responsável por um colaborador na data, delegando a regra de
@@ -502,9 +513,17 @@ function AppContent() {
     }
 
     const persistido = usersRepository.load().find(u => u.email === user.email);
-    if ((persistido?.status || user.status) === USER_STATUS.BLOCKED) {
+    const statusAtual = persistido?.status || user.status;
+    if (statusAtual === USER_STATUS.BLOCKED) {
       logAuthEvent('LOGIN_DENIED', user, 'Usuário bloqueado');
       setLoginError('Usuário bloqueado. Procure o administrador do sistema.');
+      return;
+    }
+    // 0.17.0: até aqui só BLOCKED barrava o acesso, e "Inativo" era um rótulo sem efeito —
+    // desligar alguém pelo Admin não impedia essa pessoa de continuar entrando.
+    if (statusAtual === USER_STATUS.INACTIVE) {
+      logAuthEvent('LOGIN_DENIED', user, 'Usuário inativo');
+      setLoginError('Usuário inativo. Procure o administrador do sistema.');
       return;
     }
 
@@ -706,7 +725,7 @@ function AppContent() {
       setAreas([...areas, { ...newArea, id: `area-${Date.now()}` }]);
     }
     setShowAreaModal(false);
-    setNewArea({ id: '', name: '', gestorId: '', monitorId: '', active: true });
+    setNewArea({ id: '', name: '', gestorId: '', monitorIds: [], active: true });
   };
 
   const handleSaveCollaborator = (e: FormEvent<HTMLFormElement>) => {
@@ -1144,6 +1163,7 @@ function AppContent() {
               <Screen tab="monitorings" role={currentUser.role}>
                   <MonitoringQueueScreen
                     currentUser={currentUser}
+                    areas={areas}
                     monitorings={monitorings}
                     colaboradorGoals={colaboradorGoals}
                     collaborators={collaborators}

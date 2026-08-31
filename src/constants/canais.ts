@@ -1,7 +1,6 @@
 // Vocabulário de canais — fonte única do que o usuário lê.
 //
-// Decisão de produto: a operação fala "ligação", o dado guarda `Telefone`. Obrigar a Aline e a
-// Raquel a traduzir mentalmente a cada tela é atrito diário, e trocar o valor gravado exigiria
+// Decisão de produto: a operação fala "ligação", o dado guarda `Telefone`. Obrigar a equipe a traduzir mentalmente a cada tela é atrito diário, e trocar o valor gravado exigiria
 // migrar todas as monitorias já registradas.
 //
 // A separação entre valor e rótulo é a saída, mas ela só funciona com UM dono. O canal é

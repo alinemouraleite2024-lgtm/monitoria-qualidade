@@ -4,7 +4,16 @@
 > estado das decisões não dependa de conversa. Quando algo aqui divergir da memória de
 > alguém, este documento vence — e quem discordar atualiza aqui.
 >
-> **Última atualização:** 20/08/2026, véspera dos pilotos.
+> **Última atualização:** 25/08/2026 (versão 0.17.0).
+
+> **Nota da 0.17.0 — estrutura por perfil.** Este documento descrevia a operação por nome de
+> pessoa, e o sistema fazia o mesmo: a supervisora era, no dado, gestora da área **e** monitora
+> de quatro das cinco carteiras. Ela saiu da equipe, e a estrutura foi limpa.
+>
+> A partir daqui: **os papéis são ADMIN, GESTOR e MONITOR, e nenhum tem titular fixo em código.**
+> O Admin cadastra quantos gestores e monitores forem necessários; áreas, carteiras e metas
+> nascem vazias e são montadas em Administração e Equipe. Onde este texto ainda cita uma pessoa,
+> é descrição de quem ocupa o papel hoje — não regra do sistema.
 
 ---
 
@@ -28,7 +37,7 @@ já era feito no CYF — a mudança é de ferramenta de registro, não de métod
 
 ```
 Aline (Monitora)     aline@mouraleite.com.br     ·  Monitor@123
-Raquel (Gestora)     raquel@mouraleite.com.br    ·  Gestor@123
+Gestora     raquel@mouraleite.com.br    ·  Gestor@123
 Administradora       admin@mouraleite.com.br     ·  Admin@123
 ```
 
@@ -40,13 +49,13 @@ Senhas de homologação. Trocar antes de qualquer uso fora da equipe.
 
 **Aprovado em 19/08/2026.**
 
-Toda monitoria é registrada em **uma única máquina** — a da Aline. A Raquel aprova nessa mesma
+Toda monitoria é registrada em **uma única máquina** — a da Aline. A gestora aprova nessa mesma
 máquina, sentada ao lado ou por compartilhamento de tela.
 
 ### Por que existe essa restrição
 
 A persistência é em `localStorage`: **cada navegador é uma base isolada**. Não há servidor de
-dados. Se a Raquel abrir a URL no computador dela, vai entrar normalmente e ver uma base
+dados. Se a gestora abrir a URL no computador dela, vai entrar normalmente e ver uma base
 **vazia** — nenhuma monitoria da Aline aparece lá.
 
 Isso não é falha, não é perda de dado e não é problema de acesso. É como o sistema guarda as
@@ -54,11 +63,11 @@ informações nesta fase, e é o que define o modelo de operação.
 
 ### Validação da gestora — **ativa**
 
-Monitoria preenchida pela Aline nasce `Pendente` e espera aprovação da Raquel.
-Preenchida pela Raquel ou pela Administradora, nasce `Validada` direto.
+Monitoria preenchida pela Aline nasce `Pendente` e espera aprovação da gestora.
+Preenchida pela gestora ou pela Administradora, nasce `Validada` direto.
 
 Mantida ligada por decisão: é o controle que o preenchimento manual no CYF não oferece, e no
-Modelo A a Raquel tem acesso à mesma máquina.
+Modelo A a gestora tem acesso à mesma máquina.
 
 ---
 
@@ -116,17 +125,17 @@ Nenhuma delas é de desenvolvimento. Todas dependem da operação.
 
 | Colaborador | Vínculo em 20/08 | Deve ficar |
 |---|---|---|
-| Nathalia Perger Oyan | Raquel | **Aline** |
-| Allanis Maquea Silva | Raquel | **Aline** |
-| Susana Nascimento | Raquel | **Aline** |
-| Aline Oliveira Verneck | Raquel | **sem vínculo** |
+| Nathalia Perger Oyan | a gestora | **Aline** |
+| Allanis Maquea Silva | a gestora | **Aline** |
+| Susana Nascimento | a gestora | **Aline** |
+| Aline Oliveira Verneck | a gestora | **sem vínculo** |
 | Ana Carla | Aline | Aline |
 
 Em **Menu → Equipe**: `Adicionar Vínculo` apontando para a Aline (criar um vínculo novo
 encerra o anterior sozinho) e `Terminar` na linha da Aline.
 
 Restrição da tela: o campo `Monitor Responsável` só lista perfis MONITOR — hoje **apenas a
-Aline** aparece. A Raquel é GESTORA e não pode ser escolhida como monitora de um vínculo novo.
+Aline** aparece. A a gestora é GESTORA e não pode ser escolhida como monitora de um vínculo novo.
 
 ### Listas — rascunho a confirmar
 
@@ -158,7 +167,7 @@ nesses dois dias **fica**. O CYF segue em paralelo como conferência.
 
 ### Quinta, 20/08 — execução
 
-Aline e Raquel juntas, na mesma máquina. Três casos escolhidos por perfil:
+Aline e a gestora juntas, na mesma máquina. Três casos escolhidos por perfil:
 
 | Caso | Perfil | O que prova |
 |---|---|---|
@@ -166,12 +175,12 @@ Aline e Raquel juntas, na mesma máquina. Três casos escolhidos por perfil:
 | 2 | Nota média, com critério abaixo do máximo | Justificativa obrigatória e o peso |
 | 3 | Critério eliminatório acionado | Que a nota **não** zera sozinha |
 
-Ciclo completo em cada caso, sem acumular: Aline preenche, Raquel entra e decide na hora.
+Ciclo completo em cada caso, sem acumular: Aline preenche, a gestora entra e decide na hora.
 Testar também `Reprovar` e `Solicitar Ajustes` ao menos uma vez.
 
 ### Sexta, 21/08 — observação
 
-A Raquel **não intervém**. De 3 a 5 casos do fluxo normal.
+A a gestora **não intervém**. De 3 a 5 casos do fluxo normal.
 
 **A sexta é a coleta, não a quinta.** Na quinta a Aline é conduzida e o comportamento não é
 espontâneo.

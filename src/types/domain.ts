@@ -68,8 +68,13 @@ export interface Collaborator {
 export interface Area {
   id: string;
   name: string;
+  /** Gestor responsável. Define o escopo do que ele valida e acompanha — ver `getEquipeDoGestor`. */
   gestorId: string;
-  monitorId: string;
+  /**
+   * Monitores da área. Era `monitorId: string` até a 0.16.0, e o singular limitava a área a um
+   * monitor — o filtro do Dashboard chegava a colapsar a equipe inteira em uma pessoa.
+   */
+  monitorIds: string[];
   active: boolean;
 }
 

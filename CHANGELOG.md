@@ -5,6 +5,56 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.0] - 2026-08-25 — Estrutura por perfil, não por pessoa
+
+> A supervisora saiu da equipe. O que o desligamento revelou é que a estrutura não era dela —
+> era ela: no dado, a mesma pessoa era gestora da área **e** monitora de quatro das cinco
+> carteiras. Esta versão desfaz esse acoplamento.
+
+### Removed
+
+- **Todos os dados semeados que descreviam pessoas.** `INITIAL_ALLOCATIONS`,
+  `INITIAL_ALLOCATION_HISTORY`, `INITIAL_MONITOR_GOALS`, `INITIAL_COLABORADOR_GOALS`,
+  `INITIAL_HOLIDAYS`, `INITIAL_DEMANDS`, `INITIAL_ANNOUNCEMENTS` e `INITIAL_AGENDA` nascem
+  vazios. Eram 40 registros de vínculos, metas, contestações, avisos e uma semana de agenda —
+  todos apontando para um usuário que deixou de existir. Base vazia é um sistema pedindo
+  configuração; base semeada com nomes é um sistema afirmando algo falso.
+- Ids fixos de usuário no estado inicial de três formulários do Admin.
+- Bloco de "Próximas Aprovações (Mock)" da Home do Gestor: JSX fixo, com nomes de pessoas reais
+  e botões que não faziam nada. Um gestor novo via trabalho que não existe.
+
+### Changed
+
+- **`Area.monitorId` → `monitorIds: string[]`.** O singular limitava a área a um monitor, e o
+  filtro do Dashboard chegava a colapsar a equipe inteira numa pessoa. O modal da área virou
+  seleção múltipla.
+- **`getMonitors()` deixou de incluir o GESTOR.** Ele valida e acompanha; não avalia. Estava na
+  lista porque a mesma pessoa ocupava os dois papéis — a lista imitava a pessoa, não o papel. O
+  **ADMIN** entra, porque acumula administração e operação numa conta só.
+- **Escopo por gestor.** Novo `domain/scopeService.ts`: cada gestor enxerga apenas os monitores
+  das áreas em que é o responsável; ADMIN vê tudo. Vale na fila de validação, no ritmo da
+  equipe, no risco do mês e no dashboard. A fila de validação era global no período — com uma
+  gestora só isso era simplificação, com várias é vazamento.
+- Atalhos de login por perfil, não por nome.
+- `DATABASE_VERSION: 10 → 11`.
+
+### Fixed
+
+- **"Inativo" não impedia o login.** Só `BLOCKED` era verificado, então desligar alguém pelo
+  Admin não tirava o acesso dessa pessoa.
+
+### Notas de operação
+
+- **A base é apagada e recriada** na primeira abertura após esta versão. É deliberado, e é o
+  motivo de a limpeza ser agora: não há monitoria operacional nem cadastro da 3A.0 a preservar.
+  Depois que as orientações e âncoras entrarem em `pm2_criteria`, `DATABASE_VERSION` volta a ser
+  proibida — ver `docs/BACKUP-RESTAURACAO.md`.
+- **O sistema sobe sem carteiras, sem metas e sem área configurada.** É o estado correto: o
+  Admin cadastra gestores e monitores, compõe a área e distribui as carteiras.
+- O modelo de permissões **não mudou** — já era RBAC (`Record<Permission, Role[]>`), sem
+  nenhum id de usuário. Não havia nenhuma regra do tipo "se usuário = fulano" no código; o
+  acoplamento estava todo nos dados.
+
 ## [0.16.0] - 2026-08-25 — FORMAS DO CONTATO volta a ser classificação
 
 > O motivo do contato aparecia como 2 / 1 / 0 / N-A, como se fosse nota. Não era: os três itens

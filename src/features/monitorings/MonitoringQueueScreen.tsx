@@ -9,7 +9,7 @@
 
 import { useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
-import type { Collaborator, ColaboradorGoal, Monitoring, User, Allocation, Holiday } from '../../types/domain';
+import type { Area, Collaborator, ColaboradorGoal, Monitoring, User, Allocation, Holiday } from '../../types/domain';
 import { getCurrentPeriod, periodLabel, todayISO, businessDaysRemainingIn } from '../../domain/period';
 import { getCarteiraProgress } from '../../domain/goalService';
 import {
@@ -22,6 +22,7 @@ import {
   getRiscoDoMes,
   matchesBusca,
 } from '../../domain/queueService';
+import { getEquipeDoGestor } from '../../domain/scopeService';
 import { PeriodProgress } from './PeriodProgress';
 import { MonitorQueue } from './MonitorQueue';
 import { ManagerQueue } from './ManagerQueue';
@@ -34,6 +35,8 @@ interface MonitoringQueueScreenProps {
   allocations: Allocation[];
   holidays: Holiday[];
   users: User[];
+  /** Necessário para o escopo do gestor: a área é quem declara gestor e monitores. */
+  areas: Area[];
   onNovaMonitoria: (colaboradorId?: string, canal?: string | null) => void;
   onAbrir: (m: Monitoring) => void;
   onEditar: (m: Monitoring) => void;
@@ -49,6 +52,7 @@ export const MonitoringQueueScreen = ({
   allocations,
   holidays,
   users,
+  areas,
   onNovaMonitoria,
   onAbrir,
   onEditar,
@@ -69,6 +73,13 @@ export const MonitoringQueueScreen = ({
   const dados = useMemo(() => {
     const ctx = { monitorings, goals: colaboradorGoals, collaborators, allocations, holidays, users };
 
+    const equipe = getEquipeDoGestor(currentUser, areas);
+    // Quem realiza monitoria: MONITOR e ADMIN. O GESTOR saiu da lista na 0.17.0 — ele valida
+    // e acompanha, não avalia.
+    const monitoresNoEscopo = users
+      .filter((u) => u.role === 'MONITOR' || u.role === 'ADMIN')
+      .filter((u) => equipe === null || equipe.includes(u.id));
+
     const progresso = getCarteiraProgress(colaboradorGoals, monitorings, monitorId, periodo);
     const diasUteis = businessDaysRemainingIn(periodo, hoje);
 
@@ -84,15 +95,19 @@ export const MonitoringQueueScreen = ({
       validadasNaCobertura,
       aguardandoNaCobertura,
       ritmo: diasUteis > 0 ? (progresso.remaining / diasUteis).toFixed(1) : String(progresso.remaining),
-      filaValidacao: getFilaDeValidacao(monitorings, periodo, hoje),
-      ritmoEquipe: getRitmoDaEquipe(ctx, users.filter((u) => u.role === 'MONITOR'), periodo, hoje),
-      risco: getRiscoDoMes(ctx, users.filter((u) => u.role === 'MONITOR'), periodo, hoje),
+      // Escopo por gestor (0.17.0): a fila de validação e a leitura de equipe eram globais no
+      // período. Com uma gestora só isso era simplificação; com várias, é vazamento — um gestor
+      // validaria monitorias de equipe que não é dele. `null` = sem restrição (ADMIN).
+      filaValidacao: getFilaDeValidacao(monitorings, periodo, hoje)
+        .filter((f) => equipe === null || equipe.includes(f.monitoring.monitorId)),
+      ritmoEquipe: getRitmoDaEquipe(ctx, monitoresNoEscopo, periodo, hoje),
+      risco: getRiscoDoMes(ctx, monitoresNoEscopo, periodo, hoje),
       fila: getFilaDaCarteira(ctx, monitorId, periodo, hoje),
       pendencias: getPendencias(monitorings, monitorId, periodo),
       aguardando: getAguardandoValidacao(monitorings, monitorId, periodo, hoje),
       foraDaQuota: getForaDaQuota(ctx, monitorId, periodo),
     };
-  }, [monitorings, colaboradorGoals, collaborators, allocations, holidays, users, monitorId, hoje]);
+  }, [monitorings, colaboradorGoals, collaborators, allocations, holidays, users, areas, currentUser, monitorId, hoje, periodo]);
 
   // A busca é discreta e restringe as listas de registros — nunca a lista de quem falta
   // monitorar, que é a resposta da tela e não deve sumir por causa de um termo digitado.
