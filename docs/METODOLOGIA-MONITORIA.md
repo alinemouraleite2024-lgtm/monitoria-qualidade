@@ -197,6 +197,41 @@ qual script de encerramento é exigido no critério 24.
 
 ---
 
+#### 29. Cliente chegou autenticado?
+`crit-29` · MULTIPLA_ESCOLHA · peso 0 · **⏳ aprovado, ainda não existe no sistema**
+
+> **Aprovado em 25/08/2026.** Nasceu de um achado da revisão: o critério 25 acionava eliminatório
+> em atendimento correto, porque a régua não tinha onde saber que a autenticação já havia
+> ocorrido antes da interação humana.
+
+**O que mede.** Se o canal identificou o cliente **antes** de a atendente assumir a conversa.
+É classificação, não desempenho: não pontua e não pede justificativa.
+
+**Fonte da regra.** O documento `APOIO ATENDIMENTOS` (Blip) define dois roteiros de abertura —
+`AUTENTICADO`, que cumprimenta pelo nome, e `SEM AUTENTICAÇÃO`, que pede o nome. O que separa os
+dois é o contato vir do número cadastrado: número diferente dispara a bateria de confirmação
+(idade, telefone, e-mail, data de nascimento, RG, cônjuge).
+
+**Régua de classificação.**
+
+| | |
+|---|---|
+| **Sim** | A abertura cumprimenta pelo nome do cliente, sem pedir identificação e sem mencionar número divergente |
+| **Não** | A abertura pede o nome, **ou** o roteiro de confirmação por número divergente foi acionado. **Também é a resposta em canais sem pré-autenticação** — telefone e presencial não têm esse passo |
+| **Não identificável** | A conversa não permite determinar: começa no meio, a saudação parece manual, ou o registro está incompleto |
+
+**Evidência.** As primeiras mensagens da conversa — o mesmo trecho que já sustenta o critério 4.
+
+**Consequência.** Governa o critério 25: com **Sim**, o eliminatório de confirmação de dados
+fica N/A.
+
+**Limite conhecido.** Se a atendente cumprimentar pelo nome **manualmente**, sem o canal ter
+autenticado, a saudação deixa de ser prova. A conversa sozinha não fecha esse caso — só um
+marcador vindo do Blip resolveria. Por isso existe **Não identificável**, e por isso ela mantém
+a exigência: na dúvida, o lado conservador.
+
+---
+
 ### Bloco 2 — ABERTURA
 
 #### 4. Cumprimentos / identificação
@@ -838,6 +873,24 @@ de ao menos um dado de segurança; ou nenhuma informação sensível foi repassa
 **Evidência exigida.** O trecho onde a informação sensível foi entregue, mais a ausência (ou
 insuficiência) de confirmação anterior a ele.
 
+> ### ⏳ Ajuste aprovado, ainda não aplicado — autenticação prévia
+>
+> **Aprovado em 25/08/2026, na revisão da régua.** A regra acima assume que a confirmação de
+> identidade sempre acontece no atendimento humano. No processo real do Blip, **o cliente pode
+> chegar já autenticado**: o roteiro de abertura tem duas versões, e a versão AUTENTICADO
+> cumprimenta pelo nome porque o canal já sabe quem é. Exigir nova confirmação nesse caso
+> penalizaria um atendimento correto.
+>
+> **Passa a valer, quando implementado:**
+>
+> | Critério 29 (novo) | Efeito no 25 |
+> |---|---|
+> | **Sim** — cliente chegou autenticado | **N/A.** A autenticação do canal substitui a confirmação no atendimento humano |
+> | **Não** | regra atual, sem mudança |
+> | **Não identificável** | regra atual — na dúvida, a confirmação era exigível |
+>
+> Depende do critério 29, descrito no Bloco 1. Enquanto ele não existir, **vale a regra atual**.
+
 ---
 
 ### 26. Faltou com respeito ao cliente
@@ -1135,6 +1188,21 @@ ENCERRAMENTO e de novo no critério 25. Tratada uma vez só, no 25.
 | 6 | Diferenciar `channels` por critério? Hoje os 27 ativos se aplicam aos 6 canais | Muda quais critérios entram na instrução por canal |
 | 7 | *(nova, 0.16.0)* `REGISTRO (I)` existe como categoria própria, ou consolida com `REGISTRO`? | Bloqueia só o catálogo, não a régua |
 | 8 | *(nova, 0.17.0)* Criar os 4 campos narrativos do relatório em `Monitoring` | Bloqueia a 3A.3, não a 3A.1 |
+
+### Pendências da régua — aprovadas, aguardando implementação
+
+| Item | O quê | Onde |
+|---|---|---|
+| **P1** | **Criar o critério 29** — `Cliente chegou autenticado?`, classificação de peso 0 no Bloco 1 | §4, Bloco 1 |
+| **P2** | **Condicionar o critério 25 ao 29** — autenticado ⇒ N/A; não autenticado ou não identificável ⇒ regra atual | §5, critério 25 |
+
+As duas entram juntas: o portão do 25 não funciona sem o 29, e o 29 sem o portão é informação
+sem consequência. **Entram na mesma leva do cadastro das âncoras**, para não percorrer os
+critérios duas vezes.
+
+**Questão menor, em aberto:** o critério novo é `crit-29` por ordem de criação, mas aparece no
+Bloco 1, entre os de número 1 e 2. A numeração do CYF é histórica, não de exibição — se isso
+incomodar na tela, o número mostrado pode ser outro. Não bloqueia nada.
 
 ---
 
