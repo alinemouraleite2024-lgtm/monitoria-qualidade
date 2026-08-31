@@ -111,14 +111,14 @@ do contato fosse desempenho. Por isso a régua deles, no Bloco 1, é uma **régu
 
 | # | Bloco | Critérios | Peso somado | Papel |
 |---|---|---|---|---|
-| 1 | FORMAS DO CONTATO | 1–2 · o 3 está inativo | 0 | Classificação |
+| 1 | FORMAS DO CONTATO | 1–2 e 29 · o 3 está inativo | 0 | Classificação |
 | 2 | ABERTURA | 4–5 | 2,0 | Como o atendimento começa |
 | 3 | COMUNICAÇÃO | 6–14 | 11,0 | Como o atendente conduz |
 | 4 | CONHECIMENTO DO PRODUTO/SERVIÇO | 15–17 | 5,0 | O que o atendente sabe |
 | 5 | PRECISÃO DAS INFORMAÇÕES | 18–21 | 5,5 | Se o que foi dito se sustenta |
 | 6 | ENCERRAMENTO | 22–24 | 3,5 | Como o atendimento fecha |
 | 7 | MANDOU MAL | 25–28 | 0 | Eliminatórios |
-| | **Total ponderável** | **24 critérios** | **27,0** | |
+| | **Total ponderável** | **21 critérios** | **27,0** | |
 
 O peso 2,0 aparece em três critérios apenas — **6** (empatia), **16** (informação precisa) e
 **18** (ausência de desinformação). São o centro de gravidade da nota: juntos valem 22% do

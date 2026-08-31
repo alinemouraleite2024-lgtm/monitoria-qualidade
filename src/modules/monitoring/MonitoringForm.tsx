@@ -10,6 +10,7 @@ import { CANAIS, canalLabel } from '../../constants/canais';
 import { getScoreConcept } from '../../scoreUtils';
 import { calcularDuracao, formatarDuracao } from '../../domain/duracao';
 import { gerarIdMonitoria, gerarProtocolo } from '../../domain/identificadores';
+import { getCriteriosBloqueados, temConflitoDeAutenticacao } from '../../domain/criterionGating';
 import type { Collaborator, Criterion, Monitoring, User } from '../../types/domain';
 
 /**
@@ -67,6 +68,10 @@ interface FormDataMonitoria {
   strengths: string;
   opportunities: string;
   comments: string;
+  contexto: string;
+  leituraTecnica: string;
+  errosIdentificados: string;
+  conclusao: string;
   status: string;
 }
 
@@ -95,6 +100,40 @@ interface ScoreEmEdicao {
   lowScoreReason: string;
   subRespostas: Record<string, 'SIM' | 'NAO'>;
 }
+
+/**
+ * Os seis blocos narrativos do relatório, na ordem do `Padrão Relatório de Monitoria`.
+ *
+ * A ordem não é estética: é a sequência em que o documento oficial os define, e a mesma em que
+ * a colaboradora avaliada vai ler o feedback. `comments` fica de fora de propósito — é anotação
+ * interna da monitora, não bloco do relatório.
+ */
+const BLOCOS_RELATORIO = [
+  { campo: 'contexto' as const, titulo: 'Contexto do Atendimento', Icone: BookOpen, linhas: 4,
+    ajuda: 'Narrativa factual e cronológica. Sem juízo de valor — a avaliação vem nos blocos seguintes.',
+    placeholder: 'Como o atendimento ocorreu: início, condução, transferências, retorno ao cliente e encerramento...',
+    cor: '#64748b', bg: '#f8fafc', borda: '#e2e8f0', texto: '#334155' },
+  { campo: 'strengths' as const, titulo: 'Pontos Positivos', Icone: Target, linhas: 3,
+    ajuda: 'Ancorados no que aconteceu, não na ausência de erro. Vazio é resposta legítima.',
+    placeholder: 'Postura, técnica, clareza, resolução, cordialidade...',
+    cor: '#22c55e', bg: '#f0fdf4', borda: '#bbf7d0', texto: '#166534' },
+  { campo: 'opportunities' as const, titulo: 'Pontos de Atenção', Icone: Lightbulb, linhas: 3,
+    ajuda: 'O que fazer diferente — não apenas o que faltou.',
+    placeholder: 'Oportunidades de melhoria e ajustes de processo, comunicação ou condução...',
+    cor: '#eab308', bg: '#fefce8', borda: '#fef08a', texto: '#854d0e' },
+  { campo: 'leituraTecnica' as const, titulo: 'Leitura Técnica', Icone: BookOpen, linhas: 4,
+    ajuda: 'Conecta os critérios, não os repete. Se lê como lista de notas, está errado.',
+    placeholder: 'Investigação, domínio do processo, responsabilidade, gestão de expectativa, segurança na comunicação...',
+    cor: '#3b82f6', bg: '#eff6ff', borda: '#bfdbfe', texto: '#1e40af' },
+  { campo: 'errosIdentificados' as const, titulo: 'Erros Identificados', Icone: AlertTriangle, linhas: 3,
+    ajuda: 'Preencher somente quando houver erro técnico, falha de processo ou risco de experiência.',
+    placeholder: 'O que falhou, e em que ponto do processo...',
+    cor: '#ef4444', bg: '#fef2f2', borda: '#fecaca', texto: '#991b1b', recolhivel: true },
+  { campo: 'conclusao' as const, titulo: 'Conclusão', Icone: CheckCircle2, linhas: 3,
+    ajuda: 'Nível do atendimento, impacto na experiência e direcionamento. Não repete a nota.',
+    placeholder: 'Fechamento da monitoria, com direcionamento quando houver o que corrigir...',
+    cor: '#008443', bg: '#f0fdf4', borda: '#bbf7d0', texto: '#166534' },
+];
 
 // Opções do widget de escolha única (score 0-2), por tipo de resposta.
 // FAIXA_TEMPO usa rótulos e valores próprios; qualquer outro tipo (ESCALA_4 e o fallback
@@ -159,6 +198,10 @@ export const MonitoringForm = ({
     strengths: '',
     opportunities: '',
     comments: '',
+    contexto: '',
+    leituraTecnica: '',
+    errosIdentificados: '',
+    conclusao: '',
     
     // Status
     status: 'Rascunho'
@@ -166,6 +209,7 @@ export const MonitoringForm = ({
 
   const [scores, setScores] = useState<Record<string, ScoreEmEdicao>>({});
   const [lastSaved, setLastSaved] = useState<string | null>(null);
+  const [expandirErros, setExpandirErros] = useState(false);
   const [expandedOrientacao, setExpandedOrientacao] = useState<Record<string, boolean>>({});
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     COMUNICAÇÃO: true,
@@ -199,7 +243,11 @@ export const MonitoringForm = ({
         fimAtendimento: initialData.fimAtendimento || '',
         strengths: initialData.strengths || '',
         opportunities: initialData.opportunities || '',
-        comments: initialData.comments || ''
+        comments: initialData.comments || '',
+        contexto: initialData.contexto || '',
+        leituraTecnica: initialData.leituraTecnica || '',
+        errosIdentificados: initialData.errosIdentificados || '',
+        conclusao: initialData.conclusao || ''
       });
       
       const initialScores: Record<string, ScoreEmEdicao> = {};
@@ -301,6 +349,27 @@ export const MonitoringForm = ({
   }, [scores, applicableCriteria, groupedCriteria]);
 
   const conceito = getScoreConcept(finalScore);
+
+  // Critérios que a resposta de outro critério deixou sem pergunta a fazer (0.18.0).
+  const bloqueados = useMemo(
+    () => getCriteriosBloqueados(applicableCriteria, scores),
+    [applicableCriteria, scores],
+  );
+  const conflitoAutenticacao = useMemo(() => temConflitoDeAutenticacao(scores), [scores]);
+
+  // O bloqueio não é só visual: ele grava N/A, senão a validação continuaria pedindo resposta
+  // para um critério que a tela desabilitou.
+  useEffect(() => {
+    const pendentes = Object.keys(bloqueados).filter((id) => scores[id]?.score !== 'N/A');
+    if (pendentes.length === 0) return;
+    setScores((atual) => {
+      const proximo = { ...atual };
+      pendentes.forEach((id) => {
+        proximo[id] = { ...proximo[id], score: 'N/A', lowScoreReason: '' };
+      });
+      return proximo;
+    });
+  }, [bloqueados, scores]);
 
   // Duração derivada do par de datas. Nunca vem do estado do formulário: não existe caminho
   // pelo qual a monitora digite este número.
@@ -936,7 +1005,22 @@ export const MonitoringForm = ({
                                 </div>
                                 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                  {c.eliminatorio ? (
+                                  {bloqueados[c.id] ? (
+                                    /* Critério que outro critério deixou sem pergunta a fazer.
+                                       O controle some e o motivo fica no lugar — esconder sem
+                                       explicar faria a monitora procurar um campo que sumiu. */
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', padding: '0.85rem 1rem', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px' }}>
+                                      <CheckCircle2 size={18} style={{ color: '#2563eb', flexShrink: 0, marginTop: '1px' }} />
+                                      <div>
+                                        <div style={{ fontWeight: '700', color: '#1e40af', fontSize: '0.85rem' }}>
+                                          Não se aplica a este atendimento
+                                        </div>
+                                        <div style={{ fontSize: '0.8rem', color: '#1e3a8a', marginTop: '2px' }}>
+                                          {bloqueados[c.id].motivo}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ) : c.eliminatorio ? (
                                     <div style={{ display: 'flex', gap: '0.75rem' }}>
                                       {[
                                         { val: 2, label: 'Não ocorreu', color: '#10b981', bg: '#d1fae5' },
@@ -1056,6 +1140,23 @@ export const MonitoringForm = ({
                                     </div>
                                   )}
 
+                                  {/* Contradição entre o 29 e o 25: cliente marcado como
+                                      autenticado, e ainda assim o eliminatório apontado. O
+                                      portão se recusa a apagar a marcação — apagar em silêncio
+                                      seria pior que o problema que ele resolve. Quem decide é
+                                      a monitora. */}
+                                  {conflitoAutenticacao && c.id === 'crit-25' && (
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', padding: '0.85rem 1rem', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px' }}>
+                                      <AlertTriangle size={18} style={{ color: '#b45309', flexShrink: 0, marginTop: '1px' }} />
+                                      <div style={{ fontSize: '0.82rem', color: '#92400e' }}>
+                                        <b>Respostas em conflito.</b> O critério 29 diz que o cliente chegou autenticado,
+                                        o que normalmente dispensaria a confirmação de dados — mas este eliminatório está
+                                        marcado como ocorrido. Revise as duas respostas: se a autenticação prévia de fato
+                                        aconteceu, o correto é <b>desmarcar este critério</b>; se não aconteceu, corrija o 29.
+                                      </div>
+                                    </div>
+                                  )}
+
                                   {/* Justificativa só faz sentido onde existe desempenho a
                                       justificar: abaixo de 2, ou N/A. Critério de
                                       classificação fica de fora — não há nota baixa a explicar,
@@ -1132,60 +1233,80 @@ export const MonitoringForm = ({
                 </div>
               )}
 
-              {/* ETAPA 4: Observações */}
+              {/* ETAPA 4: Relatório
+                  Os seis blocos do `Padrão Relatório de Monitoria`, na ordem em que ele os
+                  define — que é também a ordem de leitura de quem recebe o feedback. Antes da
+                  0.18.0 existiam três campos soltos aqui, e os outros três eram escritos à mão
+                  fora do sistema. Ver §7 da metodologia. */}
               {step === 4 && (
-                <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
-                  
-                  <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '1.5rem', boxShadow: '0 2px 4px rgba(22, 163, 74, 0.05)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                      <div style={{ backgroundColor: '#22c55e', color: '#fff', padding: '0.5rem', borderRadius: '8px' }}><Target size={20} /></div>
-                      <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: '#166534', margin: 0 }}>Pontos Fortes</h3>
-                    </div>
-                    <textarea 
-                      className="form-control"
-                      rows={3}
-                      placeholder="Descreva o que o colaborador fez de melhor neste atendimento..."
-                      value={formData.strengths}
-                      onChange={(e) => setFormData({...formData, strengths: e.target.value})}
-                      style={{ backgroundColor: '#fff', borderColor: '#bbf7d0' }}
-                    ></textarea>
-                    <div style={{ textAlign: 'right', fontSize: '0.75rem', color: '#15803d', marginTop: '0.25rem' }}>{formData.strengths.length} caracteres</div>
-                  </div>
+                <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.25rem' }}>
 
-                  <div style={{ backgroundColor: '#fefce8', border: '1px solid #fef08a', borderRadius: '12px', padding: '1.5rem', boxShadow: '0 2px 4px rgba(234, 179, 8, 0.05)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                      <div style={{ backgroundColor: '#eab308', color: '#fff', padding: '0.5rem', borderRadius: '8px' }}><Lightbulb size={20} /></div>
-                      <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: '#854d0e', margin: 0 }}>Oportunidades de Melhoria</h3>
-                    </div>
-                    <textarea 
-                      className="form-control"
-                      rows={3}
-                      placeholder="Pontos onde o colaborador precisa ter atenção ou evoluir..."
-                      value={formData.opportunities}
-                      onChange={(e) => setFormData({...formData, opportunities: e.target.value})}
-                      style={{ backgroundColor: '#fff', borderColor: '#fef08a' }}
-                    ></textarea>
-                    <div style={{ textAlign: 'right', fontSize: '0.75rem', color: '#a16207', marginTop: '0.25rem' }}>{formData.opportunities.length} caracteres</div>
-                  </div>
+                  {BLOCOS_RELATORIO.map(bloco => {
+                    const valor = (formData[bloco.campo] as string) || '';
+                    const recolhido = bloco.recolhivel && !expandirErros && !valor;
+                    return (
+                      <div key={bloco.campo} style={{ backgroundColor: bloco.bg, border: `1px solid ${bloco.borda}`, borderRadius: '12px', padding: recolhido ? '1rem 1.25rem' : '1.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: recolhido ? 0 : '0.75rem' }}>
+                          <div style={{ backgroundColor: bloco.cor, color: '#fff', padding: '0.5rem', borderRadius: '8px', display: 'flex' }}>
+                            <bloco.Icone size={20} />
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <h3 style={{ fontSize: '1.05rem', fontWeight: '700', color: bloco.texto, margin: 0 }}>{bloco.titulo}</h3>
+                            <p style={{ fontSize: '0.78rem', color: bloco.texto, opacity: 0.75, margin: '2px 0 0' }}>{bloco.ajuda}</p>
+                          </div>
+                          {bloco.recolhivel && (
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => setExpandirErros(!expandirErros)}
+                            >
+                              {recolhido ? 'Registrar erro' : 'Recolher'}
+                            </button>
+                          )}
+                        </div>
 
-                  <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '12px', padding: '1.5rem', boxShadow: '0 2px 4px rgba(59, 130, 246, 0.05)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                      <div style={{ backgroundColor: '#3b82f6', color: '#fff', padding: '0.5rem', borderRadius: '8px' }}><BookOpen size={20} /></div>
-                      <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: '#1e40af', margin: 0 }}>Plano de Desenvolvimento</h3>
+                        {!recolhido && (
+                          <>
+                            <textarea
+                              className="form-control"
+                              rows={bloco.linhas}
+                              placeholder={bloco.placeholder}
+                              value={valor}
+                              onChange={(e) => setFormData({ ...formData, [bloco.campo]: e.target.value })}
+                              style={{ backgroundColor: '#fff', borderColor: bloco.borda }}
+                            />
+                            <div style={{ textAlign: 'right', fontSize: '0.72rem', color: bloco.texto, opacity: 0.8, marginTop: '0.25rem' }}>
+                              {valor.length} caracteres
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Fora dos blocos do relatório de propósito: é anotação da monitora, não
+                      conteúdo que vai para a colaboradora. */}
+                  <div style={{ backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '1.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                      <div style={{ backgroundColor: '#6b7280', color: '#fff', padding: '0.5rem', borderRadius: '8px', display: 'flex' }}><BookOpen size={20} /></div>
+                      <div>
+                        <h3 style={{ fontSize: '1.05rem', fontWeight: '700', color: '#374151', margin: 0 }}>Observações internas</h3>
+                        <p style={{ fontSize: '0.78rem', color: '#6b7280', margin: '2px 0 0' }}>Anotação da monitora. Não é bloco do relatório.</p>
+                      </div>
                     </div>
-                    <textarea 
+                    <textarea
                       className="form-control"
-                      rows={3}
-                      placeholder="Ações práticas, treinamentos ou combinados para o próximo ciclo..."
+                      rows={2}
+                      placeholder="Notas de apoio, combinados, pendências de acompanhamento..."
                       value={formData.comments}
-                      onChange={(e) => setFormData({...formData, comments: e.target.value})}
-                      style={{ backgroundColor: '#fff', borderColor: '#bfdbfe' }}
-                    ></textarea>
-                    <div style={{ textAlign: 'right', fontSize: '0.75rem', color: '#1d4ed8', marginTop: '0.25rem' }}>{formData.comments.length} caracteres</div>
+                      onChange={(e) => setFormData({ ...formData, comments: e.target.value })}
+                      style={{ backgroundColor: '#fff' }}
+                    />
                   </div>
 
                 </div>
               )}
+
 
               {/* ETAPA 5: Conclusão */}
               {step === 5 && (

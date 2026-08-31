@@ -17,6 +17,7 @@ import {
   INITIAL_AGENDA,
 } from '../mockData';
 import { OFFICIAL_USERS, OFFICIAL_COLLABORATORS } from '../teamData';
+import { REGUA_VALIDADA } from '../constants/regua';
 import {
   OFFICIAL_EMPREENDIMENTOS,
   OFFICIAL_CATEGORIAS,
@@ -130,7 +131,7 @@ const migrateCategorias: Loader<string[]> = (stored, persist) => {
  * pelo Admin em qualquer critério ficam intactas: o cadastro da 3A.0 vai morar aqui, e uma
  * migração que sobrescrevesse o registro inteiro apagaria esse trabalho.
  */
-const CRITERIA_VERSION = 2;
+const CRITERIA_VERSION = 3;
 
 const CLASSIFICACAO_0_16: Record<string, { opcoes: string[]; active?: boolean }> = {
   'crit-01': { opcoes: ['Informação', 'Solicitação', 'Reclamação', 'Sugestão'] },
@@ -138,19 +139,53 @@ const CLASSIFICACAO_0_16: Record<string, { opcoes: string[]; active?: boolean }>
   'crit-03': { opcoes: ['WhatsApp', 'Telefone', 'Presencial', 'E-mail'], active: false },
 };
 
+/** Critério nascido na 0.18.0. Inserido se ainda não existir na base gravada. */
+const CRITERIO_29 = INITIAL_CRITERIA.find((c) => c.id === 'crit-29');
+
 const migrateCriterios: Loader<Criterion[]> = (stored, persist) => {
-  if (read<number>(KEYS.criteriaVersion, 0) >= CRITERIA_VERSION) return stored;
+  const versaoAtual = read<number>(KEYS.criteriaVersion, 0);
+  if (versaoAtual >= CRITERIA_VERSION) return stored;
   if (!Array.isArray(stored)) return stored;
 
-  const next = stored.map((c) => {
-    const patch = CLASSIFICACAO_0_16[c.id];
-    if (!patch) return c;
-    return {
-      ...c,
-      opcoes: c.opcoes && c.opcoes.length > 0 ? c.opcoes : patch.opcoes,
-      active: patch.active === undefined ? c.active : patch.active,
-    };
+  let next = stored.map((c) => {
+    const opc = CLASSIFICACAO_0_16[c.id];
+    const regua = REGUA_VALIDADA[c.id];
+    if (!opc && !regua) return c;
+
+    const atualizado: Criterion = { ...c };
+
+    // 0.16.0 — opções da classificação e desativação do critério de canal.
+    if (opc) {
+      atualizado.opcoes = c.opcoes && c.opcoes.length > 0 ? c.opcoes : opc.opcoes;
+      if (opc.active !== undefined) atualizado.active = opc.active;
+    }
+
+    // 0.18.0 — a régua validada. **Só preenche o que estiver ausente**: a governança passou a
+    // ser da operação, e sobrescrever aqui apagaria edição feita no Admin.
+    if (regua) {
+      if (!atualizado.ancoras && regua.ancoras) atualizado.ancoras = regua.ancoras;
+      if (!atualizado.quandoNA && regua.quandoNA) atualizado.quandoNA = regua.quandoNA;
+
+      // `orientacao` é exceção declarada: existe na régua apenas para os critérios 14 e 27,
+      // cujo texto no `Padrão Relatório` era cópia errada do 13 e do 28. Corrigir um valor
+      // sabidamente errado não é o mesmo que sobrescrever cadastro.
+      if (regua.orientacao) atualizado.orientacao = regua.orientacao;
+
+      if (regua.subPerguntas && atualizado.subPerguntas) {
+        atualizado.subPerguntas = atualizado.subPerguntas.map((sp) => {
+          const r = regua.subPerguntas!.find((x: { id: string }) => x.id === sp.id);
+          if (!r || sp.criterioSim) return sp;
+          return { ...sp, criterioSim: r.criterioSim, criterioNao: r.criterioNao };
+        });
+      }
+    }
+
+    return atualizado;
   });
+
+  if (CRITERIO_29 && !next.some((c) => c.id === 'crit-29')) {
+    next = [...next, CRITERIO_29];
+  }
 
   persist(next);
   write(KEYS.criteriaVersion, CRITERIA_VERSION);

@@ -102,6 +102,10 @@ export type Canal = 'WhatsApp' | 'Telefone' | 'Teams' | 'Presencial' | 'E-mail' 
 export interface SubPergunta {
   id: string;
   texto: string;
+  /** Régua da sub-pergunta: quando responder SIM. Cadastrado na 3A.0. */
+  criterioSim?: string;
+  /** Idem para NÃO. */
+  criterioNao?: string;
 }
 
 export interface Criterion {
@@ -125,6 +129,18 @@ export interface Criterion {
    * caía na escala pontuável.
    */
   opcoes?: string[];
+  /**
+   * A régua de decisão, indexada pela resposta como ela é gravada em `MonitoringScore.score`
+   * — '2' | '1' | '0' na escala, '2' | '1.33' | '0.67' | '0' na faixa de tempo, o texto da
+   * opção na classificação. Checklist não usa: a régua dele é por sub-pergunta.
+   *
+   * É o que separa "orientação" de "critério de decisão". A orientação é prosa para quem lê;
+   * a âncora diz o que cada valor significa, e é dela que o `instructionBuilder` (3A.1) monta
+   * a instrução — sem precisar interpretar texto livre.
+   */
+  ancoras?: Record<string, string>;
+  /** Quando marcar N/A. Só faz sentido onde N/A é resposta possível. */
+  quandoNA?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -213,6 +229,19 @@ export interface Monitoring {
    *  sejam "Pontos Fortes" e "Oportunidades" — mantidos como estão. */
   strengths?: string;
   opportunities?: string;
+
+  // Blocos narrativos do relatório (0.18.0). Junto com strengths e opportunities, completam
+  // os seis blocos do `Padrão Relatório de Monitoria` — ver §7 da metodologia. São o destino
+  // do que o assistente da 3A.3 vai escrever; sem eles a sugestão não teria onde ser colada.
+  // Opcionais: monitoria registrada antes desta versão simplesmente não os tem.
+  /** Narrativa factual e cronológica do atendimento, sem juízo de valor. */
+  contexto?: string;
+  /** O que os critérios, somados, revelam sobre a condução. Conecta, não repete. */
+  leituraTecnica?: string;
+  /** Só quando houver. Alimentado pelas falhas graves do tipo de atendimento. */
+  errosIdentificados?: string;
+  /** Nível do atendimento, impacto na experiência e direcionamento. */
+  conclusao?: string;
   evidencias?: unknown[];
   links?: unknown[];
   evidenciaObservacoes?: string;

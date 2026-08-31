@@ -674,43 +674,23 @@ function AppContent() {
       return;
     }
 
+    // Campos numéricos vêm como texto do formulário; o resto sai do estado como está.
+    //
+    // 0.18.0: os dois caminhos passaram a partir de `...newCriterion` em vez de listar campo a
+    // campo. A lista explícita silenciosamente descartava `opcoes`, `subPerguntas`, `ancoras` e
+    // `quandoNA` — no caminho de criação, um critério de classificação nascia sem opções e sem
+    // régua, e a tela de monitoria não tinha o que mostrar.
+    const normalizado = {
+      ...newCriterion,
+      numero: newCriterion.numero ? parseInt(String(newCriterion.numero)) : null,
+      minExpectedScore: parseFloat(String(newCriterion.minExpectedScore)),
+      weight: parseFloat(String(newCriterion.weight)),
+    };
+
     if (newCriterion.id) {
-      const updated = criteria.map(c => {
-        if (c.id === newCriterion.id) {
-          return {
-            ...c,
-            numero: newCriterion.numero ? parseInt(String(newCriterion.numero)) : null,
-            category: newCriterion.category,
-            name: newCriterion.name,
-            description: newCriterion.description,
-            orientacao: newCriterion.orientacao,
-            tipoResposta: newCriterion.tipoResposta,
-            eliminatorio: newCriterion.eliminatorio,
-            minExpectedScore: parseFloat(String(newCriterion.minExpectedScore)),
-            weight: parseFloat(String(newCriterion.weight)),
-            channels: newCriterion.channels,
-            active: newCriterion.active
-          };
-        }
-        return c;
-      });
-      setCriteria(updated);
+      setCriteria(criteria.map(c => (c.id === newCriterion.id ? { ...c, ...normalizado } : c)));
     } else {
-      const newObj = {
-        id: `crit-${Date.now()}`,
-        numero: newCriterion.numero ? parseInt(String(newCriterion.numero)) : null,
-        category: newCriterion.category,
-        name: newCriterion.name,
-        description: newCriterion.description,
-        orientacao: newCriterion.orientacao,
-        tipoResposta: newCriterion.tipoResposta,
-        eliminatorio: newCriterion.eliminatorio,
-        minExpectedScore: parseFloat(String(newCriterion.minExpectedScore)),
-        weight: parseFloat(String(newCriterion.weight)),
-        channels: newCriterion.channels,
-        active: newCriterion.active
-      };
-      setCriteria([...criteria, newObj]);
+      setCriteria([...criteria, { ...normalizado, id: `crit-${Date.now()}` }]);
     }
     setShowCriterionModal(false);
     setNewCriterion({ id: '', numero: '', category: '', name: '', description: '', orientacao: '', tipoResposta: 'ESCALA_4', eliminatorio: false, minExpectedScore: 7.5, weight: 1.0, channels: ['Chat', 'WhatsApp'], active: true });

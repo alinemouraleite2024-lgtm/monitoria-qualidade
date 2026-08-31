@@ -1,4 +1,5 @@
 // Mock Data — Plataforma de Gestão da Qualidade
+import { REGUA_VALIDADA } from './constants/regua';
 import type {
   Allocation, AllocationHistoryEntry, Area, BrandConfig, ColaboradorGoal,
   Canal, Criterion, Holiday, Monitoring, MonitorGoal, SystemSettings,
@@ -96,7 +97,30 @@ export const INITIAL_CRITERIA: Criterion[] = [
   { id: 'crit-26', numero: 26, category: 'MANDOU MAL', name: 'Faltou com respeito ao cliente', description: 'Verifica tratamento desrespeitoso ao cliente.', orientacao: 'Qualquer tratamento rude, deselegante ou não profissional ao cliente. Item eliminatório: se ocorrer, zera a monitoria.', tipoResposta: 'SIM_NAO', eliminatorio: true, weight: 0, minExpectedScore: 0, active: true, channels: ALL_CHANNELS },
   { id: 'crit-27', numero: 27, category: 'MANDOU MAL', name: 'Ligação derrubada ou atendimento encerrado sem atendimento do cliente?', description: 'Verifica se a ligação foi derrubada ou encerrada sem atendimento efetivo.', orientacao: 'Contato interrompido ou finalizado sem que o cliente tenha sido efetivamente atendido. Item eliminatório: se ocorrer, zera a monitoria.', tipoResposta: 'SIM_NAO', eliminatorio: true, weight: 0, minExpectedScore: 0, active: true, channels: ALL_CHANNELS },
   { id: 'crit-28', numero: 28, category: 'MANDOU MAL', name: 'Promessa de produto/serviço inexistente', description: 'Verifica promessas de produtos/condições inexistentes.', orientacao: 'Não prometa ao cliente produto, condição ou serviço que não existe ou não é praticado pela empresa. Item eliminatório: se ocorrer, zera a monitoria.', tipoResposta: 'SIM_NAO', eliminatorio: true, weight: 0, minExpectedScore: 0, active: true, channels: ALL_CHANNELS },
+
+  // Criado na 0.18.0, a partir de um achado da validação da régua: o critério 25 acionava
+  // eliminatório em atendimento correto, porque nada registrava que a autenticação já havia
+  // ocorrido antes da interação humana. Fica no bloco de classificação por ser contexto — e
+  // governa o 25 (ver domain/criterionGating).
+  { id: 'crit-29', numero: 29, category: 'FORMAS DO CONTATO', name: 'Cliente chegou autenticado?', description: 'Identifica se o canal reconheceu o cliente antes de a atendente assumir a conversa.', orientacao: 'O roteiro do Blip tem duas aberturas: AUTENTICADO cumprimenta pelo nome, SEM AUTENTICAÇÃO pede o nome. O que separa as duas é o contato vir do número cadastrado — número diferente dispara a bateria de confirmação. A prova está nas primeiras mensagens da conversa. Em canais sem pré-autenticação (telefone, presencial), a resposta é Não.', tipoResposta: 'MULTIPLA_ESCOLHA', eliminatorio: false, weight: 0, minExpectedScore: 0, active: true, channels: ALL_CHANNELS,
+    opcoes: ['Sim', 'Não', 'Não identificável'] },
 ];
+
+// A régua validada entra aqui, e não copiada linha a linha acima: os mesmos textos precisam
+// alimentar o seed e a migração de bases já gravadas (ver migrateCriterios). Uma fonte só.
+INITIAL_CRITERIA.forEach((c) => {
+  const regua = REGUA_VALIDADA[c.id];
+  if (!regua) return;
+  if (regua.orientacao) c.orientacao = regua.orientacao;
+  if (regua.ancoras) c.ancoras = regua.ancoras;
+  if (regua.quandoNA) c.quandoNA = regua.quandoNA;
+  if (regua.subPerguntas && c.subPerguntas) {
+    c.subPerguntas = c.subPerguntas.map((sp) => {
+      const r = regua.subPerguntas!.find((x: { id: string }) => x.id === sp.id);
+      return r ? { ...sp, criterioSim: r.criterioSim, criterioNao: r.criterioNao } : sp;
+    });
+  }
+});
 
 // Vínculos, metas e histórico nascem vazios desde a 0.17.0.
 //

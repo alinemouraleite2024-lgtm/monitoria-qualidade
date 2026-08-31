@@ -5,6 +5,67 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.0] - 2026-08-25 — A régua validada entra no sistema
+
+> A metodologia da 3A.0 deixou de ser documento e virou dado. É o que a 3A.1 vai ler.
+
+### Added
+
+- **`Criterion.ancoras`** — a régua de decisão, indexada pela resposta como ela é gravada:
+  `'2' | '1' | '0'` na escala, `'2' | '1.33' | '0.67' | '0'` na faixa de tempo, o texto da opção
+  na classificação. É o que separa *orientação* (prosa para quem lê) de *critério de decisão*, e
+  é dela que o `instructionBuilder` monta a instrução sem interpretar texto livre.
+- **`Criterion.quandoNA`** — decidir entre "1" e "N/A" é a escolha mais mecânica depois da nota,
+  e é decisão que o assistente da 3A.2 vai tomar. Em prosa, obrigaria o agente a interpretar.
+- **`SubPergunta.criterioSim` / `criterioNao`** — a régua dos checklists é por sub-pergunta; o
+  valor agregado `(SIM ÷ total) × 2` não tem significado próprio.
+- **`constants/regua.ts`** — a régua validada como dado. Alimenta o seed **e** a migração: os
+  mesmos textos em dois lugares acabariam divergindo.
+- **Critério 29 — `Cliente chegou autenticado?`** (Sim · Não · Não identificável), classificação
+  de peso 0. Nasceu de um achado da validação: o critério 25 acionava eliminatório em atendimento
+  correto, porque nada registrava que a autenticação já ocorrera antes da interação humana.
+- **`domain/criterionGating.ts`** — primeira dependência entre critérios do sistema. Com o 29 em
+  "Sim", o 25 vira N/A e o controle mostra o motivo no lugar dos botões.
+- **Quatro campos narrativos em `Monitoring`**: `contexto`, `leituraTecnica`,
+  `errosIdentificados` e `conclusao`, todos opcionais. Com `strengths` e `opportunities`,
+  completam os seis blocos do `Padrão Relatório de Monitoria`.
+
+### Changed
+
+- **Etapa 4 do formulário reorganizada na ordem do relatório** — Contexto, Pontos Positivos,
+  Pontos de Atenção, Leitura Técnica, Erros Identificados, Conclusão. *Erros Identificados* nasce
+  recolhido: a régua manda preencher só quando houver, e um campo vazio em destaque convida a
+  inventar conteúdo. `comments` sai dos blocos e vira **Observações internas** — é anotação da
+  monitora, não conteúdo do relatório.
+- **Detalhe da monitoria** mostra os seis blocos. Bloco vazio é dito, não escondido: registro
+  anterior a esta versão não tem os campos novos, e omiti-los faria o relatório parecer completo.
+- **Cadastro de critérios no Admin** ganhou editores para âncoras, opções com régua de
+  classificação, sub-perguntas com SIM/NÃO, e "quando marcar N/A" — todos condicionais ao tipo de
+  resposta. Sem isso, metade da régua só entraria por deploy.
+
+### Fixed
+
+- **Criar um critério pelo Admin perdia campos.** O caminho de criação montava o objeto listando
+  campo a campo e descartava `opcoes`, `subPerguntas`, `ancoras` e `quandoNA` — um critério de
+  classificação nascia sem opções, e a tela de monitoria não tinha o que mostrar. Os dois
+  caminhos passaram a partir do estado inteiro.
+- **A metodologia dizia "24 critérios ponderáveis". São 21** — 28 menos os 3 de classificação
+  menos os 4 eliminatórios. Erro de contagem no documento; a soma dos pesos (27,0) sempre esteve
+  correta, e nenhuma âncora, peso ou regra muda.
+
+### Notas de operação
+
+- **A régua validada vem semeada.** Foram 32 itens aprovados sem ajuste — redigitá-los no Admin
+  seria retrabalho. A tela existe para a operação **manter** a régua daqui em diante, e a
+  migração **só preenche o que estiver ausente**: nada aqui sobrescreve cadastro feito na tela.
+- **Exceção declarada:** a `orientacao` dos critérios 14 e 27 é sobrescrita, porque o texto no
+  `Padrão Relatório` era cópia errada do 13 e do 28. Corrigir valor sabidamente errado não é o
+  mesmo que apagar cadastro.
+- **Monitoria anterior a esta versão passa a ter um critério não respondido** — o 29 é ativo.
+  Reabri-la exige respondê-lo antes de salvar.
+- **A partir daqui `pm2_criteria` carrega a régua inteira e não tem cópia.** O backup de
+  `docs/BACKUP-RESTAURACAO.md` passa a ser obrigatório antes de cada publicação.
+
 ## [0.17.0] - 2026-08-25 — Estrutura por perfil, não por pessoa
 
 > A supervisora saiu da equipe. O que o desligamento revelou é que a estrutura não era dela —

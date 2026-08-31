@@ -210,23 +210,37 @@ export const MonitoringHistory = ({
             </div>
           </div>
 
-          {/* Feedback */}
+          {/* Relatório — os seis blocos do Padrão Relatório de Monitoria, na ordem em que ele
+              os define. Até a 0.18.0 só três existiam aqui, e os outros eram escritos à mão
+              fora do sistema. Bloco vazio é dito, não escondido: monitoria anterior a esta
+              versão não tem os campos novos, e omiti-los faria parecer que o relatório está
+              completo. */}
           <div>
-            <h3 style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Feedback</h3>
+            <h3 style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Relatório</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div>
-                <div style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Pontos Fortes</div>
-                <div style={{ fontSize: '0.9rem' }}>{monitoring.strengths || 'Não preenchido.'}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--warning)' }}>Oportunidades de Melhoria</div>
-                <div style={{ fontSize: '0.9rem' }}>{monitoring.opportunities || 'Não preenchido.'}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--info)' }}>Plano de Ação</div>
-                <div style={{ fontSize: '0.9rem' }}>{monitoring.comments || 'Não preenchido.'}</div>
-              </div>
+              {[
+                { rotulo: 'Contexto do Atendimento', valor: monitoring.contexto, cor: 'var(--text-muted)' },
+                { rotulo: 'Pontos Positivos', valor: monitoring.strengths, cor: 'var(--primary)' },
+                { rotulo: 'Pontos de Atenção', valor: monitoring.opportunities, cor: 'var(--warning)' },
+                { rotulo: 'Leitura Técnica', valor: monitoring.leituraTecnica, cor: 'var(--info)' },
+                { rotulo: 'Erros Identificados', valor: monitoring.errosIdentificados, cor: 'var(--danger)' },
+                { rotulo: 'Conclusão', valor: monitoring.conclusao, cor: 'var(--primary)' },
+              ].map((b) => (
+                <div key={b.rotulo}>
+                  <div style={{ fontSize: '0.8rem', fontWeight: '600', color: b.cor }}>{b.rotulo}</div>
+                  <div style={{ fontSize: '0.9rem', whiteSpace: 'pre-wrap', color: b.valor ? undefined : 'var(--text-muted)' }}>
+                    {b.valor || 'Não preenchido.'}
+                  </div>
+                </div>
+              ))}
             </div>
+
+            {monitoring.comments && (
+              <div style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px dashed var(--border-color)' }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>Observações internas</div>
+                <div style={{ fontSize: '0.9rem', whiteSpace: 'pre-wrap' }}>{monitoring.comments}</div>
+              </div>
+            )}
           </div>
 
           {/* History Logs */}
