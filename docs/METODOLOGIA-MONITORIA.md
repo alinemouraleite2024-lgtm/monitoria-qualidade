@@ -1,7 +1,9 @@
 # Metodologia de Monitoria — Base Única
 
-> **Fatia 3A.0.** Formalização da régua de avaliação. Ele existe para ser **validado primeiro**
-> e só então virar cadastro no sistema e insumo do `instructionBuilder` (3A.1).
+> **Fatia 3A.0. RÉGUA VALIDADA em 25/08/2026** — 32 itens revisados, 32 aprovados, nenhum
+> ajuste; as 7 decisões da pauta estão encerradas (§9). Este documento deixa de ser proposta e
+> passa a ser **a régua oficial**: é dele que sai o cadastro no sistema e o corpo da instrução
+> do `instructionBuilder` (3A.1).
 >
 > Escrito em 24/08/2026. **Revisado em 25/08/2026 para o estado da 0.17.0** — quatro versões
 > publicadas no intervalo mexeram no que a régua descreve. As marcas de revisão estão em §2
@@ -130,9 +132,9 @@ Cada critério traz: **o que mede**, a **orientação completa** (extraída do d
 as **âncoras**, **quando marcar N/A** e a **evidência observável** — o que precisa estar na
 conversa para sustentar a nota.
 
-> As âncoras são **proposta desta fatia**. Nenhuma delas está no documento original: o CYF dá
-> os níveis e o `Padrão Relatório` dá as boas práticas, mas ninguém escreveu o corte entre 2 e
-> 1. É exatamente essa a lacuna que a 3A.0 fecha — e é o que precisa da sua validação.
+> As âncoras nasceram como proposta desta fatia — nenhuma delas está no documento original: o
+> CYF dá os níveis e o `Padrão Relatório` dá as boas práticas, mas ninguém tinha escrito o corte
+> entre 2 e 1. Era a lacuna que a 3A.0 veio fechar. **Validadas em 25/08/2026**, item a item.
 
 ---
 
@@ -520,8 +522,14 @@ concordância, vício de linguagem, clareza de dicção.
 **O que mede.** Aderência à identidade de comunicação da Moura Leite — não a simpatia
 individual do atendente.
 
-**Orientação proposta.** O tom Moura Leite é **profissional, cordial e acolhedor**. Na
-prática:
+> **Definição validada em 25/08/2026.** O tom Moura Leite é: **cordial e acolhedor ·
+> profissional · respeitoso · sem excesso de intimidade · sem burocratizar o atendimento · sem
+> transferir responsabilidades para outras áreas · consistente do início ao fim.**
+>
+> Esta é a definição da própria área, e substitui a interpretação que este documento propunha —
+> a orientação original do `Padrão Relatório` era texto copiado do critério 13.
+
+**Orientação.** O tom Moura Leite é **profissional, cordial e acolhedor**. Na prática:
 - Trata o cliente pelo nome, com formalidade respeitosa — nunca por apelido ou tratamento
   íntimo.
 - É acolhedor sem ser íntimo, e formal sem ser burocrático.
@@ -916,21 +924,25 @@ nos critérios 14, 20 e 23, **não** eliminatório. A fronteira é o desrespeito
 `crit-27` · SIM_NAO · eliminatório
 
 > ⚠️ A orientação deste critério no `Padrão Relatório` está errada: repete o texto do
-> critério 28. A régua abaixo é **proposta nova** (§9, divergência 1).
+> critério 28. A régua abaixo era proposta nova — **validada em 25/08/2026**.
 
 **O que mede.** Contato interrompido ou finalizado sem que o cliente tenha sido efetivamente
-atendido.
+atendido. **O corte é pelo desfecho do atendimento**, não pela causa da interrupção.
 
 **Aciona quando.**
-- **Telefone** — a ligação caiu por ação ou desatenção do atendente e não houve retorno; ou o
-  atendente encerrou antes de resolver.
-- **WhatsApp** — a conversa foi abandonada com o cliente aguardando resposta, sem desfecho e
-  sem retorno.
+- O cliente ficou **sem resposta**.
+- O atendimento foi **abandonado**.
+- Houve **encerramento sem resolução e sem retorno**.
+- Houve **queda sem tentativa de contato posterior**.
 
-**Não aciona quando.** A queda foi do lado do cliente **e** houve tentativa registrada de
-retorno; ou o cliente encerrou por conta própria após ser atendido.
+**Não aciona quando.**
+- O cliente **encerrou por conta própria após ser atendido**.
+- Houve **tentativa comprovada de retorno**.
+- A **interrupção não prejudicou a conclusão** do atendimento.
 
 **Evidência exigida.** O ponto de interrupção e a ausência de retorno posterior.
+
+**Vale igual para telefone e WhatsApp** — a régua é do desfecho, e o desfecho independe do canal.
 
 ---
 
@@ -1027,16 +1039,25 @@ informação · cumprimento da estrutura.
 
 **O que a monitoria NÃO mede:** texto decorado · frase exata · modelo fechado.
 
-### 6.2 Demais tipos — a preencher
+### 6.2 Demais tipos — fila de escrita
 
-`OFFICIAL_CATEGORIAS` traz hoje: Dúvida · Reclamação · Solicitação · Elogio · 2ª Via de Boleto ·
-Renegociação. **Nenhum tem orientação documentada** — e *ANTECIPAÇÃO PAGAMENTOS*, que tem,
-**não está na lista de categorias do sistema**.
+**Ordem definida em 25/08/2026**, por volume de atendimentos, risco operacional, impacto na
+experiência do cliente e complexidade do processo:
 
-Duas providências ficam pendentes de decisão sua (§9, decisão 3): incluir Antecipação de
-Parcelas nas categorias oficiais, e definir a ordem de escrita das orientações restantes.
-Sugestão de prioridade, por volume e por risco: **2ª Via de Boleto → Renegociação →
-Reclamação**.
+| # | Tipo de atendimento | | # | Tipo de atendimento |
+|---|---|---|---|---|
+| 1 | BOLETOS | | 6 | CONTRATO |
+| 2 | NEGOCIAÇÃO DE DÍVIDA | | 7 | FINANCIAMENTO |
+| 3 | MANIFESTAÇÃO CLIENTE | | 8 | IPTU |
+| 4 | TRANSFERÊNCIA DE TITULARIDADE | | 9 | PREFEITURA |
+| 5 | TRANSFERÊNCIA DE LOTE | | 10 | JURÍDICO |
+
+*ANTECIPAÇÃO PAGAMENTOS* (§6.1) permanece como **modelo de referência** para a construção das
+próximas — é a única escrita, e a estrutura dela é o gabarito.
+
+As 27 categorias do catálogo não precisam todas de orientação: só têm sentido onde existe
+**sequência de processo a cumprir**. Categorias que são só assunto — `RECADO`, `UNIDADE` — se
+resolvem com os 28 critérios gerais.
 
 ---
 
@@ -1176,18 +1197,41 @@ PDF, com 3. Mantido: o PDF é a fonte estrutural.
 **4. O `Padrão Relatório` traz a orientação de LGPD duas vezes** — solta ao final do bloco
 ENCERRAMENTO e de novo no critério 25. Tratada uma vez só, no 25.
 
-### Decisões pendentes
+### Decisões — encerradas em 25/08/2026
 
-| # | Decisão | Impacto |
+**A régua foi validada integralmente:** 32 itens revisados, 32 aprovados, nenhum ajuste. As
+âncoras dos critérios ponderáveis estão validadas item a item — é a decisão 1, respondida pelas
+aprovações individuais.
+
+| # | Decisão | Resultado |
 |---|---|---|
-| 1 | Validar as âncoras 2/1/0 dos 24 critérios ponderáveis | Bloqueia 3A.1 — a instrução se monta a partir delas |
-| 2 | Validar a régua nova dos critérios 14 e 27 | Bloqueia o cadastro desses dois |
-| 3 | ~~Incluir *ANTECIPAÇÃO PAGAMENTOS* em `OFFICIAL_CATEGORIAS`~~ — **feito na 0.14.0.** Resta definir a ordem de escrita das demais orientações | Bloqueia §6.2 |
-| 4 | Exigir justificativa também no `N/A`? Hoje o formulário não pede | Mudança em `validateStep3` |
-| 5 | ~~Criar `inicio` / `encerramento` no modelo~~ — **resolvida na 0.14.0**, com data e hora completas e duração calculada | — |
-| 6 | Diferenciar `channels` por critério? Hoje os 27 ativos se aplicam aos 6 canais | Muda quais critérios entram na instrução por canal |
-| 7 | *(nova, 0.16.0)* `REGISTRO (I)` existe como categoria própria, ou consolida com `REGISTRO`? | Bloqueia só o catálogo, não a régua |
-| 8 | *(nova, 0.17.0)* Criar os 4 campos narrativos do relatório em `Monitoring` | Bloqueia a 3A.3, não a 3A.1 |
+| 1 | Âncoras 2/1/0 dos critérios ponderáveis | ✅ **Aprovadas** sem ajuste |
+| 2 | Régua nova dos critérios 14 e 27 | ✅ **Aprovadas.** A definição do Tom Moura Leite veio da área e está no critério 14; o corte do 27 é **pelo desfecho**, não pela causa |
+| 3 | Ordem de escrita das orientações por tipo | ✅ **Definida** — 10 tipos, §6.2 |
+| 4 | Exigir justificativa no `N/A`? | ✅ **Não.** Mantido como está |
+| 5 | Os 4 campos narrativos do relatório | ✅ **Criar junto com as âncoras**, como opcionais |
+| 6 | Diferenciar `channels` por critério? | ⏸️ **Adiada** — revisão com base em uso real |
+| 7 | `REGISTRO (I)` existe ou consolida? | ⏸️ **Adiada** — sem definição operacional ainda |
+
+**Decisão 4 — por que o `N/A` segue sem justificativa obrigatória.** `N/A` é resposta legítima
+da metodologia, não erro; os critérios 7, 8, 11, 15 e 21 o recebem com frequência; exigir texto
+aumentaria o tempo de preenchimento sem ganho proporcional; e a evidência da aplicação do
+critério já é registrada na análise. *Se um dia houver necessidade de auditoria mais fina, a
+justificativa no `N/A` pode ser **opcional** — nunca obrigatória.*
+
+**Decisão 5 — por que os campos narrativos entram agora.** São parte da estrutura oficial do
+relatório, serão usados pelo assistente da 3A.3, e criá-los junto com `ancoras` evita alterar o
+modelo de monitoria duas vezes. Entram **opcionais**, para não invalidar monitoria existente.
+
+**Decisão 6 — por que a diferenciação por canal foi adiada.** A metodologia ainda está em
+implantação e não há volume de monitorias que sustente a distinção. Restringir critérios agora
+esconderia situações ainda não mapeadas. Os quatro canais seguem com a mesma régua, respeitando
+os `N/A` já previstos em cada critério. **Revisar depois, com evidência real.**
+
+**Decisão 7 — por que `REGISTRO (I)` continua fora.** Não há definição operacional que o
+distinga de `REGISTRO`. Fica fora do catálogo até a análise de atendimentos reais dizer se são
+processos distintos, o mesmo processo, ou se um substitui o outro. Não impacta a régua nem a
+3A.1.
 
 ### Pendências da régua — aprovadas, aguardando implementação
 
@@ -1230,26 +1274,25 @@ perdeu porque o cadastro não tinha começado — mas **do primeiro critério sa
 dado é insubstituível**, e o backup de [BACKUP-RESTAURACAO.md](BACKUP-RESTAURACAO.md) volta a ser
 obrigatório antes de qualquer publicação que mexa em modelo ou migração.
 
-### O que falta, na ordem revisada
+### O que falta
 
-A ordem original mandava cadastrar as orientações antes de criar `ancoras`. Isso obrigaria a
-percorrer os 28 critérios duas vezes. Invertido:
+1. ~~Validar a régua~~ — ✅ **concluído em 25/08/2026**, 32 de 32.
+2. ~~Aplicar os ajustes~~ — ✅ **nenhum ajuste**; as decisões da pauta estão transcritas neste
+   documento.
+3. **Criar `Criterion.ancoras`** e os **4 campos narrativos** em `Monitoring`, opcionais.
+4. **Ampliar o cadastro de critérios no Admin** — hoje ele edita `orientacao`, mas não tem campo
+   para `ancoras`, `opcoes` nem `subPerguntas`. **Sem essa tela, metade da régua só entra por
+   código**, e a 3A.0 deixa de ser cadastro para virar deploy.
+5. **Criar o critério 29 e o portão do 25** (P1 e P2, abaixo) — mesma leva, para não percorrer
+   os critérios duas vezes.
+6. **Cadastrar a régua validada** numa passagem só.
+7. **Criar a entidade `OrientacaoAtendimento`** e registrar *ANTECIPAÇÃO PAGAMENTOS*, seguida da
+   fila de §6.2.
 
-1. **Validar a régua** — os 32 itens, no artefato de revisão.
-2. **Aplicar os ajustes** aprovados neste documento.
-3. **Criar o campo `ancoras` em `Criterion`** e o campo correspondente no Admin.
-4. **Cadastrar a régua validada** numa passagem só.
-5. **Criar a entidade `OrientacaoAtendimento`** e registrar *ANTECIPAÇÃO PAGAMENTOS*.
+Os passos 3 a 6 são uma versão só. O 7 é trabalho de conteúdo e corre em paralelo.
 
-**Obstáculo no passo 3:** o Admin edita `orientacao`, mas **não tem campo para `ancoras`,
-`opcoes` nem `subPerguntas`. Sem essa tela, metade da régua só entra por código** — e a 3A.0
-deixa de ser cadastro para virar deploy.
-
-### Fora da régua, mas dentro da 3A
-
-Os quatro campos narrativos do relatório — `contexto`, `leituraTecnica`, `errosIdentificados` e
-`conclusao` (§7) — **continuam não existindo** em `Monitoring`. São o destino do que o assistente
-escreve na 3A.3. Sem eles a sugestão não tem onde ser colada, e o relatório segue sendo montado
-à mão fora do sistema.
+**A partir do primeiro critério cadastrado, `pm2_criteria` passa a ser o dado mais caro da
+base** — e não existe cópia. O procedimento de [BACKUP-RESTAURACAO.md](BACKUP-RESTAURACAO.md)
+vale antes de cada publicação daqui em diante.
 
 Só depois disso a 3A.1 (`instructionBuilder`) tem o que ler.
