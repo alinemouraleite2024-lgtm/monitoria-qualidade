@@ -17,7 +17,6 @@ export const PERMISSIONS: Record<Permission, Role[]> = {
   // Módulos principais
   VIEW_DASHBOARD: ['ADMIN', 'GESTOR'],
   VIEW_PLANNING: ['ADMIN', 'GESTOR'],
-  VIEW_CENTRAL_DEMANDS: ['ADMIN', 'GESTOR'],
   VIEW_MONITORINGS: ['ADMIN', 'GESTOR', 'MONITOR'],
   // CSAT e NPS substituem a antiga VIEW_SURVEYS. A simetria entre eles é aparente: CSAT é
   // indicador, NPS é processo operacional — a Monitora entra no NPS para trabalhar o caso
@@ -27,8 +26,6 @@ export const PERMISSIONS: Record<Permission, Role[]> = {
   VIEW_NPS: ['ADMIN', 'GESTOR', 'MONITOR'],
   VIEW_REPORTS: ['ADMIN', 'GESTOR', 'MONITOR'],
   VIEW_COLLABORATORS: ['ADMIN', 'GESTOR'],
-  VIEW_MY_MONITORINGS: ['MONITOR'],
-  VIEW_OPERATIONAL_CALENDAR: ['GESTOR'],
   VIEW_MY_PROFILE: ['MONITOR', 'GESTOR', 'ADMIN'],
 
   // F0-14: as rotas do formulário de monitoria não tinham permissão declarada e passavam para
@@ -36,14 +33,10 @@ export const PERMISSIONS: Record<Permission, Role[]> = {
   // da história — CREATE_MONITORING não serve aqui porque exclui o GESTOR, que cria hoje.
   VIEW_MONITORING_FORM: ['ADMIN', 'GESTOR', 'MONITOR'],
 
-  // Módulos Administrativos (Novo)
-  VIEW_USERS: ['ADMIN'],
+  // Administração. Uma permissão só, cobrindo as três seções — Critérios, Usuários e Acessos,
+  // e Sistema. Havia sete chaves aqui até a 0.18.0; cinco não tinham rota no menu e três
+  // apontavam para telas duplicadas, que a 0.19.0 removeu.
   VIEW_ADMINISTRATION: ['ADMIN'],
-  VIEW_ROLES: ['ADMIN'],
-  VIEW_AUDIT_LOGS: ['ADMIN'],
-  VIEW_SETTINGS: ['ADMIN'],
-  VIEW_INTEGRATIONS: ['ADMIN'],
-  VIEW_VERSION_HISTORY: ['ADMIN'],
 
   // Permissões Granulares (Exemplos)
   CREATE_MONITORING: ['MONITOR', 'ADMIN'],

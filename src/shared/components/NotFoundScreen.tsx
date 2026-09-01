@@ -1,5 +1,6 @@
 import { Compass } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { PATH_ENTRADA } from '../../routes/paths';
 
 // F0-13: com roteamento real, um id de destino inválido deixa de produzir uma área de
 // conteúdo em branco e passa a mostrar esta tela.
@@ -10,6 +11,6 @@ export const NotFoundScreen = () => (
     <p style={{ color: 'var(--text-muted)', maxWidth: '500px', margin: '0 auto 1.5rem', lineHeight: '1.6' }}>
       O endereço acessado não corresponde a nenhuma tela da plataforma.
     </p>
-    <Link className="btn btn-primary" to="/home">Voltar para a Home</Link>
+    <Link className="btn btn-primary" to={PATH_ENTRADA}>Voltar para Monitorias</Link>
   </div>
 );

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, CheckCircle2, User as UserIcon, Clock, FileText, Check, AlertCircle } from 'lucide-react';
+import { X, FileText, Check, AlertCircle } from 'lucide-react';
 import { getScoreConcept } from '../../scoreUtils';
 import { canalLabel } from '../../constants/canais';
 import { exibirDuracao } from '../../domain/duracao';
@@ -46,11 +46,6 @@ export const MonitoringHistory = ({
     return c ? c.name : 'Desconhecido';
   };
 
-  // Mock History Logs
-  const historyLogs = [
-    { id: 1, type: 'CREATE', user: monitoring.monitorId, date: monitoring.date, details: 'Monitoria criada.' },
-    { id: 2, type: 'STATUS', user: monitoring.monitorId, date: monitoring.date, details: `Status alterado para ${monitoring.status}.` }
-  ];
 
   // Aprovação flow logic
   const canApprove = currentUser && (currentUser.role === 'GESTOR' || currentUser.role === 'ADMIN') && (monitoring.status === 'Pendente' || monitoring.status === 'Aguardando Aprovação');
@@ -243,21 +238,6 @@ export const MonitoringHistory = ({
             )}
           </div>
 
-          {/* History Logs */}
-          <div>
-            <h3 style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Histórico (Logs)</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingLeft: '0.5rem', borderLeft: '2px solid var(--border-color)' }}>
-              {historyLogs.map(log => (
-                <div key={log.id} style={{ position: 'relative', paddingLeft: '1rem' }}>
-                  <div style={{ position: 'absolute', left: '-13px', top: '2px', width: '24px', height: '24px', borderRadius: '50%', backgroundColor: 'var(--bg-app)', border: '2px solid var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Clock size={12} style={{ color: 'var(--primary)' }} />
-                  </div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{new Date(log.date).toLocaleString('pt-BR')} • {getUserName(log.user)}</div>
-                  <div style={{ fontSize: '0.9rem', fontWeight: '500' }}>{log.details}</div>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* F0-08: Footer de confirmação de zerada — independente do fluxo de aprovação de conteúdo */}
