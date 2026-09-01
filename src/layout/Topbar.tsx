@@ -1,4 +1,3 @@
-import { Bell } from 'lucide-react';
 import type { ReactNode } from 'react';
 import type { AnyRole, User } from '../types/domain';
 
@@ -7,6 +6,13 @@ export interface MenuItem {
   id: string;
   label: string;
   icon: React.ComponentType<{ size?: number }>;
+  /**
+   * Grupo do item na barra lateral. Preenchido apenas no PRIMEIRO item de cada grupo — é ele
+   * que faz o cabeçalho aparecer. Separa o que se faz hoje (Operação) do que se ajusta no mês
+   * (Gestão) e do que se configura raramente (Configuração); numa lista plana, validar uma
+   * monitoria competia visualmente com cadastrar uma meta.
+   */
+  grupo?: string;
 }
 
 export type MenuConfig = Partial<Record<AnyRole, MenuItem[]>>;
@@ -39,13 +45,6 @@ export const Topbar = ({ currentUser, activeTab, menuConfig, renderUserAvatar }:
   </div>
 
   <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-    <button style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', position: 'relative' }}>
-      <Bell size={20} />
-      <span style={{ position: 'absolute', top: '-4px', right: '-4px', width: '8px', height: '8px', backgroundColor: 'var(--danger)', borderRadius: '50%' }}></span>
-    </button>
-
-    <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--border-color)' }}></div>
-
     <div style={{
       display: 'flex',
       alignItems: 'center',

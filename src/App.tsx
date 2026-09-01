@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { pathToTab, PATH_LOGIN } from './routes/paths';
+import { pathToTab, tabToPath, PATH_LOGIN, PATH_ENTRADA, ADMIN_SECOES } from './routes/paths';
 import type { FormEvent, ReactNode } from 'react';
 import type {
   AnyRole, Area, Canal, Collaborator, Criterion, Monitoring,
@@ -11,8 +11,6 @@ import {
   Users,
   UserCheck,
   FileSpreadsheet,
-  Smile,
-  HeartHandshake,
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ArrowRight,
   Settings,
@@ -39,10 +37,11 @@ import {
   Trash2,
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
   Eye,
-  Home,
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
   Zap,
-  FileText
+  FileText,
+  ClipboardCheck,
+  UserCog
 } from 'lucide-react';
 // Os seeds de todas as coleções vivem em src/repositories (F0-12).
 
@@ -74,9 +73,6 @@ const initializeDatabase = () => {
   return false;
 };
 
-import { UserManagement } from './modules/admin/UserManagement';
-import { RolesManagement } from './modules/admin/RolesManagement';
-import { AuditLogs } from './modules/admin/AuditLogs';
 import { MyProfile } from './modules/profile/MyProfile';
 
 import { MonitoringQueueScreen } from './features/monitorings/MonitoringQueueScreen';
@@ -87,9 +83,6 @@ import { MonitoringHistory } from './modules/monitoring/MonitoringHistory';
 import { NotImplementedScreen } from './shared/components/NotImplementedScreen';
 import { ReportsScreen } from './features/reports/ReportsScreen';
 import { LoginScreen } from './features/auth/LoginScreen';
-import { HomeAdmin } from './features/home/HomeAdmin';
-import { HomeGestor } from './features/home/HomeGestor';
-import { HomeMonitor } from './features/home/HomeMonitor';
 import { PlanningScreen } from './features/planning/PlanningScreen';
 import { AllocationsScreen } from './features/allocations/AllocationsScreen';
 import { AdminScreen } from './features/admin/AdminScreen';
@@ -174,36 +167,42 @@ import { isManagerRole as isManagerUser } from './domain/authorizationService';
 // Dashboard Executivo e Planejamento permanecem em GESTOR e ADMIN por decisão operacional:
 // a operação assistida vai até 28/08 e a Gestora depende dos dois para acompanhar. A revisão
 // desses dois itens acontece depois dessa data.
+/**
+ * Menu por perfil, agrupado por natureza do trabalho (0.19.0).
+ *
+ * Até a 0.18.0 eram três listas planas quase idênticas — ADMIN com 10 itens, GESTOR com 9,
+ * diferindo só por "Administração", embora os papéis sejam opostos. E um terço do menu do
+ * MONITOR levava a placeholders.
+ *
+ * Agora: **Operação** é o que se faz hoje, **Gestão** é o que se ajusta no mês, **Configuração**
+ * é o que se mexe raramente. Cada perfil vê os grupos que lhe cabem.
+ *
+ * `/monitorings` é a mesma rota para os três, com rótulo diferente: a tela já se bifurca por
+ * papel, e o rótulo passa a dizer que pergunta ela responde para cada um.
+ */
 const MENU_CONFIG: MenuConfig = {
   ADMIN: [
-    { id: 'home', label: 'Início', icon: Home },
-    { id: 'dashboard', label: 'Dashboard Executivo', icon: LayoutDashboard },
-    { id: 'planning', label: 'Planejamento', icon: Layers },
-    { id: 'monitorings', label: 'Monitorias', icon: FileSpreadsheet },
-    { id: 'csat', label: 'CSAT', icon: Smile },
-    { id: 'nps', label: 'NPS', icon: HeartHandshake },
-    { id: 'allocations', label: 'Equipe', icon: Users },
+    { id: 'monitorings', label: 'Monitorias', icon: FileSpreadsheet, grupo: 'Operação' },
     { id: 'reports', label: 'Relatórios', icon: FileText },
-    { id: 'admin', label: 'Administração', icon: Settings },
+    { id: 'dashboard', label: 'Painel', icon: LayoutDashboard, grupo: 'Gestão' },
+    { id: 'allocations', label: 'Equipe e Carteiras', icon: Users },
+    { id: 'planning', label: 'Metas', icon: Layers },
+    { id: 'admin-criterios', label: 'Critérios de Avaliação', icon: ClipboardCheck, grupo: 'Configuração' },
+    { id: 'admin-acessos', label: 'Usuários e Acessos', icon: UserCog },
+    { id: 'admin-sistema', label: 'Sistema', icon: Settings },
     { id: 'profile', label: 'Meu Perfil', icon: UserCheck },
   ],
   GESTOR: [
-    { id: 'home', label: 'Início', icon: Home },
-    { id: 'dashboard', label: 'Dashboard Executivo', icon: LayoutDashboard },
-    { id: 'planning', label: 'Planejamento', icon: Layers },
-    { id: 'monitorings', label: 'Monitorias', icon: FileSpreadsheet },
-    { id: 'csat', label: 'CSAT', icon: Smile },
-    { id: 'nps', label: 'NPS', icon: HeartHandshake },
-    { id: 'allocations', label: 'Equipe', icon: Users },
+    { id: 'monitorings', label: 'Validação', icon: FileSpreadsheet, grupo: 'Operação' },
     { id: 'reports', label: 'Relatórios', icon: FileText },
+    { id: 'dashboard', label: 'Painel da Equipe', icon: LayoutDashboard, grupo: 'Gestão' },
+    { id: 'allocations', label: 'Equipe e Carteiras', icon: Users },
+    { id: 'planning', label: 'Metas', icon: Layers },
     { id: 'profile', label: 'Meu Perfil', icon: UserCheck },
   ],
   MONITOR: [
-    { id: 'home', label: 'Início', icon: Home },
-    { id: 'monitorings', label: 'Monitorias', icon: FileSpreadsheet },
-    { id: 'csat', label: 'CSAT', icon: Smile },
-    { id: 'nps', label: 'NPS', icon: HeartHandshake },
-    { id: 'reports', label: 'Relatórios', icon: FileText },
+    { id: 'monitorings', label: 'Monitorias', icon: FileSpreadsheet, grupo: 'Operação' },
+    { id: 'reports', label: 'Meu Histórico', icon: FileText },
     { id: 'profile', label: 'Meu Perfil', icon: UserCheck },
   ],
 };
@@ -218,13 +217,10 @@ const PLACEHOLDER_DESCRIPTIONS: Record<string, string> = {
 
 // Telas cujo módulo ainda não existe.
 //
-// 'csat' e 'nps' entram aqui como placeholder explicado por PLACEHOLDER_DESCRIPTIONS: estão
-// no menu por decisão de produto, e não por já existirem.
-//
-// Saíram 'my-demands', 'surveys' e 'calendar' junto com suas rotas. O CalendarScreen continua
-// no repositório, agora desligado — o débito 6 da Sprint 0 deixa de ser "implementado e
-// inalcançável" e passa a ser "implementado e sem rota".
-const UNIMPLEMENTED_TABS = ['settings', 'history', 'op-calendar', 'demands', 'integrations', 'csat', 'nps'];
+// Sobraram só 'csat' e 'nps': saíram do menu na 0.19.0 mas mantiveram rota, porque a decisão
+// foi tirá-las do caminho diário — não descontinuá-las. As demais entradas caíram junto com
+// suas rotas; um tab sem rota nunca chega aqui, e listá-lo só sugeria uma tela que não existe.
+const UNIMPLEMENTED_TABS = ['csat', 'nps'];
 
 // Envelope de rota. A decisão de acesso é do RouteGuard (F0-14); aqui resta apenas a
 // precedência remanescente do dispatcher: autorizado -> "não implementado" -> tela.
@@ -305,7 +301,11 @@ function AppContent() {
   const navigate = useNavigate();
   const { tab: routeTab, monitoringId: routeMonitoringId } = pathToTab(location.pathname);
   const activeTab = routeTab || '';
-  const navigateToTab = (tab: string) => navigate(`/${tab}`);
+  // O destino vem de tabToPath, não de uma concatenação: desde a 0.19.0 o id da aba e o
+  // segmento da URL deixaram de ser sempre iguais — as três seções da Administração vivem sob
+  // /admin/:secao. Montar `/${tab}` à mão levava 'admin-criterios' para /admin-criterios, que
+  // não é rota — o menu caía em "página não encontrada".
+  const navigateToTab = (tab: string) => navigate(tabToPath(tab));
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [dashboardAreaId, setDashboardAreaId] = useState('ALL');
 
@@ -327,6 +327,15 @@ function AppContent() {
 
   // Administration view sub-tabs
   const [adminSubTab, setAdminSubTab] = useState('criteria');
+
+  // A seção da Administração passa a vir da URL (0.19.0). Antes era só estado: o endereço não
+  // dizia onde você estava, e voltar ao menu recomeçava sempre na mesma aba. `ADMIN_SECOES`
+  // traduz o item de menu para a aba interna; o usuário segue livre para trocar de aba dentro
+  // da tela, e por isso isto é sincronização de entrada, não amarração.
+  useEffect(() => {
+    const secao = ADMIN_SECOES[activeTab];
+    if (secao) setAdminSubTab(secao);
+  }, [activeTab]);
 
   // Form States (Admin & Management)
   // Sem id fixo: um usuário semeado em código vira referência quebrada assim que a pessoa sai.
@@ -1077,21 +1086,15 @@ function AppContent() {
         >
           <Routes>
 
-            <Route path="/" element={<Navigate to="/home" replace />} />
+            <Route path="/" element={<Navigate to={PATH_ENTRADA} replace />} />
 
             {/* Já autenticado em /login: devolve à rota pretendida antes do login, quando houver.
                 É também o passo final do fluxo de autenticação — ver handleLogin. */}
-            <Route path={PATH_LOGIN} element={<Navigate to={location.state?.from || '/home'} replace />} />
+            <Route path={PATH_LOGIN} element={<Navigate to={location.state?.from || PATH_ENTRADA} replace />} />
 
-            <Route path="/home" element={
-              <Screen tab="home" role={currentUser.role}>
-                  <div className="animate-fade-in">
-                    {currentUser.role === 'ADMIN' && <HomeAdmin currentUser={currentUser} />}
-                    {currentUser.role === 'GESTOR' && <HomeGestor currentUser={currentUser} demands={demands} users={users} />}
-                    {currentUser.role === 'MONITOR' && <HomeMonitor currentUser={currentUser} demands={demands} monitorings={monitorings} collaborators={collaborators} onNavigate={navigateToTab} />}
-                  </div>
-              </Screen>
-            } />
+            {/* Endereços antigos da Home continuam resolvendo: quem a tinha em favorito
+                recebe a tela de trabalho, e não um erro de rota inexistente. */}
+            <Route path="/home" element={<Navigate to={PATH_ENTRADA} replace />} />
 
             <Route path="/dashboard" element={
               <Screen tab="dashboard" role={currentUser.role}>
@@ -1270,8 +1273,12 @@ function AppContent() {
               </Screen>
             } />
 
-            <Route path="/admin" element={
-              <Screen tab="admin" role={currentUser.role}>
+            <Route path="/admin/:secao" element={
+              // Sem fallback de seção: /admin/algo-inexistente tem de cair no NotFound como
+              // qualquer outro endereço inválido. Um fallback silencioso abriria a
+              // Administração e faria um erro de digitação parecer uma tela legítima.
+              activeTab && activeTab in ADMIN_SECOES ? (
+              <Screen tab={activeTab} role={currentUser.role}>
                   <AdminScreen
                     brand={brand}
                     setBrand={setBrand}
@@ -1294,32 +1301,25 @@ function AppContent() {
                     renderUserAvatar={renderUserAvatar}
                   />
               </Screen>
+              ) : <NotFoundScreen />
             } />
 
             <Route path="/profile" element={<Screen tab="profile" role={currentUser.role}><MyProfile currentUser={currentUser} /></Screen>} />
 
-            <Route path="/users" element={<Screen tab="users" role={currentUser.role}><UserManagement users={users} onUsersChange={setUsers} /></Screen>} />
 
-            <Route path="/roles" element={<Screen tab="roles" role={currentUser.role}><RolesManagement /></Screen>} />
 
-            <Route path="/audit-logs" element={<Screen tab="audit-logs" role={currentUser.role}><AuditLogs /></Screen>} />
 
             {/* Telas ainda não implementadas: Screen resolve para NotImplementedScreen,
                 exatamente como a lista isUnimplemented fazia no dispatcher anterior. */}
 
-            <Route path="/demands" element={<Screen tab="demands" role={currentUser.role} />} />
 
             <Route path="/csat" element={<Screen tab="csat" role={currentUser.role} />} />
 
             <Route path="/nps" element={<Screen tab="nps" role={currentUser.role} />} />
 
-            <Route path="/integrations" element={<Screen tab="integrations" role={currentUser.role} />} />
 
-            <Route path="/settings" element={<Screen tab="settings" role={currentUser.role} />} />
 
-            <Route path="/history" element={<Screen tab="history" role={currentUser.role} />} />
 
-            <Route path="/op-calendar" element={<Screen tab="op-calendar" role={currentUser.role} />} />
 
             <Route path="*" element={<NotFoundScreen />} />
 

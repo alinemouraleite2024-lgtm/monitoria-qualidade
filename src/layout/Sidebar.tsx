@@ -25,7 +25,7 @@ export const Sidebar = ({
 }: SidebarProps) => (
 <aside className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
   <div className="sidebar-header">
-    <a href="#" className="sidebar-brand" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>
+    <a href="#" className="sidebar-brand" onClick={(e) => { e.preventDefault(); onNavigate('monitorings'); }}>
       <img src={brand.logoUrl} className="sidebar-logo" alt={brand.name} />
       <span className="sidebar-title sidebar-brand-text" style={{ marginLeft: '0.5rem' }}>{brand.name}</span>
     </a>
@@ -38,15 +38,21 @@ export const Sidebar = ({
     {menuConfig[currentUser.role]?.map((item) => {
       const Icon = item.icon;
       return (
-        <a 
-          key={item.id}
-          href="#" 
-          className={`sidebar-link ${activeTab === item.id ? 'active' : ''}`}
-          onClick={(e) => { e.preventDefault(); onNavigate(item.id); }}
-        >
-          <Icon size={18} />
-          <span className="sidebar-link-text">{item.label}</span>
-        </a>
+        <div key={item.id}>
+          {/* Cabeçalho de grupo. Some quando a barra está recolhida: sem os rótulos dos itens,
+              um título solto não agrupa nada — só ocupa altura. */}
+          {item.grupo && !sidebarCollapsed && (
+            <div className="sidebar-group-label">{item.grupo}</div>
+          )}
+          <a
+            href="#"
+            className={`sidebar-link ${activeTab === item.id ? 'active' : ''}`}
+            onClick={(e) => { e.preventDefault(); onNavigate(item.id); }}
+          >
+            <Icon size={18} />
+            <span className="sidebar-link-text">{item.label}</span>
+          </a>
+        </div>
       );
     })}
   </nav>

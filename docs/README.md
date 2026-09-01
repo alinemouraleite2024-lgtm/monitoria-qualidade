@@ -17,16 +17,16 @@ Esta pasta contém a documentação técnica, manuais e guias do projeto.
 | [`STATUS-SPRINT-0.md`](STATUS-SPRINT-0.md) | Estado técnico do código: histórias, bugs, componentes, métricas, débitos e arquitetura. Inclui as publicações posteriores ao fechamento |
 | [`../CHANGELOG.md`](../CHANGELOG.md) | Histórico de versões |
 
-## Estado em 25/08/2026
+## Estado em 01/09/2026
 
 | | |
 |---|---|
 | Sistema | em produção — https://monitoria-qualidade.vercel.app |
-| Versão em produção | 0.17.0 · commit `fa5a5e0` · tag `v0.17.0` |
-| Em branch | **0.18.0** — a régua validada entra no sistema, aguardando preview |
+| Versão em produção | 0.18.0 · commit `37b345a` · tag `v0.18.0` |
+| Em branch | **0.19.0** — navegação por perfil, aguardando validação |
 | Frente aberta | **3A — Assistente de Avaliação** |
-| Fatia em curso | 3A.0 (metodologia) — documento escrito, aguardando validação |
-| Próximo marco | merge da 0.17.0 e validação da régua para liberar a 3A.1 |
+| Fatia em curso | 3A.0 concluída (régua validada 32/32 e em produção) |
+| Próximo marco | cadastro das orientações por tipo de atendimento, depois 3A.1 |
 
 ## Estrutura planejada
 - Arquitetura

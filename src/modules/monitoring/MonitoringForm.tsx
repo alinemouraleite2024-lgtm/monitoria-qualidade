@@ -189,7 +189,7 @@ export const MonitoringForm = ({
     fimAtendimento: '',
     tipo: 'Regular',
     
-    // Evidencias (Mock)
+    // Evidências
     evidencias: [],
     links: [],
     evidenciaObservacoes: '',

@@ -5,6 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.0] - 2026-09-01 — Navegação por perfil
+
+> O sistema ficou funcionalmente completo antes de ficar navegável. Esta versão não adiciona
+> capacidade: tira do caminho o que não era trabalho de ninguém.
+
+### Removed
+
+- **A tela de Início, nos três perfis.** Nenhuma das três dava informação que a tela de trabalho
+  não desse melhor, e duas montavam cartões com números fixos no código. Todo perfil passa a
+  entrar em `/monitorings`, que já se bifurca por papel — fila de validação para quem valida,
+  carteira para quem monitora. `/home` continua resolvendo, agora como redirecionamento: quem
+  tinha o endereço salvo recebe a tela de trabalho, não um erro.
+- **Todo dado simulado da interface**, que era o motivo real de a Home existir:
+  - os cartões de números fixos das Homes de gestão e de monitoria;
+  - o **Histórico (Logs)** do painel de monitoria — dois eventos fabricados a cada abertura
+    ("Monitoria criada", "Status alterado para X") carimbados com a data do registro, que não é
+    a hora em que os eventos ocorreram. Uma trilha de auditoria inventada é pior que trilha
+    nenhuma: ela responde com confiança a uma pergunta que o sistema ainda não sabe responder;
+  - o sino de notificações do topo, com bolinha vermelha permanente e nenhuma notificação atrás.
+- **CSAT e NPS saem do menu.** Mantêm rota, permissão e o texto que explica cada um — o rumo
+  segue registrado. O menu é ferramenta de trabalho diário, não vitrine de roadmap.
+- **Rotas `/users`, `/roles` e `/audit-logs`**, que duplicavam por URL abas já existentes dentro
+  da Administração, e as rotas `/settings`, `/history`, `/op-calendar`, `/demands` e
+  `/integrations`, que nunca tiveram tela. Junto foram as nove permissões que só elas usavam.
+
+### Changed
+
+- **O menu passa a ter três grupos**: **Operação** (o que se faz hoje), **Gestão** (o que se
+  ajusta no mês) e **Configuração** (o que se mexe raramente). Numa lista plana, validar uma
+  monitoria competia visualmente com cadastrar uma meta.
+- **Cada perfil vê o seu menu**: ADMIN 9 itens, GESTOR 6, MONITOR 3. Os rótulos acompanham o
+  papel — para a gestão, `monitorings` é "Validação"; para quem monitora, `reports` é "Meu
+  Histórico".
+- **A Administração deixa de ser uma rota só com a seção guardada em estado.** São três destinos
+  no menu — Critérios de Avaliação, Usuários e Acessos, Sistema — em `/admin/criterios`,
+  `/admin/acessos` e `/admin/sistema`. O endereço passa a dizer onde você está, e os Critérios,
+  que a 3A.0 tornou cadastro frequente, saem de dentro de um submenu.
+
+### Fixed
+
+- **`/admin/<seção inexistente>` abria a Administração** em vez da tela de "página não
+  encontrada", porque a rota caía num valor padrão. Um erro de digitação passava por tela
+  legítima.
+- **A tela de "página não encontrada" oferecia "Voltar para a Home"** — para uma Home que esta
+  versão remove. Agora leva a Monitorias.
+
 ## [0.18.0] - 2026-08-25 — A régua validada entra no sistema
 
 > A metodologia da 3A.0 deixou de ser documento e virou dado. É o que a 3A.1 vai ler.

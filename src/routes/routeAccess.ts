@@ -7,26 +7,29 @@ import { PERMISSIONS } from '../constants/auth';
 import type { Permission } from '../types/domain';
 
 export const tabPermissionMap: Record<string, Permission | null> = {
-  home: null,
-  dashboard: 'VIEW_DASHBOARD',
-  planning: 'VIEW_PLANNING',
-  demands: 'VIEW_CENTRAL_DEMANDS',
-  roles: 'VIEW_ROLES',
-  'audit-logs': 'VIEW_AUDIT_LOGS',
+  // Operação
   monitorings: 'VIEW_MONITORINGS',
-  csat: 'VIEW_CSAT',
-  nps: 'VIEW_NPS',
-  reports: 'VIEW_REPORTS',
-  allocations: 'VIEW_COLLABORATORS',
-  'op-calendar': 'VIEW_OPERATIONAL_CALENDAR',
-  profile: 'VIEW_MY_PROFILE',
-  users: 'VIEW_USERS',
-  admin: 'VIEW_ADMINISTRATION',
-  settings: 'VIEW_SETTINGS',
-  integrations: 'VIEW_INTEGRATIONS',
-  history: 'VIEW_VERSION_HISTORY',
   'monitoring-new': 'VIEW_MONITORING_FORM',
   'monitoring-edit': 'VIEW_MONITORING_FORM',
+  reports: 'VIEW_REPORTS',
+
+  // Gestão
+  dashboard: 'VIEW_DASHBOARD',
+  allocations: 'VIEW_COLLABORATORS',
+  planning: 'VIEW_PLANNING',
+
+  // Configuração — as três seções compartilham a mesma permissão de propósito: quem administra
+  // administra tudo, e separar aqui criaria papéis intermediários que o produto não tem.
+  'admin-criterios': 'VIEW_ADMINISTRATION',
+  'admin-acessos': 'VIEW_ADMINISTRATION',
+  'admin-sistema': 'VIEW_ADMINISTRATION',
+
+  // Fora do menu desde a 0.19.0, mas com rota e permissão mantidas: o rumo está registrado em
+  // docs/VISAO-PRODUTO.md, e o menu é ferramenta de trabalho — não vitrine de roadmap.
+  csat: 'VIEW_CSAT',
+  nps: 'VIEW_NPS',
+
+  profile: 'VIEW_MY_PROFILE',
 };
 
 // Rede de proteção: garante que toda permissão referenciada acima existe de fato em PERMISSIONS.
