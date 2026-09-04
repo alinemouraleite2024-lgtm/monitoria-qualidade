@@ -174,6 +174,57 @@ body {
   margin-top: 0.25rem;
 }
 
+/* Troca de contexto (0.20.0). Os perfis aparecem lado a lado, e não num seletor suspenso:
+   quem tem dois perfis alterna entre eles com frequência, e um <select> pediria dois cliques
+   para uma escolha binária. O contorno marca o ativo sem depender só de cor. */
+.sidebar-perfis {
+  padding: 0.6rem 0.75rem 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.sidebar-perfis-label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.45rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: hsl(210, 16%, 58%);
+}
+
+.sidebar-perfis-opcoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.sidebar-perfil-btn {
+  flex: 1 1 auto;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  background: transparent;
+  color: hsl(210, 16%, 72%);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.sidebar-perfil-btn:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: #fff;
+}
+
+.sidebar-perfil-btn.ativo {
+  background: rgba(255, 255, 255, 0.13);
+  border-color: rgba(255, 255, 255, 0.42);
+  color: #fff;
+  cursor: default;
+}
+
 .sidebar-link {
   display: flex;
   align-items: center;

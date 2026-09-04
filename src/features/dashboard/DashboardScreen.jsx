@@ -10,6 +10,7 @@ export const DashboardScreen = ({
   colaboradorGoals = /** @type {import('../../types/domain').ColaboradorGoal[]} */ ([]),
   monitorings = /** @type {import('../../types/domain').Monitoring[]} */ ([]),
   currentUser,
+  perfilAtivo,
   dashboardAreaId,
   setDashboardAreaId,
   onNavigate,
@@ -28,11 +29,11 @@ export const DashboardScreen = ({
             <div className="page-header" style={{ marginBottom: '1.5rem' }}>
               <div>
                 <h1 className="page-title">
-                  {currentUser.role === 'GESTOR' || currentUser.role === 'ADMIN' ? 'Dashboard Executivo de Qualidade' : 'Painel Operacional do Monitor'}
+                  {perfilAtivo === 'GESTOR' || perfilAtivo === 'ADMIN' ? 'Dashboard Executivo de Qualidade' : 'Painel Operacional do Monitor'}
                 </h1>
                 <p className="page-subtitle">Produtividade, cumprimento de metas e fluxo das avaliações — competência de {periodoLabel}.</p>
               </div>
-              { (currentUser.role === 'GESTOR' || currentUser.role === 'ADMIN') && (
+              { (perfilAtivo === 'GESTOR' || perfilAtivo === 'ADMIN') && (
                 <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <label style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>Filtrar por Área:</label>
                   <select 
@@ -51,7 +52,7 @@ export const DashboardScreen = ({
             </div>
 
             {/* Approval Queue Slider Notification */}
-            {settings.requireGestorValidation && (currentUser.role === 'GESTOR' || currentUser.role === 'ADMIN') && monitorings.some(m => m.status === 'Concluída') && (
+            {settings.requireGestorValidation && (perfilAtivo === 'GESTOR' || perfilAtivo === 'ADMIN') && monitorings.some(m => m.status === 'Concluída') && (
               <div className="section-card animate-fade-in" style={{ marginBottom: '1.5rem', border: '1px solid var(--border-color)', backgroundColor: 'var(--primary-light)' }}>
                 <h3 className="section-card-title" style={{ color: 'var(--primary)', margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -66,7 +67,7 @@ export const DashboardScreen = ({
 
             {(() => {
               // Common data fetch
-              const isGestor = currentUser.role === 'GESTOR' || currentUser.role === 'ADMIN';
+              const isGestor = perfilAtivo === 'GESTOR' || perfilAtivo === 'ADMIN';
               
               // Calculate KPIs
               let totalRealizadas = 0;
@@ -82,7 +83,7 @@ export const DashboardScreen = ({
 
                 // Escopo: o GESTOR acompanha apenas os monitores das áreas em que é o gestor
                 // responsável. `null` significa sem restrição (ADMIN).
-                const equipe = getEquipeDoGestor(currentUser, areas);
+                const equipe = getEquipeDoGestor(currentUser, areas, perfilAtivo);
                 if (equipe !== null) {
                   allMonitors = allMonitors.filter(m => equipe.includes(m.id));
                 }

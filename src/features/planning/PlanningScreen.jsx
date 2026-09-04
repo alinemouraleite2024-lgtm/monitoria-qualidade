@@ -100,7 +100,7 @@ export const PlanningScreen = ({
                 value={newCGoalVal.monitorId}
                 onChange={(e) => setNewCGoalVal({ ...newCGoalVal, monitorId: e.target.value })}
               >
-                {getMonitors().filter(m => m.role === 'MONITOR').map(m => (
+                {getMonitors().map(m => (
                   <option key={m.id} value={m.id}>{m.name}</option>
                 ))}
               </select>

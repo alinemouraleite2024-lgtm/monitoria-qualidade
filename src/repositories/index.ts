@@ -23,7 +23,7 @@ import {
   OFFICIAL_CATEGORIAS,
   OFFICIAL_CATEGORIAS_V1,
 } from '../constants/catalogData';
-import type { Criterion, LegacyMonitoring, Monitoring } from '../types/domain';
+import type { Criterion, LegacyMonitoring, Monitoring, Role, User } from '../types/domain';
 
 // Migrações silenciosas aplicadas no carregamento de monitorias.
 // Transcritas do inicializador anterior à F0-12 sem alteração de regra: convertem dados
@@ -192,10 +192,50 @@ const migrateCriterios: Loader<Criterion[]> = (stored, persist) => {
   return next;
 };
 
+// 0.20.0 — de um papel para vários.
+//
+// Converte `role` em `perfis` nos usuários já gravados. Roda uma vez, guardada por marcador
+// próprio: trocar a forma de um campo não pode disparar a limpeza geral do armazenamento.
+//
+// A conta 'usr-1' é a única exceção nomeada, e não é privilégio: até a 0.19.0 ela acumulava
+// administração e monitoria por meio de `getMonitors()` incluir ADMIN. A migração apenas
+// escreve no dado o que já era verdade no comportamento — sem isso, quem já usava o sistema
+// perderia a carteira ao atualizar.
+const USERS_PERFIS_VERSION = 1;
+
+const migrateUsuarios: Loader<User[]> = (stored, persist) => {
+  const versaoAtual = read<number>(KEYS.usersPerfisVersion, 0);
+  if (versaoAtual >= USERS_PERFIS_VERSION) return stored;
+  if (!Array.isArray(stored)) return stored;
+
+  const next = stored.map((u) => {
+    // Já convertido (base nova, ou seed): não reprocessa.
+    if (Array.isArray((u as User).perfis)) return u;
+
+    const legado = (u as unknown as { role?: string }).role;
+    const perfis: Role[] =
+      u.id === 'usr-1' ? ['ADMIN', 'MONITOR']
+      : legado === 'ADMIN' || legado === 'GESTOR' || legado === 'MONITOR' ? [legado]
+      // 'COLABORADOR' e qualquer valor desconhecido viram lista vazia: sem perfil, sem acesso
+      // — que é exatamente o que o login já fazia com esses registros.
+      : [];
+
+    // `role` sai do registro. Manter os dois campos deixaria a base com duas respostas para a
+    // mesma pergunta, e a divergência apareceria na primeira edição feita pelo Admin.
+    const resto = { ...(u as User & { role?: string }) };
+    delete resto.role;
+    return { ...resto, perfis } as User;
+  });
+
+  persist(next);
+  write(KEYS.usersPerfisVersion, USERS_PERFIS_VERSION);
+  return next;
+};
+
 // --- Coleções ---
 export const areasRepository = createRepository(KEYS.areas, INITIAL_AREAS);
 export const collaboratorsRepository = createRepository(KEYS.collaborators, OFFICIAL_COLLABORATORS);
-export const usersRepository = createRepository(KEYS.users, OFFICIAL_USERS);
+export const usersRepository = createRepository(KEYS.users, OFFICIAL_USERS, migrateUsuarios);
 export const criteriaRepository = createRepository(KEYS.criteria, INITIAL_CRITERIA, migrateCriterios);
 export const allocationsRepository = createRepository(KEYS.allocations, INITIAL_ALLOCATIONS);
 export const allocationHistoryRepository = createRepository(KEYS.allocationHistory, INITIAL_ALLOCATION_HISTORY);

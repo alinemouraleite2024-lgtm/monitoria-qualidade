@@ -9,7 +9,7 @@
 // 0.17.0, os monitores que a compõem (`monitorIds`). Não foi preciso inventar vínculo novo.
 
 import { ROLES } from '../constants/auth';
-import type { Area, User } from '../types/domain';
+import type { Area, Role, User } from '../types/domain';
 
 /**
  * Ids dos monitores que um usuário pode acompanhar.
@@ -21,11 +21,14 @@ import type { Area, User } from '../types/domain';
 export const getEquipeDoGestor = (
   user: User | null | undefined,
   areas: Area[],
+  perfilAtivo: Role | null | undefined,
 ): string[] | null => {
   if (!user) return [];
-  // ADMIN acumula administração e operação: vê tudo, por definição do papel.
-  if (user.role === ROLES.ADMIN) return null;
-  if (user.role !== ROLES.GESTOR) return [user.id];
+  // 0.20.0: o escopo passou a seguir o **perfil ativo**, não os perfis que a pessoa possui.
+  // Quem administra e monitora vê a operação inteira no contexto ADMIN e só o próprio trabalho
+  // no contexto MONITOR — antes, acumular ADMIN abria tudo o tempo todo.
+  if (perfilAtivo === ROLES.ADMIN) return null;
+  if (perfilAtivo !== ROLES.GESTOR) return [user.id];
 
   const ids = areas
     .filter((a) => a.active && a.gestorId === user.id)
@@ -39,7 +42,8 @@ export const podeVerMonitor = (
   user: User | null | undefined,
   areas: Area[],
   monitorId: string,
+  perfilAtivo: Role | null | undefined,
 ): boolean => {
-  const equipe = getEquipeDoGestor(user, areas);
+  const equipe = getEquipeDoGestor(user, areas, perfilAtivo);
   return equipe === null || equipe.includes(monitorId);
 };

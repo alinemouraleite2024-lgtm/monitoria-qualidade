@@ -1,10 +1,10 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { pathToTab, tabToPath, PATH_LOGIN, PATH_ENTRADA, ADMIN_SECOES } from './routes/paths';
+import { pathToTab, tabToPath, PATH_LOGIN, PATH_ENTRADA, ADMIN_SECOES, ENTRADA_POR_PERFIL } from './routes/paths';
 import type { FormEvent, ReactNode } from 'react';
 import type {
-  AnyRole, Area, Canal, Collaborator, Criterion, Monitoring,
+  Area, Canal, Collaborator, Criterion, Monitoring, Role, User,
 } from './types/domain';
 import {
   LayoutDashboard,
@@ -52,7 +52,6 @@ import {
   ROLES
 } from './auth';
 
-import { HOMOLOG_USERS } from './teamData';
 import { USER_STATUS } from './constants/auth';
 import { DATABASE_VERSION } from './config';
 
@@ -140,7 +139,8 @@ import {
 import { canalLabel } from './constants/canais';
 import { exibirDuracao } from './domain/duracao';
 import { getCarteiraProgress } from './domain/goalService';
-import { isManagerRole as isManagerUser } from './domain/authorizationService';
+import { perfilAtivoValido, temPerfil } from './domain/perfis';
+import { podeValidar, resolverStatusInicial } from './domain/validacaoService';
 
 // 2A.1: a data corrente deixou de ser simulada.
 //
@@ -181,15 +181,19 @@ import { isManagerRole as isManagerUser } from './domain/authorizationService';
  * papel, e o rótulo passa a dizer que pergunta ela responde para cada um.
  */
 const MENU_CONFIG: MenuConfig = {
+  // 0.20.0 — o menu acompanha a matriz de permissões, e não o contrário. Um item que a
+  // permissão nega vira um caminho para "acesso negado", que é pior que a ausência do item.
+  //
+  // O ADMIN perdeu Monitorias, Metas e Equipe e Carteiras: no contexto de administração não se
+  // monitora, não se valida e não se gerencia equipe. Quem faz as duas coisas troca de perfil.
+  // Ficaram Relatórios e Painel — governança precisa de leitura, e é de dentro de Relatórios
+  // que sai o cancelamento de monitoria, permissão exclusiva do ADMIN.
   ADMIN: [
-    { id: 'monitorings', label: 'Monitorias', icon: FileSpreadsheet, grupo: 'Operação' },
-    { id: 'reports', label: 'Relatórios', icon: FileText },
-    { id: 'dashboard', label: 'Painel', icon: LayoutDashboard, grupo: 'Gestão' },
-    { id: 'allocations', label: 'Equipe e Carteiras', icon: Users },
-    { id: 'planning', label: 'Metas', icon: Layers },
     { id: 'admin-criterios', label: 'Critérios de Avaliação', icon: ClipboardCheck, grupo: 'Configuração' },
     { id: 'admin-acessos', label: 'Usuários e Acessos', icon: UserCog },
     { id: 'admin-sistema', label: 'Sistema', icon: Settings },
+    { id: 'dashboard', label: 'Painel', icon: LayoutDashboard, grupo: 'Governança' },
+    { id: 'reports', label: 'Relatórios', icon: FileText },
     { id: 'profile', label: 'Meu Perfil', icon: UserCheck },
   ],
   GESTOR: [
@@ -224,11 +228,11 @@ const UNIMPLEMENTED_TABS = ['csat', 'nps'];
 
 // Envelope de rota. A decisão de acesso é do RouteGuard (F0-14); aqui resta apenas a
 // precedência remanescente do dispatcher: autorizado -> "não implementado" -> tela.
-const Screen = ({ tab, role, children }: { tab: string; role: AnyRole; children?: ReactNode }) => (
-  <RouteGuard tab={tab} role={role}>
+const Screen = ({ tab, perfil, children }: { tab: string; perfil: Role | null; children?: ReactNode }) => (
+  <RouteGuard tab={tab} perfil={perfil}>
     {UNIMPLEMENTED_TABS.includes(tab)
       ? <NotImplementedScreen
-          title={MENU_CONFIG[role]?.find((m) => m.id === tab)?.label}
+          title={perfil ? MENU_CONFIG[perfil]?.find((m) => m.id === tab)?.label : undefined}
           description={PLACEHOLDER_DESCRIPTIONS[tab]}
         />
       : (children ?? null)}
@@ -283,7 +287,11 @@ function AppContent() {
   const [agenda, setAgenda] = useState(() => agendaRepository.load());
 
 
-  const [currentUser, setCurrentUser] = useState(() => sessionRepository.load());
+  // Sessão restaurada: quem está logado e sob qual perfil. Os dois vêm juntos do repositório
+  // porque um sem o outro não descreve uma sessão — um usuário sem perfil ativo não sabe o
+  // que pode fazer, e um perfil ativo sem dono não pertence a ninguém.
+  const [currentUser, setCurrentUser] = useState<User | null>(() => sessionRepository.load().user);
+  const [perfilAtivo, setPerfilAtivo] = useState<Role | null>(() => sessionRepository.load().perfilAtivo);
 
   // Login States
   const [loginEmail, setLoginEmail] = useState('');
@@ -388,10 +396,14 @@ function AppContent() {
   const [newArea, setNewArea] = useState<Area>({ id: '', name: '', gestorId: '', monitorIds: [], active: true });
   const [newCollaborator, setNewCollaborator] = useState<Collaborator>({ id: '', email: '', name: '', cargo: '', areaId: '', active: true });
 
-  const [newUser, setNewUser] = useState({
+  const [newUser, setNewUser] = useState<{
+    email: string; name: string; login: string; password: string; perfis: Role[]; team: string;
+  }>({
     email: '',
     name: '',
-    role: 'MONITOR',
+    login: '',
+    password: '',
+    perfis: ['MONITOR'],
     team: ''
   });
 
@@ -444,9 +456,9 @@ function AppContent() {
   // fora, via teamData.js, à revelia deste estado — o efeito abaixo podia sobrescrever a
   // alteração feita lá. Agora o App.jsx é a única fonte de verdade e o módulo escreve por prop.
   //
-  // Fora do escopo desta etapa (Opção A): handleLogin e sessionRepository seguem resolvendo
-  // contra HOMOLOG_USERS estático. Um usuário criado aqui, portanto, ainda não consegue entrar,
-  // e o status BLOCKED não impede login. Ver docs/STATUS-SPRINT-0.md, seção 3-A.
+  // Resolvido na 0.20.0: handleLogin e sessionRepository passaram a resolver contra este
+  // repositório, e não mais contra o array estático. Enquanto isso não valia, todo usuário
+  // criado pela Administração era gravado mas nunca conseguia entrar.
   useEffect(() => { usersRepository.save(users); }, [users]);
 
   // Inject variables to style root element
@@ -465,10 +477,12 @@ function AppContent() {
    * 0.17.0: o GESTOR saiu desta lista. Ele valida e acompanha; não avalia. Estava aqui porque a
    * mesma pessoa ocupava os dois papéis, e a lista imitava a pessoa em vez do papel.
    *
-   * O ADMIN entra porque acumula administração e operação: é uma conta só, que configura o
-   * sistema e também monitora. Excluí-lo esvaziaria a carteira de quem opera hoje.
+   * 0.20.0: o ADMIN também saiu — e ninguém perdeu a carteira. Ele estava aqui para acomodar
+   * quem administra e monitora, o que fazia *todo* administrador contar como monitor. Com
+   * perfis acumuláveis a pergunta virou direta: tem o perfil MONITOR? Quatro trechos do sistema
+   * respondiam isso de quatro maneiras diferentes, e duas delas devolviam lista vazia.
    */
-  const getMonitors = () => users.filter(u => u.role === 'MONITOR' || u.role === 'ADMIN');
+  const getMonitors = () => users.filter(u => temPerfil(u, 'MONITOR'));
   const getCollaborators = () => collaborators;
 
   // Resolve o monitor responsável por um colaborador na data, delegando a regra de
@@ -497,32 +511,38 @@ function AppContent() {
   // por ser órfão. Mantido apenas o valor efetivamente consumido pelo Dashboard.
   const businessDaysRemaining = businessDaysRemainingIn(periodoAtual, hoje);
 
-  // Authenticate homologation account
+  // Autenticação.
   //
-  // F0-14: a autenticação continua sendo feita contra HOMOLOG_USERS estático — unificar login e
-  // usersRepository segue fora de escopo. A única leitura do repositório aqui é o `status`, e
-  // ela é obrigatória: o bloqueio é gravado em pm2_users pela tela de Usuários e nunca chega ao
-  // array estático, de modo que checar user.status não barraria ninguém.
+  // 0.20.0 encerrou a divergência que a F0-14 registrou: login e repositório eram duas bases
+  // diferentes, e por isso o bloqueio precisava ser lido à parte — ele é gravado em pm2_users
+  // e nunca chegava ao array estático. Com uma fonte só, `status` vem do mesmo registro que
+  // autenticou, e quem é cadastrado pela Administração passa a existir para o login.
   const handleLogin = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoginError('');
-    const user = HOMOLOG_USERS.find(u => u.email.toLowerCase() === loginEmail.toLowerCase() && u.password === loginPassword);
+    // 0.20.0 — a autenticação passou a olhar o repositório, e não mais o array estático do
+    // código. Enquanto a busca era feita em HOMOLOG_USERS, um gestor ou monitor cadastrado
+    // pela Administração era gravado mas nunca conseguia entrar: o login não sabia que ele
+    // existia. HOMOLOG_USERS continua no projeto, agora só como seed do repositório.
+    const user = usersRepository.load().find(
+      u => u.email.toLowerCase() === loginEmail.toLowerCase() && u.password === loginPassword
+    );
 
     if (!user) {
       setLoginError('E-mail ou senha inválidos.');
       return;
     }
 
-    // COLABORADOR não tem menu nem permissão de rota alguma: autenticá-lo produzia apenas um
-    // shell vazio. Mensagem genérica, por decisão registrada.
-    if (!MENU_CONFIG[user.role]) {
-      logAuthEvent('LOGIN_DENIED', user, `Perfil ${user.role} não tem acesso à plataforma`);
+    // Sem perfil não há acesso: é o registro explícito do que antes se deduzia da ausência de
+    // menu para 'COLABORADOR'. Mensagem genérica, por decisão registrada.
+    const perfilInicial = perfilAtivoValido(user, null);
+    if (!perfilInicial) {
+      logAuthEvent('LOGIN_DENIED', user, 'Usuário sem perfil de acesso');
       setLoginError('E-mail ou senha inválidos.');
       return;
     }
 
-    const persistido = usersRepository.load().find(u => u.email === user.email);
-    const statusAtual = persistido?.status || user.status;
+    const statusAtual = user.status;
     if (statusAtual === USER_STATUS.BLOCKED) {
       logAuthEvent('LOGIN_DENIED', user, 'Usuário bloqueado');
       setLoginError('Usuário bloqueado. Procure o administrador do sistema.');
@@ -537,18 +557,38 @@ function AppContent() {
     }
 
     setCurrentUser(user);
+    setPerfilAtivo(perfilInicial);
     setCaptureIntent(true);
-    sessionRepository.save(user);
-    logAuthEvent('LOGIN', user);
+    sessionRepository.save(user, perfilInicial);
+    logAuthEvent('LOGIN', user, '', perfilInicial);
     // Não navega aqui: o destino é resolvido pela rota /login da árvore autenticada, que lê
     // location.state.from. Navegar daqui competia com aquele redirecionamento e perdia.
   };
 
+  /**
+   * Troca do perfil ativo, para quem tem mais de um.
+   *
+   * Navega para a entrada do novo perfil em vez de permanecer na rota atual: sair do contexto
+   * ADMIN estando em /admin/criterios deixaria a pessoa numa tela que o novo perfil não pode
+   * abrir — a troca terminaria em "acesso negado", que é o oposto do que ela pediu.
+   *
+   * O evento vai para o log porque, com perfis acumulados, saber *quem* agiu deixou de bastar
+   * para reconstruir o que aconteceu.
+   */
+  const handleTrocarPerfil = (novo: Role) => {
+    if (!currentUser || !temPerfil(currentUser, novo) || novo === perfilAtivo) return;
+    setPerfilAtivo(novo);
+    sessionRepository.save(currentUser, novo);
+    logAuthEvent('SWITCH_PROFILE', currentUser, `${perfilAtivo} -> ${novo}`, novo);
+    navigate(ENTRADA_POR_PERFIL[novo], { replace: true });
+  };
+
   const handleLogout = () => {
     if (currentUser) {
-      logAuthEvent('LOGOUT', currentUser);
+      logAuthEvent('LOGOUT', currentUser, '', perfilAtivo);
     }
     setCurrentUser(null);
+    setPerfilAtivo(null);
     setCaptureIntent(false);
     sessionRepository.clear();
     setLoginEmail('');
@@ -568,16 +608,20 @@ function AppContent() {
     const isEdit = Boolean(monitoringData.id && monitorings.some(m => m.id === monitoringData.id));
     const { monitor } = getActiveMonitorForColab(monitoringData.colaboradorId, monitoringData.date);
 
-    let resolvedStatus = monitoringData.status;
-    if (resolvedStatus === 'Concluída') {
-      if (!settings.requireGestorValidation || currentUser!.role === 'GESTOR' || currentUser!.role === 'ADMIN') {
-        resolvedStatus = 'Validada';
-      }
-    }
+    // O dono da monitoria é resolvido antes do status porque o status depende dele: quem
+    // valida é o gestor da área daquele monitor.
+    const monitorId = isEdit ? monitoringData.monitorId : (monitor ? monitor.id : currentUser!.id);
+
+    // 0.20.0 — a decisão deixou de olhar o papel de quem salva. Antes, a mesma monitoria
+    // nascia 'Validada' ou 'Pendente' conforme o perfil de quem clicasse em salvar, o que
+    // fazia a exigência de validação depender de quem estava logado em vez do fluxo desenhado.
+    const resolvedStatus = monitoringData.status === 'Concluída'
+      ? resolverStatusInicial({ isDraft: false, monitorId, areas, settings })
+      : monitoringData.status;
 
     const monitoringObj = {
       ...monitoringData,
-      monitorId: isEdit ? monitoringData.monitorId : (monitor ? monitor.id : currentUser!.id),
+      monitorId,
       status: resolvedStatus
     };
 
@@ -832,10 +876,21 @@ function AppContent() {
     setSelectedMonitoringDetail(prev => (prev && prev.id === monId ? (updated.find(m => m.id === monId) ?? null) : prev));
   };
 
-  const isManagerRole = () => isManagerUser(currentUser);
+  /**
+   * Gate único dos quatro atos de validação: aprovar, reprovar, devolver e confirmar zerada.
+   *
+   * Antes era `isManagerRole()`, que só perguntava o papel de quem clicou. Agora a decisão
+   * também olha **de quem é a monitoria** — ninguém valida a própria, quaisquer que sejam seus
+   * perfis. Recebe o registro por isso: sem ele, a regra de imparcialidade não teria como ser
+   * avaliada aqui, que é a última barreira antes da escrita.
+   */
+  const gateValidacao = (monId: string): boolean => {
+    const alvo = monitorings.find(m => m.id === monId);
+    return podeValidar(currentUser, perfilAtivo, alvo).pode;
+  };
 
   const handleApproveMonitoring = (monId: string) => {
-    if (!isManagerRole()) return;
+    if (!gateValidacao(monId)) return;
     updateMonitoringById(monId, m => ({
       ...m,
       status: 'Validada',
@@ -845,7 +900,7 @@ function AppContent() {
   };
 
   const handleRejectMonitoring = (monId: string) => {
-    if (!isManagerRole()) return;
+    if (!gateValidacao(monId)) return;
     updateMonitoringById(monId, m => ({
       ...m,
       status: 'Reprovada',
@@ -858,7 +913,7 @@ function AppContent() {
   // informado pelo gestor. Reutiliza o vocabulário de status existente em vez de criar
   // um novo, evitando alterar filtros e badges da listagem nesta correção.
   const handleRequestAdjustments = (monId: string, reason: string) => {
-    if (!isManagerRole()) return;
+    if (!gateValidacao(monId)) return;
     updateMonitoringById(monId, m => ({
       ...m,
       status: 'Rascunho',
@@ -874,7 +929,7 @@ function AppContent() {
   // aqui a checagem é repetida como segunda barreira, já que não há backend ainda
   // para impor isso de fato — limitação conhecida da arquitetura da Fase 0.
   const handleConfirmZerada = (monId: string) => {
-    if (!isManagerRole()) return;
+    if (!gateValidacao(monId)) return;
     updateMonitoringById(monId, m => ({
       ...m,
       finalScore: 0,
@@ -1076,6 +1131,8 @@ function AppContent() {
         <AppShell
           brand={brand}
           currentUser={currentUser}
+          perfilAtivo={perfilAtivo}
+          onTrocarPerfil={handleTrocarPerfil}
           activeTab={activeTab}
           onNavigate={navigateToTab}
           sidebarCollapsed={sidebarCollapsed}
@@ -1097,8 +1154,9 @@ function AppContent() {
             <Route path="/home" element={<Navigate to={PATH_ENTRADA} replace />} />
 
             <Route path="/dashboard" element={
-              <Screen tab="dashboard" role={currentUser.role}>
+              <Screen tab="dashboard" perfil={perfilAtivo}>
                   <DashboardScreen
+                    perfilAtivo={perfilAtivo}
                     settings={settings}
                     areas={areas}
                     users={users}
@@ -1123,7 +1181,7 @@ function AppContent() {
             } />
 
             <Route path="/planning" element={
-              <Screen tab="planning" role={currentUser.role}>
+              <Screen tab="planning" perfil={perfilAtivo}>
                   <PlanningScreen
                     users={users}
                     collaborators={collaborators}
@@ -1143,9 +1201,10 @@ function AppContent() {
             } />
 
             <Route path="/monitorings" element={
-              <Screen tab="monitorings" role={currentUser.role}>
+              <Screen tab="monitorings" perfil={perfilAtivo}>
                   <MonitoringQueueScreen
                     currentUser={currentUser}
+                    perfilAtivo={perfilAtivo}
                     areas={areas}
                     monitorings={monitorings}
                     colaboradorGoals={colaboradorGoals}
@@ -1174,7 +1233,7 @@ function AppContent() {
                 migração fechar. */}
 
             <Route path="/monitorings/new" element={
-              <Screen tab="monitoring-new" role={currentUser.role}>
+              <Screen tab="monitoring-new" perfil={perfilAtivo}>
                   <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
                     <MonitoringForm
                       initialData={editingMonitoring}
@@ -1186,6 +1245,8 @@ function AppContent() {
                       currentUser={currentUser}
 
                       monitorings={monitorings}
+                      areas={areas}
+                      settings={settings}
                       catalogCategorias={catalogCategorias}
                       onAddCategoria={handleAddCategoria}
                       onClose={() => navigate('/monitorings')}
@@ -1196,7 +1257,7 @@ function AppContent() {
             } />
 
             <Route path="/monitorings/:id/edit" element={
-              <Screen tab="monitoring-edit" role={currentUser.role}>
+              <Screen tab="monitoring-edit" perfil={perfilAtivo}>
                 {editingMonitoring ? (
                     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
                       <MonitoringForm
@@ -1207,6 +1268,8 @@ function AppContent() {
                         currentUser={currentUser}
 
                         monitorings={monitorings}
+                        areas={areas}
+                        settings={settings}
                         catalogCategorias={catalogCategorias}
                         onAddCategoria={handleAddCategoria}
                         onClose={() => navigate('/monitorings')}
@@ -1218,7 +1281,7 @@ function AppContent() {
             } />
 
             <Route path="/reports" element={
-              <Screen tab="reports" role={currentUser.role}>
+              <Screen tab="reports" perfil={perfilAtivo}>
                   <ReportsScreen
                     historico={
                       <MonitoringList
@@ -1234,7 +1297,7 @@ function AppContent() {
                           setShowDetailModal(true);
                         }}
                         onEdit={(m) => navigate(`/monitorings/${m.id}/edit`)}
-                        onDelete={hasPermission(currentUser.role, 'DELETE_MONITORING') ? handleCancelMonitoring : undefined}
+                        onDelete={hasPermission(perfilAtivo, 'DELETE_MONITORING') ? handleCancelMonitoring : undefined}
                       />
                     }
                     periodoLabel={periodLabel(reportPeriod)}
@@ -1251,7 +1314,7 @@ function AppContent() {
             } />
 
             <Route path="/allocations" element={
-              <Screen tab="allocations" role={currentUser.role}>
+              <Screen tab="allocations" perfil={perfilAtivo}>
                   <AllocationsScreen
                     users={users}
                     allocations={allocations}
@@ -1278,8 +1341,9 @@ function AppContent() {
               // qualquer outro endereço inválido. Um fallback silencioso abriria a
               // Administração e faria um erro de digitação parecer uma tela legítima.
               activeTab && activeTab in ADMIN_SECOES ? (
-              <Screen tab={activeTab} role={currentUser.role}>
+              <Screen tab={activeTab} perfil={perfilAtivo}>
                   <AdminScreen
+                    monitorings={monitorings}
                     brand={brand}
                     setBrand={setBrand}
                     settings={settings}
@@ -1304,7 +1368,7 @@ function AppContent() {
               ) : <NotFoundScreen />
             } />
 
-            <Route path="/profile" element={<Screen tab="profile" role={currentUser.role}><MyProfile currentUser={currentUser} /></Screen>} />
+            <Route path="/profile" element={<Screen tab="profile" perfil={perfilAtivo}><MyProfile currentUser={currentUser} /></Screen>} />
 
 
 
@@ -1313,9 +1377,9 @@ function AppContent() {
                 exatamente como a lista isUnimplemented fazia no dispatcher anterior. */}
 
 
-            <Route path="/csat" element={<Screen tab="csat" role={currentUser.role} />} />
+            <Route path="/csat" element={<Screen tab="csat" perfil={perfilAtivo} />} />
 
-            <Route path="/nps" element={<Screen tab="nps" role={currentUser.role} />} />
+            <Route path="/nps" element={<Screen tab="nps" perfil={perfilAtivo} />} />
 
 
 
@@ -1334,6 +1398,7 @@ function AppContent() {
 
       {showDetailModal && selectedMonitoringDetail && (
         <MonitoringHistory
+          perfilAtivo={perfilAtivo}
           monitoring={selectedMonitoringDetail}
           users={users}
           collaborators={getCollaborators()}

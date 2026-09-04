@@ -9,7 +9,7 @@
 
 import { useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
-import type { Area, Collaborator, ColaboradorGoal, Monitoring, User, Allocation, Holiday } from '../../types/domain';
+import type { Area, Collaborator, ColaboradorGoal, Monitoring, User, Allocation, Holiday, Role } from '../../types/domain';
 import { getCurrentPeriod, periodLabel, todayISO, businessDaysRemainingIn } from '../../domain/period';
 import { getCarteiraProgress } from '../../domain/goalService';
 import {
@@ -23,12 +23,15 @@ import {
   matchesBusca,
 } from '../../domain/queueService';
 import { getEquipeDoGestor } from '../../domain/scopeService';
+import { temPerfil } from '../../domain/perfis';
 import { PeriodProgress } from './PeriodProgress';
 import { MonitorQueue } from './MonitorQueue';
 import { ManagerQueue } from './ManagerQueue';
 
 interface MonitoringQueueScreenProps {
   currentUser: User;
+  /** Perfil ativo: decide se esta rota mostra a carteira ou a fila de validação. */
+  perfilAtivo: Role | null;
   monitorings: Monitoring[];
   colaboradorGoals: ColaboradorGoal[];
   collaborators: Collaborator[];
@@ -46,6 +49,7 @@ interface MonitoringQueueScreenProps {
 
 export const MonitoringQueueScreen = ({
   currentUser,
+  perfilAtivo,
   monitorings,
   colaboradorGoals,
   collaborators,
@@ -61,9 +65,10 @@ export const MonitoringQueueScreen = ({
 }: MonitoringQueueScreenProps) => {
   const [busca, setBusca] = useState('');
 
-  // Gestora e administradora veem a mesma fila: as duas aprovam, devolvem e gerenciam os
-  // mesmos registros, e divergir aqui criaria um caso especial sem motivo.
-  const ehGestao = currentUser.role === 'GESTOR' || currentUser.role === 'ADMIN';
+  // 0.20.0: a fila segue o **perfil ativo**. Até a 0.19.0 a administradora caía aqui junto com
+  // a gestora, e quem administrava e monitorava nunca via a própria carteira — via a fila de
+  // validação de si mesma. Agora quem monitora monitora, e troca de contexto para validar.
+  const ehGestao = perfilAtivo === 'GESTOR';
 
   const periodo = getCurrentPeriod();
   const hoje = todayISO();
@@ -73,11 +78,11 @@ export const MonitoringQueueScreen = ({
   const dados = useMemo(() => {
     const ctx = { monitorings, goals: colaboradorGoals, collaborators, allocations, holidays, users };
 
-    const equipe = getEquipeDoGestor(currentUser, areas);
-    // Quem realiza monitoria: MONITOR e ADMIN. O GESTOR saiu da lista na 0.17.0 — ele valida
-    // e acompanha, não avalia.
+    const equipe = getEquipeDoGestor(currentUser, areas, perfilAtivo);
+    // Quem realiza monitoria é quem tem o perfil MONITOR — e só isso. Até a 0.19.0 era preciso
+    // somar ADMIN aqui, porque a acumulação de papéis não cabia no dado.
     const monitoresNoEscopo = users
-      .filter((u) => u.role === 'MONITOR' || u.role === 'ADMIN')
+      .filter((u) => temPerfil(u, 'MONITOR'))
       .filter((u) => equipe === null || equipe.includes(u.id));
 
     const progresso = getCarteiraProgress(colaboradorGoals, monitorings, monitorId, periodo);
@@ -98,8 +103,12 @@ export const MonitoringQueueScreen = ({
       // Escopo por gestor (0.17.0): a fila de validação e a leitura de equipe eram globais no
       // período. Com uma gestora só isso era simplificação; com várias, é vazamento — um gestor
       // validaria monitorias de equipe que não é dele. `null` = sem restrição (ADMIN).
+      // Além do escopo por área, a fila exclui as monitorias do próprio usuário: ninguém
+      // valida o que fez, e oferecer o botão para depois recusar a ação seria pior que não
+      // oferecer. O registro continua visível em Relatórios.
       filaValidacao: getFilaDeValidacao(monitorings, periodo, hoje)
-        .filter((f) => equipe === null || equipe.includes(f.monitoring.monitorId)),
+        .filter((f) => equipe === null || equipe.includes(f.monitoring.monitorId))
+        .filter((f) => f.monitoring.monitorId !== currentUser.id),
       ritmoEquipe: getRitmoDaEquipe(ctx, monitoresNoEscopo, periodo, hoje),
       risco: getRiscoDoMes(ctx, monitoresNoEscopo, periodo, hoje),
       fila: getFilaDaCarteira(ctx, monitorId, periodo, hoje),
@@ -107,7 +116,7 @@ export const MonitoringQueueScreen = ({
       aguardando: getAguardandoValidacao(monitorings, monitorId, periodo, hoje),
       foraDaQuota: getForaDaQuota(ctx, monitorId, periodo),
     };
-  }, [monitorings, colaboradorGoals, collaborators, allocations, holidays, users, areas, currentUser, monitorId, hoje, periodo]);
+  }, [monitorings, colaboradorGoals, collaborators, allocations, holidays, users, areas, currentUser, perfilAtivo, monitorId, hoje, periodo]);
 
   // A busca é discreta e restringe as listas de registros — nunca a lista de quem falta
   // monitorar, que é a resposta da tela e não deve sumir por causa de um termo digitado.
@@ -142,9 +151,14 @@ export const MonitoringQueueScreen = ({
               : 'O que você precisa monitorar neste mês.'}
           </p>
         </div>
-        <button className="btn btn-primary" onClick={() => onNovaMonitoria()}>
-          <Plus size={16} /> Nova Monitoria
-        </button>
+        {/* A ação primária pertence a quem monitora. Até a 0.19.0 o botão aparecia também para
+            a gestão, contra a decisão da 0.17.0 de que gestor valida e não avalia — e desde a
+            0.20.0 o formulário sequer abre nesse perfil, o que deixaria um botão que erra. */}
+        {!ehGestao && (
+          <button className="btn btn-primary" onClick={() => onNovaMonitoria()}>
+            <Plus size={16} /> Nova Monitoria
+          </button>
+        )}
       </div>
 
       {ehGestao ? (

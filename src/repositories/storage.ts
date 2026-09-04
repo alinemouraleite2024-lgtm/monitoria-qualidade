@@ -28,6 +28,10 @@ export const KEYS = {
   // Mesma ideia da versão do catálogo, e pelo mesmo motivo: alcançar critérios já gravados
   // sem recorrer a DATABASE_VERSION, que apagaria a base inteira para corrigir um campo.
   criteriaVersion: 'pm2_criteria_version',
+  // Mesma família de marcadores: a 0.20.0 troca `role` (um papel) por `perfis` (vários) nos
+  // usuários já gravados. Alcançar a base existente por marcador é o que evita recorrer a
+  // DATABASE_VERSION, que apagaria toda a configuração para converter um campo.
+  usersPerfisVersion: 'pm2_users_perfis_version',
   authSession: 'pm2_auth_session',
 } as const;
 

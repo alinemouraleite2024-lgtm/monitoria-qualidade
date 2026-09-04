@@ -5,6 +5,84 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.0] - 2026-09-04 — Perfis múltiplos e perfil ativo
+
+> O sistema tinha um papel por pessoa. Quem administrava e monitorava só cabia nisso por meio
+> de uma regra — `getMonitors()` incluía ADMIN — que resolvia o caso de uma pessoa e fazia
+> *todo* administrador contar como monitor. Esta versão troca a regra por dado.
+
+### Added
+
+- **`User.perfis: Role[]`** — perfis concedidos, no plural. Uma pessoa pode administrar e
+  monitorar sem precisar de duas contas. Substitui `role`, que é removido do modelo; `AnyRole`
+  e o papel `COLABORADOR` somem junto: quem não acessa o portal tem `perfis: []`, e a lista
+  vazia registra a ausência de acesso melhor do que um valor especial registrava.
+- **`AuthSession.perfilAtivo`** — o perfil sob o qual a pessoa está trabalhando agora. Fica na
+  sessão, não no usuário: guardá-lo no cadastro faria a escolha de contexto de uma pessoa mudar
+  como todas as outras a enxergam nas listas. É revalidado a cada carregamento — um perfil
+  revogado pelo Admin não continua ativo.
+- **Troca de contexto na barra lateral**, só para quem tem mais de um perfil. Ao trocar, o
+  sistema navega para a entrada daquele perfil: permanecer na rota atual terminaria em "acesso
+  negado", que é o oposto do que a troca serve para fazer. O evento vai para o log de auditoria
+  como `SWITCH_PROFILE` — com perfis acumulados, saber *quem* agiu deixou de bastar.
+- **`domain/perfis.ts`** — precedência **MONITOR > GESTOR > ADMIN** para o perfil inicial (o
+  trabalho diário primeiro), e a revalidação do perfil lembrado.
+- **`domain/validacaoService.ts`** — concentra quem valida o quê e quando uma monitoria precisa
+  de validação. Substitui `authorizationService.ts`, removido.
+- **Cadastro de perfis múltiplos**, nos dois formulários de usuário, por caixas de seleção.
+
+### Changed
+
+- **Permissão estrita pelo perfil ativo.** `hasPermission` passou a receber o contexto atual, e
+  a matriz foi refeita para que isso tenha efeito: até aqui o ADMIN aparecia em quase toda
+  linha, e "estrito" não o restringiria em nada. Cada perfil recebe o que pertence ao seu
+  contexto, e quem acumula alterna em vez de ver a união. Vale também para quem digita a URL
+  na mão. **Relatórios e Painel permanecem com o ADMIN** — governança precisa de leitura, e é
+  de dentro de Relatórios que sai o cancelamento de monitoria, permissão exclusiva dele.
+- **O menu acompanha a matriz.** ADMIN: Critérios, Usuários e Acessos, Sistema, Painel,
+  Relatórios. GESTOR: Validação, Relatórios, Painel da Equipe, Equipe e Carteiras, Metas.
+  MONITOR: Monitorias, Meu Histórico. Um item que a permissão nega é um caminho para "acesso
+  negado" — pior que a ausência do item.
+- **O status inicial da monitoria passou a depender do fluxo, não de quem salva.** Havendo
+  gestor para a área, vai para validação; não havendo, decide `requireGestorValidation`. Antes,
+  o mesmo trabalho nascia `Pendente` ou `Validada` conforme o papel de quem clicasse em salvar.
+- **A fila de monitorias segue o perfil ativo.** Quem administrava e monitorava caía sempre na
+  fila de validação e nunca via a própria carteira — via a fila de validação de si mesma.
+- **O botão "Nova Monitoria" saiu do perfil GESTOR**, alinhando a tela à decisão da 0.17.0 de
+  que gestor valida e não avalia.
+
+### Fixed
+
+- **Usuários criados pela Administração não conseguiam entrar.** O login autenticava contra
+  `HOMOLOG_USERS`, um array estático no código, enquanto o cadastro gravava em `pm2_users`. O
+  usuário existia na lista e não existia para a autenticação. Login e sessão passam a resolver
+  contra o repositório. Junto, o cadastro rápido passou a pedir senha — sem ela, a conta criada
+  também não entrava.
+- **Os seletores de monitora em Metas e Equipe e Carteiras estavam vazios**, o que tornava
+  impossível vincular carteira ou definir meta por aquelas telas. Havia **quatro** respostas
+  diferentes no sistema para "quem é monitor", e duas devolviam lista vazia. Todas passam a ser
+  `perfis.includes('MONITOR')`. O defeito desaparece como consequência do modelo.
+
+### Security
+
+- **Ninguém valida a própria monitoria** — nem aprovar, nem devolver, nem confirmar
+  eliminatório —, quaisquer que sejam seus perfis. A regra é de imparcialidade, não de
+  hierarquia: acumular perfis não pode virar caminho para autoaprovação. A fila de validação
+  exclui as próprias monitorias, e no painel de detalhe o motivo ocupa o lugar dos botões.
+
+### Migration
+
+- `pm2_users_perfis_version` — marcador próprio, **nunca `DATABASE_VERSION`**: converter um
+  campo não pode apagar a configuração inteira. `role` vira `perfis`, e a conta que acumulava
+  administração e monitoria recebe os dois perfis, preservando a carteira de quem já operava.
+
+### Known issues
+
+- Com `requireGestorValidation` ligado e nenhum gestor vinculado à área, as monitorias nascem
+  pendentes sem ninguém que possa liberá-las. É a regra desenhada, e é deliberado que doa de
+  forma visível: o formulário avisa antes de salvar e a Administração conta quantas estão
+  paradas. Vincular um gestor à área resolve.
+
 ## [0.19.0] - 2026-09-01 — Navegação por perfil
 
 > O sistema ficou funcionalmente completo antes de ficar navegável. Esta versão não adiciona

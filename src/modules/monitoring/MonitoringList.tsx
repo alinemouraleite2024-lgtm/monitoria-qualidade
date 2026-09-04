@@ -2,6 +2,7 @@ import { Search, Filter, Plus, Edit, Eye, Trash2, FileSpreadsheet } from 'lucide
 import { getScoreConcept } from '../../scoreUtils';
 import { CANAIS, canalLabel } from '../../constants/canais';
 import { FILTROS_VAZIOS, type FiltrosHistorico } from '../../domain/historyFilter';
+import { temPerfil } from '../../domain/perfis';
 import type { Collaborator, Monitoring, User } from '../../types/domain';
 
 // A tabela, a busca e os cinco filtros que viviam em /monitorings.
@@ -110,7 +111,7 @@ export const MonitoringList = ({
             <label className="form-label">Monitor</label>
             <select className="form-control" value={filtros.monitorId} onChange={(e) => set({ monitorId: e.target.value })}>
               <option value="ALL">Todos os Monitores</option>
-              {users.filter(u => u.role === 'MONITOR' || u.role === 'GESTOR').map(u => (
+              {users.filter(u => temPerfil(u, 'MONITOR')).map(u => (
                 <option key={u.id} value={u.id}>{u.name}</option>
               ))}
             </select>

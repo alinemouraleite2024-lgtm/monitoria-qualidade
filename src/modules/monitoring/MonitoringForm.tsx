@@ -11,7 +11,9 @@ import { getScoreConcept } from '../../scoreUtils';
 import { calcularDuracao, formatarDuracao } from '../../domain/duracao';
 import { gerarIdMonitoria, gerarProtocolo } from '../../domain/identificadores';
 import { getCriteriosBloqueados, temConflitoDeAutenticacao } from '../../domain/criterionGating';
-import type { Collaborator, Criterion, Monitoring, User } from '../../types/domain';
+import { temPerfil } from '../../domain/perfis';
+import { resolverStatusInicial, temGestorConfigurado } from '../../domain/validacaoService';
+import type { Area, Collaborator, Criterion, Monitoring, SystemSettings, User } from '../../types/domain';
 
 /**
  * Contrato do formulário de monitoria.
@@ -41,6 +43,14 @@ export interface MonitoringFormProps {
    * momento da geração — o formulário não lê nada mais daqui.
    */
   monitorings?: Monitoring[];
+  /**
+   * Áreas e parâmetros do sistema. Entraram na 0.20.0 porque o status inicial da monitoria
+   * passou a depender do fluxo configurado — existe gestor para a área? — e não mais do papel
+   * de quem salva. É também o que permite avisar, antes de salvar, que a monitoria ficará
+   * pendente sem ninguém para validá-la.
+   */
+  areas?: Area[];
+  settings?: SystemSettings;
   catalogCategorias?: string[];
   onAddCategoria?: (nova: string) => void;
   onClose: () => void;
@@ -163,6 +173,8 @@ export const MonitoringForm = ({
   criteria = [],
   currentUser = null,
   monitorings = [],
+  areas = [],
+  settings = { requireGestorValidation: true } as SystemSettings,
   catalogCategorias = [],
   onAddCategoria = () => {},
   colaboradorIdInicial = '',
@@ -513,8 +525,16 @@ export const MonitoringForm = ({
       duracaoMinutos: duracaoMinutos ?? undefined,
       finalScore,
       scores: formattedScores,
-      status: (isDraft ? 'Rascunho'
-            : (currentUser?.role === 'MONITOR' ? 'Pendente' : 'Validada')) as Monitoring['status'],
+      // 0.20.0 — quem salva não decide mais se a monitoria precisa de validação. Antes, o
+      // mesmo trabalho nascia 'Pendente' ou 'Validada' conforme o papel de quem clicasse, e
+      // acumular perfis mudaria o resultado conforme o contexto. Agora decide o fluxo: existe
+      // gestor para a área, vai para validação; não existe, decide o parâmetro do sistema.
+      status: resolverStatusInicial({
+        isDraft,
+        monitorId: formData.monitorId || currentUser?.id || '',
+        areas,
+        settings,
+      }),
       // F0-08: sinalização de eliminatório é independente do status de aprovação de conteúdo.
       // A nota (finalScore) NUNCA é zerada aqui — só a confirmação de um Gestor/Admin
       // (handleConfirmZerada, em App.jsx) pode zerar. Nunca é reaberta a false no re-save de
@@ -689,7 +709,7 @@ export const MonitoringForm = ({
                           style={{ backgroundColor: '#f3f4f6', cursor: 'not-allowed' }}
                         >
                           <option value="">Automático...</option>
-                          {users.filter(u => u.role === 'MONITOR' || u.role === 'GESTOR').map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                          {users.filter(u => temPerfil(u, 'MONITOR')).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                         </select>
                       </div>
                     </div>
@@ -1399,7 +1419,27 @@ export const MonitoringForm = ({
       </div>
 
       {/* Footer Navigation (Sticky) */}
-      <div style={{ position: 'sticky', bottom: 0, zIndex: 100, padding: '1.25rem 2rem', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'center', backgroundColor: '#fff', boxShadow: '0 -2px 10px rgba(0,0,0,0.05)' }}>
+      <div style={{ position: 'sticky', bottom: 0, zIndex: 100, padding: '1.25rem 2rem', borderTop: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.85rem', backgroundColor: '#fff', boxShadow: '0 -2px 10px rgba(0,0,0,0.05)' }}>
+
+        {/* Aviso de fluxo incompleto (0.20.0).
+            Aparece só no último passo, onde a monitoria é de fato concluída, e só quando o
+            parâmetro exige validação sem que exista gestor para a área — a combinação que faz
+            a monitoria nascer pendente sem ninguém que possa liberá-la. É aviso, não bloqueio:
+            o trabalho já foi feito e impedir o registro perderia a avaliação. O contador do
+            mesmo problema aparece na Administração, para que isso não fique só aqui. */}
+        {step === totalSteps
+          && settings.requireGestorValidation
+          && !temGestorConfigurado(formData.monitorId || currentUser?.id || '', areas) && (
+          <div style={{ width: '100%', maxWidth: '1000px', display: 'flex', gap: '0.6rem', alignItems: 'flex-start', padding: '0.7rem 0.9rem', borderRadius: '8px', backgroundColor: '#fffbeb', border: '1px solid #fcd34d' }}>
+            <AlertTriangle size={16} style={{ color: '#b45309', flexShrink: 0, marginTop: '2px' }} />
+            <div style={{ fontSize: '0.8rem', color: '#78350f', lineHeight: 1.5 }}>
+              <strong>Esta monitoria ficará pendente de validação.</strong> Não há gestor
+              configurado para a área deste monitor, então ninguém poderá validá-la até que um
+              gestor seja vinculado em Administração &rsaquo; Sistema &rsaquo; Áreas.
+            </div>
+          </div>
+        )}
+
         <div style={{ width: '100%', maxWidth: '1000px', display: 'flex', justifyContent: 'space-between' }}>
           {step > 1 ? (
             <button type="button" className="btn btn-secondary" onClick={handlePrev} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
