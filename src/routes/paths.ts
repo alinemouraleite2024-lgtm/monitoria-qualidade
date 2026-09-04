@@ -24,6 +24,20 @@ export const MONITORING_EDIT = 'monitoring-edit';
  */
 export const PATH_ENTRADA = '/monitorings';
 
+/**
+ * Onde cada perfil entra ao fazer login ou ao trocar de contexto (0.20.0).
+ *
+ * O ADMIN passou a ter destino próprio porque deixou de ter acesso a `/monitorings`: com
+ * permissão estrita por perfil ativo, mandá-lo para a tela de monitorias seria mandá-lo para
+ * um "acesso negado". As entradas de MONITOR e GESTOR ainda coincidem — a tela se bifurca por
+ * dentro — e passam a divergir quando a 0.21.0 separar as experiências.
+ */
+export const ENTRADA_POR_PERFIL: Record<string, string> = {
+  MONITOR: PATH_ENTRADA,
+  GESTOR: PATH_ENTRADA,
+  ADMIN: '/admin/criterios',
+};
+
 // Rota de autenticação (F0-14). Fora de TABS de propósito: não é destino de menu nem tem
 // entrada em tabPermissionMap — é a porta de entrada, avaliada antes do guard.
 export const PATH_LOGIN = '/login';

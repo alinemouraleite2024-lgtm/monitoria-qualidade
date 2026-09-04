@@ -1,10 +1,14 @@
-import { Menu, LogOut } from 'lucide-react';
-import type { BrandConfig, User } from '../types/domain';
+import { Menu, LogOut, Repeat } from 'lucide-react';
+import { perfisDe, ROTULO_PERFIL } from '../domain/perfis';
+import type { BrandConfig, Role, User } from '../types/domain';
 import type { MenuConfig } from './Topbar';
 
 interface SidebarProps {
   brand: BrandConfig;
   currentUser: User;
+  /** Perfil ativo: é ele que escolhe o menu, não os perfis que a pessoa possui. */
+  perfilAtivo: Role | null;
+  onTrocarPerfil: (perfil: Role) => void;
   activeTab: string;
   onNavigate: (tab: string) => void;
   sidebarCollapsed: boolean;
@@ -16,6 +20,8 @@ interface SidebarProps {
 export const Sidebar = ({
   brand,
   currentUser,
+  perfilAtivo,
+  onTrocarPerfil,
   activeTab,
   onNavigate,
   sidebarCollapsed,
@@ -35,7 +41,7 @@ export const Sidebar = ({
   </div>
 
   <nav className="sidebar-menu">
-    {menuConfig[currentUser.role]?.map((item) => {
+    {menuConfig[perfilAtivo ?? 'MONITOR']?.map((item) => {
       const Icon = item.icon;
       return (
         <div key={item.id}>
@@ -58,11 +64,38 @@ export const Sidebar = ({
   </nav>
 
   <div className="sidebar-footer">
+    {/* Troca de contexto (0.20.0). Só existe para quem tem mais de um perfil — para as demais
+        pessoas o bloco inteiro não é renderizado, em vez de aparecer desabilitado. Fica no
+        rodapé, junto à identidade, porque trocar de perfil é mudar quem você é aqui, não
+        navegar para outro lugar. */}
+    {!sidebarCollapsed && perfisDe(currentUser).length > 1 && (
+      <div className="sidebar-perfis">
+        <div className="sidebar-perfis-label">
+          <Repeat size={12} /> Perfil ativo
+        </div>
+        <div className="sidebar-perfis-opcoes">
+          {perfisDe(currentUser).map((p) => (
+            <button
+              key={p}
+              type="button"
+              className={`sidebar-perfil-btn ${p === perfilAtivo ? 'ativo' : ''}`}
+              onClick={() => onTrocarPerfil(p)}
+              aria-pressed={p === perfilAtivo}
+            >
+              {ROTULO_PERFIL[p]}
+            </button>
+          ))}
+        </div>
+      </div>
+    )}
+
     <div className="sidebar-user">
       {!sidebarCollapsed && (
         <div className="sidebar-user-details">
           <span className="sidebar-user-name">{currentUser.name}</span>
-          <span className="sidebar-user-role">{currentUser.role}</span>
+          <span className="sidebar-user-role">
+            {perfilAtivo ? ROTULO_PERFIL[perfilAtivo] : ''}
+          </span>
         </div>
       )}
       <button className="btn-sidebar-logout" onClick={onLogout} title="Sair">

@@ -40,7 +40,7 @@ export const AllocationsScreen = ({
                       value={selectedAllocationMonitor}
                       onChange={(e) => setSelectedAllocationMonitor(e.target.value)}
                     >
-                      {getMonitors().filter(m => m.role === 'MONITOR').map(m => (
+                      {getMonitors().map(m => (
                         <option key={m.id} value={m.id}>{m.name}</option>
                       ))}
                     </select>

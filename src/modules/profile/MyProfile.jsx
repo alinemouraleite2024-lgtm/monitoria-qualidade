@@ -1,3 +1,4 @@
+import { perfisDe, ROTULO_PERFIL } from '../../domain/perfis';
 import { useState } from 'react';
 import { Shield, Key, Mail, Building, Briefcase, Clock } from 'lucide-react';
 import { logAuthEvent } from '../../auth';
@@ -38,7 +39,7 @@ export const MyProfile = ({ currentUser }) => {
             {!currentUser.photoUrl && currentUser.name?.split(' ').map(n => n[0]).slice(0, 2).join('')}
           </div>
           <h2 style={{ fontSize: '1.25rem', color: 'var(--text-main)', marginBottom: '0.25rem' }}>{currentUser.name}</h2>
-          <span className="badge-pill badge-primary" style={{ marginBottom: '1.5rem' }}>{currentUser.role}</span>
+          <span className="badge-pill badge-primary" style={{ marginBottom: '1.5rem' }}>{perfisDe(currentUser).map(p => ROTULO_PERFIL[p]).join(" · ") || "Sem acesso"}</span>
           
           <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             <button className={`btn ${activeTab === 'info' ? 'btn-primary' : 'btn-secondary'}`} style={{ width: '100%', justifyContent: 'flex-start' }} onClick={() => setActiveTab('info')}>

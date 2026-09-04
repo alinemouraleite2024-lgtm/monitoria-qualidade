@@ -13,12 +13,11 @@
 export type Role = 'ADMIN' | 'GESTOR' | 'MONITOR';
 
 /**
- * Papel presente na base de usuários mas sem menu nem permissão de rota. Desde a F0-14 o
- * login é recusado para ele; o valor continua existindo nos dados.
+ * Quem não acessa o portal tem `perfis: []` — a lista vazia é o próprio registro de que não há
+ * acesso. Até a 0.19.0 isso era um papel 'COLABORADOR' que o login recusava caso a caso; a
+ * ausência de perfil diz a mesma coisa sem depender de um valor especial, e some junto o
+ * `AnyRole`, que existia só para acomodá-lo.
  */
-export type NonOperationalRole = 'COLABORADOR';
-
-export type AnyRole = Role | NonOperationalRole;
 
 export type UserStatus = 'ACTIVE' | 'INACTIVE' | 'BLOCKED';
 
@@ -38,7 +37,15 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: AnyRole;
+  /**
+   * Perfis concedidos. Substitui o `role` singular na 0.20.0.
+   *
+   * Uma pessoa pode acumular perfis — administrar e monitorar, por exemplo — sem precisar de
+   * duas contas. O que ela *é agora* não vive aqui: é o perfil ativo da sessão. Guardar o
+   * perfil ativo no usuário faria a escolha de contexto de uma pessoa mudar como todas as
+   * outras a enxergam nas listas.
+   */
+  perfis: Role[];
   active?: boolean;
   team?: string;
   login?: string;
@@ -347,7 +354,12 @@ export interface SystemSettings {
 /** Sessão persistida: grava só o par mínimo, o usuário completo é re-resolvido na leitura. */
 export interface AuthSession {
   email: string;
-  role: AnyRole;
+  /**
+   * Perfil sob o qual a pessoa está trabalhando agora. Fica na sessão, não no usuário: é
+   * escolha do momento e de cada navegador. É revalidado no carregamento — um perfil revogado
+   * pelo Admin não pode continuar ativo (ver `perfilAtivoValido`).
+   */
+  perfilAtivo: Role;
 }
 
 export interface AuthLogEntry {

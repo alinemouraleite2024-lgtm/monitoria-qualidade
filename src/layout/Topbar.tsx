@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import type { AnyRole, User } from '../types/domain';
+import { ROTULO_PERFIL } from '../domain/perfis';
+import type { Role, User } from '../types/domain';
 
 /** Item de menu de um perfil. */
 export interface MenuItem {
@@ -15,16 +16,18 @@ export interface MenuItem {
   grupo?: string;
 }
 
-export type MenuConfig = Partial<Record<AnyRole, MenuItem[]>>;
+export type MenuConfig = Partial<Record<Role, MenuItem[]>>;
 
 interface TopbarProps {
   currentUser: User;
+  /** Perfil ativo: decide o menu consultado e o rótulo ao lado do nome (0.20.0). */
+  perfilAtivo: Role | null;
   activeTab: string;
   menuConfig: MenuConfig;
   renderUserAvatar: (name: string) => ReactNode;
 }
 
-export const Topbar = ({ currentUser, activeTab, menuConfig, renderUserAvatar }: TopbarProps) => (
+export const Topbar = ({ currentUser, perfilAtivo, activeTab, menuConfig, renderUserAvatar }: TopbarProps) => (
 <header className="app-topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', backgroundColor: 'var(--bg-panel)', borderBottom: '1px solid var(--border-color)', zIndex: 10 }}>
   
   <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
@@ -32,7 +35,7 @@ export const Topbar = ({ currentUser, activeTab, menuConfig, renderUserAvatar }:
       <span className="breadcrumb-item">Workspace</span>
       <span style={{ color: 'var(--text-muted)' }}>/</span>
       <span className="breadcrumb-item active">
-        {menuConfig[currentUser.role]?.find(m => m.id === activeTab)?.label || 'MonitorIA'}
+        {menuConfig[perfilAtivo ?? 'MONITOR']?.find(m => m.id === activeTab)?.label || 'MonitorIA'}
       </span>
     </div>
   </div>
@@ -53,7 +56,7 @@ export const Topbar = ({ currentUser, activeTab, menuConfig, renderUserAvatar }:
     }}>
       <div style={{ textAlign: 'right' }}>
         <div style={{ fontWeight: '600', fontSize: '0.85rem', color: 'var(--text-main)', lineHeight: '1.2' }}>{currentUser.name}</div>
-        <div style={{ fontSize: '0.7rem', color: 'var(--primary)', fontWeight: '600' }}>{currentUser.role}</div>
+        <div style={{ fontSize: '0.7rem', color: 'var(--primary)', fontWeight: '600' }}>{perfilAtivo ? ROTULO_PERFIL[perfilAtivo] : ''}</div>
       </div>
       {renderUserAvatar(currentUser.name)}
     </div>

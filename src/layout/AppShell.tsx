@@ -1,12 +1,14 @@
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import type { ReactNode } from 'react';
-import type { BrandConfig, User } from '../types/domain';
+import type { BrandConfig, Role, User } from '../types/domain';
 import type { MenuConfig } from './Topbar';
 
 interface AppShellProps {
   brand: BrandConfig;
   currentUser: User;
+  perfilAtivo: Role | null;
+  onTrocarPerfil: (perfil: Role) => void;
   activeTab: string;
   onNavigate: (tab: string) => void;
   sidebarCollapsed: boolean;
@@ -20,6 +22,8 @@ interface AppShellProps {
 export const AppShell = ({
   brand,
   currentUser,
+  perfilAtivo,
+  onTrocarPerfil,
   activeTab,
   onNavigate,
   sidebarCollapsed,
@@ -35,6 +39,8 @@ export const AppShell = ({
     <Sidebar
       brand={brand}
       currentUser={currentUser}
+      perfilAtivo={perfilAtivo}
+      onTrocarPerfil={onTrocarPerfil}
       activeTab={activeTab}
       onNavigate={onNavigate}
       sidebarCollapsed={sidebarCollapsed}
@@ -48,6 +54,7 @@ export const AppShell = ({
 
       <Topbar
         currentUser={currentUser}
+        perfilAtivo={perfilAtivo}
         activeTab={activeTab}
         menuConfig={menuConfig}
         renderUserAvatar={renderUserAvatar}

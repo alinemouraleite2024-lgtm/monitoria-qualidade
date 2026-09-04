@@ -21,10 +21,11 @@ export const OFFICIAL_USERS: User[] = [
     login: 'aline.verneck',
     password: 'Admin@123',
     name: 'Aline Oliveira Verneck',
-    // ADMIN acumula a administração e a operação de monitoria: `getMonitors()` inclui ADMIN
-    // justamente para que uma conta só receba carteira, meta e fila. Ela também consta em
-    // OFFICIAL_COLLABORATORS — faz atendimento e é avaliada como as demais.
-    role: ROLES.ADMIN,
+    // Administra e monitora. Até a 0.19.0 isso dependia de `getMonitors()` incluir ADMIN por
+    // regra — o que fazia *todo* administrador contar como monitor. Agora está no dado: ela
+    // recebe carteira, meta e fila porque tem o perfil MONITOR, e não por ser ADMIN. Consta
+    // também em OFFICIAL_COLLABORATORS: faz atendimento e é avaliada como as demais.
+    perfis: [ROLES.ADMIN, ROLES.MONITOR],
     cargo: 'Backoffice de Relacionamento e Monitora da Qualidade',
     area: 'Relacionamento',
     gestor: null,
@@ -39,7 +40,7 @@ export const OFFICIAL_USERS: User[] = [
     login: 'nathalia.oyan',
     password: 'User@123',
     name: 'Nathalia Perger Oyan',
-    role: 'COLABORADOR',
+    perfis: [],
     cargo: 'Front Office de Relacionamento',
     area: 'Relacionamento',
     gestor: null,
@@ -54,7 +55,7 @@ export const OFFICIAL_USERS: User[] = [
     login: 'allanis.silva',
     password: 'User@123',
     name: 'Allanis Maquea Silva',
-    role: 'COLABORADOR',
+    perfis: [],
     cargo: 'Front Office de Relacionamento',
     area: 'Relacionamento',
     gestor: null,
@@ -69,7 +70,7 @@ export const OFFICIAL_USERS: User[] = [
     login: 'susana.nascimento',
     password: 'User@123',
     name: 'Susana Nascimento',
-    role: 'COLABORADOR',
+    perfis: [],
     cargo: 'Backoffice de Relacionamento',
     area: 'Relacionamento',
     gestor: null,
@@ -84,7 +85,7 @@ export const OFFICIAL_USERS: User[] = [
     login: 'ana.carla',
     password: 'User@123',
     name: 'Ana Carla',
-    role: 'COLABORADOR',
+    perfis: [],
     cargo: 'Assistente de Gestão de Contratos',
     area: 'Relacionamento',
     gestor: null,
@@ -99,7 +100,9 @@ export const OFFICIAL_USERS: User[] = [
     login: 'admin.sistema',
     password: 'Admin@123',
     name: 'Administrador do Sistema',
-    role: ROLES.ADMIN,
+    // Conta de administração pura: configura o sistema, não monitora. É a diferença que a
+    // 0.20.0 torna possível expressar — antes, todo ADMIN era monitor por consequência.
+    perfis: [ROLES.ADMIN],
     cargo: 'Administrador do Sistema',
     area: 'Relacionamento',
     gestor: null,

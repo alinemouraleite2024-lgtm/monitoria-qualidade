@@ -1,5 +1,7 @@
-import { PlusCircle, Plus, Edit } from 'lucide-react';
+import { PlusCircle, Plus, Edit, AlertTriangle } from 'lucide-react';
 import { DEFAULT_BRAND_CONFIG } from '../../mockData';
+import { perfisDe, ROTULO_PERFIL } from '../../domain/perfis';
+import { temGestorConfigurado } from '../../domain/validacaoService';
 import { UserManagement } from '../../modules/admin/UserManagement';
 import { RolesManagement } from '../../modules/admin/RolesManagement';
 import { AuditLogs } from '../../modules/admin/AuditLogs';
@@ -24,6 +26,7 @@ export const AdminScreen = ({
   collaborators = /** @type {import('../../types/domain').Collaborator[]} */ ([]),
   users = /** @type {import('../../types/domain').User[]} */ ([]),
   criteria = /** @type {import('../../types/domain').Criterion[]} */ ([]),
+  monitorings = /** @type {import('../../types/domain').Monitoring[]} */ ([]),
   onUsersChange,
   adminSubTab,
   setAdminSubTab,
@@ -321,6 +324,39 @@ export const AdminScreen = ({
                       onChange={(e) => setSettings({ ...settings, requireGestorValidation: e.target.checked })}
                     />
                   </div>
+
+                  {/* Indicador de fluxo incompleto (0.20.0).
+                      A exigência de validação só funciona se houver gestor respondendo pela
+                      área do monitor. Quando não há, a monitoria nasce pendente e ninguém pode
+                      liberá-la — o parâmetro fica ligado e sem efeito prático. Contar aqui é o
+                      que impede isso de virar uma fila silenciosa: quem liga a chave é quem vê
+                      o número. O aviso equivalente aparece no formulário, antes de salvar. */}
+                  {settings.requireGestorValidation && (() => {
+                    const presas = monitorings.filter(
+                      (m) => m.status === 'Pendente' && !temGestorConfigurado(m.monitorId, areas)
+                    ).length;
+                    const semGestor = areas.filter((a) => a.active && !a.gestorId).length;
+                    if (presas === 0 && semGestor === 0) return null;
+                    return (
+                      <div style={{ marginTop: '1rem', display: 'flex', gap: '0.6rem', alignItems: 'flex-start', padding: '0.75rem 0.9rem', borderRadius: '8px', backgroundColor: '#fffbeb', border: '1px solid #fcd34d' }}>
+                        <AlertTriangle size={16} style={{ color: '#b45309', flexShrink: 0, marginTop: '2px' }} />
+                        <div style={{ fontSize: '0.82rem', color: '#78350f', lineHeight: 1.55 }}>
+                          {presas > 0 && (
+                            <div>
+                              <strong>{presas} {presas === 1 ? 'monitoria pendente' : 'monitorias pendentes'} sem gestor
+                              para validar.</strong> Elas permanecerão paradas até que a área do monitor tenha um gestor.
+                            </div>
+                          )}
+                          {semGestor > 0 && (
+                            <div style={{ marginTop: presas > 0 ? '0.3rem' : 0 }}>
+                              {semGestor === 1 ? '1 área ativa está' : `${semGestor} áreas ativas estão`} sem gestor
+                              responsável. Vincule em <strong>Áreas</strong>.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Brand configuration */}
@@ -410,8 +446,8 @@ export const AdminScreen = ({
                           </td>
                           <td>{u.email}</td>
                           <td>
-                            <span className={`badge-pill role-${u.role.toLowerCase()}`}>
-                              {u.role}
+                            <span className="badge-pill badge-info">
+                              {perfisDe(u).map(p => ROTULO_PERFIL[p]).join(' · ') || 'Sem acesso'}
                             </span>
                           </td>
                           <td>

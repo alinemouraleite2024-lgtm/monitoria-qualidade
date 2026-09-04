@@ -3,7 +3,8 @@ import { X, FileText, Check, AlertCircle } from 'lucide-react';
 import { getScoreConcept } from '../../scoreUtils';
 import { canalLabel } from '../../constants/canais';
 import { exibirDuracao } from '../../domain/duracao';
-import type { Collaborator, Criterion, Monitoring, User } from '../../types/domain';
+import { podeValidar } from '../../domain/validacaoService';
+import type { Collaborator, Criterion, Monitoring, Role, User } from '../../types/domain';
 
 interface MonitoringHistoryProps {
   monitoring: Monitoring;
@@ -11,6 +12,8 @@ interface MonitoringHistoryProps {
   collaborators?: Collaborator[];
   criteria?: Criterion[];
   currentUser?: User | null;
+  /** Perfil ativo: validar é ato do contexto GESTOR, não de quem apenas possui o perfil. */
+  perfilAtivo?: Role | null;
   onClose: () => void;
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
@@ -25,6 +28,7 @@ export const MonitoringHistory = ({
   collaborators = [],
   criteria = [],
   currentUser = null,
+  perfilAtivo = null,
   onClose,
   onApprove,
   onReject,
@@ -47,13 +51,18 @@ export const MonitoringHistory = ({
   };
 
 
-  // Aprovação flow logic
-  const canApprove = currentUser && (currentUser.role === 'GESTOR' || currentUser.role === 'ADMIN') && (monitoring.status === 'Pendente' || monitoring.status === 'Aguardando Aprovação');
+  // 0.20.0 — quem pode validar deixou de ser uma pergunta sobre o papel de quem está olhando e
+  // passou a incluir de quem é a monitoria: ninguém valida a própria. `motivo` existe para que
+  // o controle não simplesmente desapareça — some o botão, fica a explicação.
+  const validacao = podeValidar(currentUser, perfilAtivo, monitoring);
+  const aguardandoValidacao = monitoring.status === 'Pendente' || monitoring.status === 'Aguardando Aprovação';
+
+  const canApprove = validacao.pode && aguardandoValidacao;
+  const motivoBloqueio = !validacao.pode && aguardandoValidacao ? validacao.motivo : null;
 
   // F0-08: confirmação de zerada é um fluxo independente da aprovação de conteúdo acima —
   // só depende de haver uma sinalização pendente, não do status da monitoria.
-  const isManager = currentUser && (currentUser.role === 'GESTOR' || currentUser.role === 'ADMIN');
-  const canConfirmZerada = isManager && monitoring.eliminatoryPending === true;
+  const canConfirmZerada = validacao.pode && monitoring.eliminatoryPending === true;
   const getCriterionName = (id: string) => criteria.find(c => c.id === id)?.name || id;
   const triggeredCriteriaNames = (monitoring.scores || [])
     .filter(s => {
@@ -260,6 +269,20 @@ export const MonitoringHistory = ({
         )}
 
         {/* Approval Footer for Managers */}
+        {/* Quando a validação está bloqueada, o motivo ocupa o lugar dos botões. Um rodapé que
+            simplesmente não aparece deixaria a gestora procurando o que fazer; dizer por que
+            não há o que fazer ali encerra a pergunta. */}
+        {motivoBloqueio && (
+          <div className="slide-over-footer" style={{ flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-start' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+              <AlertCircle size={16} style={{ color: 'var(--text-muted)', flexShrink: 0, marginTop: '2px' }} />
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                {motivoBloqueio}
+              </div>
+            </div>
+          </div>
+        )}
+
         {canApprove && (
           <div className="slide-over-footer" style={{ flexDirection: 'column', gap: '1rem' }}>
             <div style={{ fontWeight: '600', fontSize: '0.9rem' }}>Fluxo de Aprovação</div>

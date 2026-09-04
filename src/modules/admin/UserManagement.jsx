@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus, Edit, Lock, Unlock, Search } from 'lucide-react';
 import { logAuthEvent, USER_STATUS, ROLES } from '../../auth';
+import { perfisDe, PRECEDENCIA, ROTULO_PERFIL } from '../../domain/perfis';
 
 // Fonte de verdade única (F0-12, etapa 5): a lista chega por prop do App.jsx e as alterações
 // sobem por onUsersChange. Antes este módulo lia e gravava pm2_users direto via teamData.js,
@@ -20,7 +21,7 @@ export const UserManagement = ({
   const [editingUser, setEditingUser] = useState(null);
   const [formData, setFormData] = useState({
     name: '', email: '', login: '', password: '', confirmPassword: '',
-    role: ROLES.MONITOR, cargo: '', area: '', gestor: '', status: USER_STATUS.ACTIVE,
+    perfis: [ROLES.MONITOR], cargo: '', area: '', gestor: '', status: USER_STATUS.ACTIVE,
     photoUrl: '', observacoes: ''
   });
 
@@ -71,7 +72,7 @@ export const UserManagement = ({
           <h1 className="page-title">Gestão de Usuários</h1>
           <p className="page-subtitle">Controle de acesso à plataforma (Login Interno)</p>
         </div>
-        <button className="btn btn-primary" onClick={() => { setEditingUser(null); setFormData({name: '', email: '', login: '', password: '', confirmPassword: '', role: ROLES.MONITOR, cargo: '', area: '', gestor: '', status: USER_STATUS.ACTIVE, photoUrl: '', observacoes: ''}); setShowModal(true); }}>
+        <button className="btn btn-primary" onClick={() => { setEditingUser(null); setFormData({name: '', email: '', login: '', password: '', confirmPassword: '', perfis: [ROLES.MONITOR], cargo: '', area: '', gestor: '', status: USER_STATUS.ACTIVE, photoUrl: '', observacoes: ''}); setShowModal(true); }}>
           <Plus size={18} /> Novo Usuário
         </button>
       </div>
@@ -90,7 +91,7 @@ export const UserManagement = ({
               <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left' }}>
                 <th style={{ padding: '1rem' }}>Usuário</th>
                 <th style={{ padding: '1rem' }}>Login</th>
-                <th style={{ padding: '1rem' }}>Perfil</th>
+                <th style={{ padding: '1rem' }}>Perfis</th>
                 <th style={{ padding: '1rem' }}>Status</th>
                 <th style={{ padding: '1rem' }}>Último Acesso</th>
                 <th style={{ padding: '1rem', textAlign: 'right' }}>Ações</th>
@@ -105,7 +106,11 @@ export const UserManagement = ({
                   </td>
                   <td style={{ padding: '1rem', color: 'var(--text-main)' }}>{user.login}</td>
                   <td style={{ padding: '1rem' }}>
-                    <span className="badge-pill badge-info">{user.role}</span>
+                    {perfisDe(user).length === 0
+                      ? <span className="badge-pill badge-warning">Sem acesso</span>
+                      : perfisDe(user).map(p => (
+                          <span key={p} className="badge-pill badge-info" style={{ marginRight: '0.25rem' }}>{ROTULO_PERFIL[p]}</span>
+                        ))}
                   </td>
                   <td style={{ padding: '1rem' }}>
                     {user.status === USER_STATUS.ACTIVE ? <span className="badge-pill badge-success">Ativo</span> : 
@@ -151,10 +156,26 @@ export const UserManagement = ({
                 </div>
                 <div><label className="form-label">Senha {editingUser && '(deixe em branco para manter)'}</label><input type="password" required={!editingUser} className="form-control" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} /></div>
                 <div><label className="form-label">Confirmar Senha</label><input type="password" required={!editingUser} className="form-control" value={formData.confirmPassword} onChange={e => setFormData({...formData, confirmPassword: e.target.value})} /></div>
-                <div><label className="form-label">Perfil</label>
-                  <select className="form-control" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}>
-                    {Object.values(ROLES).map(r => <option key={r} value={r}>{r}</option>)}
-                  </select>
+                <div><label className="form-label">Perfis</label>
+                  {/* 0.20.0: caixas de seleção, não um select. Uma pessoa pode acumular perfis,
+                      e o valor único obrigava a escolher qual metade dela cadastrar. Nenhum
+                      perfil marcado = registro sem acesso ao portal. */}
+                  <div style={{ display: 'flex', gap: '0.85rem', flexWrap: 'wrap', padding: '0.55rem 0.25rem' }}>
+                    {PRECEDENCIA.map(perfil => {
+                      const marcado = (formData.perfis || []).includes(perfil);
+                      return (
+                        <label key={perfil} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem', cursor: 'pointer' }}>
+                          <input type="checkbox" checked={marcado} onChange={() => setFormData({
+                            ...formData,
+                            perfis: marcado
+                              ? (formData.perfis || []).filter(p => p !== perfil)
+                              : [...(formData.perfis || []), perfil],
+                          })} />
+                          {ROTULO_PERFIL[perfil]}
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
                 <div><label className="form-label">Gestor Responsável</label><input className="form-control" value={formData.gestor} onChange={e => setFormData({...formData, gestor: e.target.value})} /></div>
                 <div><label className="form-label">Cargo</label><input className="form-control" value={formData.cargo} onChange={e => setFormData({...formData, cargo: e.target.value})} /></div>
