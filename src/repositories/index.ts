@@ -24,7 +24,7 @@ import {
   OFFICIAL_CATEGORIAS_V1,
 } from '../constants/catalogData';
 import { competenciaDe } from '../domain/period';
-import type { Criterion, LegacyMonitoring, Monitoring, Role, User } from '../types/domain';
+import type { Criterion, LegacyMonitoring, Monitoring, PlanoMetas, Role, User } from '../types/domain';
 
 // Migrações silenciosas aplicadas no carregamento de monitorias.
 // Transcritas do inicializador anterior à F0-12 sem alteração de regra: convertem dados
@@ -274,6 +274,9 @@ export const allocationsRepository = createRepository(KEYS.allocations, INITIAL_
 export const allocationHistoryRepository = createRepository(KEYS.allocationHistory, INITIAL_ALLOCATION_HISTORY);
 export const monitorGoalsRepository = createRepository(KEYS.monitorGoals, INITIAL_MONITOR_GOALS);
 export const colaboradorGoalsRepository = createRepository(KEYS.colaboradorGoals, INITIAL_COLABORADOR_GOALS);
+// Seed vazio de propósito: o plano descreve a operação de uma empresa, não a estrutura do
+// sistema. Gravá-lo no código faria toda base nova nascer com metas que não são dela.
+export const planosMetasRepository = createRepository<PlanoMetas[]>(KEYS.planosMetas, []);
 export const monitoringsRepository = createRepository(KEYS.monitorings, INITIAL_MONITORINGS, migrateMonitorings);
 export const holidaysRepository = createRepository(KEYS.holidays, INITIAL_HOLIDAYS);
 export const demandsRepository = createRepository(KEYS.demands, INITIAL_DEMANDS);

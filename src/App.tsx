@@ -4,7 +4,7 @@ import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-
 import { pathToTab, tabToPath, PATH_LOGIN, PATH_ENTRADA, ADMIN_SECOES, ENTRADA_POR_PERFIL } from './routes/paths';
 import type { FormEvent, ReactNode } from 'react';
 import type {
-  Area, Canal, Collaborator, Criterion, Monitoring, Role, User,
+  Area, Canal, Collaborator, Criterion, Monitoring, PlanoMetas, Role, User,
 } from './types/domain';
 import {
   LayoutDashboard,
@@ -83,6 +83,7 @@ import { NotImplementedScreen } from './shared/components/NotImplementedScreen';
 import { ReportsScreen } from './features/reports/ReportsScreen';
 import { LoginScreen } from './features/auth/LoginScreen';
 import { PlanningScreen } from './features/planning/PlanningScreen';
+import { PlanoMetasEditor } from './features/planning/PlanoMetasEditor';
 import { AllocationsScreen } from './features/allocations/AllocationsScreen';
 import { AdminScreen } from './features/admin/AdminScreen';
 import { CriterionModal } from './features/admin/modals/CriterionModal';
@@ -105,6 +106,7 @@ import {
   allocationHistoryRepository,
   monitorGoalsRepository,
   colaboradorGoalsRepository,
+  planosMetasRepository,
   holidaysRepository,
   demandsRepository,
   announcementsRepository,
@@ -128,7 +130,9 @@ import {
   nextPeriod,
   businessDaysRemainingIn,
 } from './domain/period';
+import type { Period } from './domain/period';
 import { countsForCarteiraGoal } from './domain/monitoringRules';
+import { getPlanoVigente, resolverMetasDoPeriodo, sucederPlano, vigenciaColide } from './domain/planoMetasService';
 import {
   aplicaFiltrosDeHistorico,
   FILTROS_VAZIOS,
@@ -258,6 +262,7 @@ function AppContent() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [monitorGoals, setMonitorGoals] = useState(() => monitorGoalsRepository.load());
   const [colaboradorGoals, setColaboradorGoals] = useState(() => colaboradorGoalsRepository.load());
+  const [planosMetas, setPlanosMetas] = useState(() => planosMetasRepository.load());
   // As migrações de dados legados (escala 0-10 -> 0-100 e Fluxo -> Processo) foram
   // transferidas para monitoringsRepository na F0-12, sem alteração de regra.
   const [monitorings, setMonitorings] = useState(() => monitoringsRepository.load());
@@ -414,6 +419,7 @@ function AppContent() {
   const [reportPeriod, setReportPeriod] = useState(() => getCurrentPeriod());
   const [planningPeriod, setPlanningPeriod] = useState(() => getCurrentPeriod());
   const [dashboardPeriod, setDashboardPeriod] = useState(() => getCurrentPeriod());
+  const [showPlanoEditor, setShowPlanoEditor] = useState(false);
   // 2B.5: os filtros do histórico deixaram de ser estado interno da tabela e subiram para cá.
   // Enquanto viviam lá dentro, a exportação usava outro caminho e levava um conjunto diferente
   // do exibido — a tela mostrava 2 linhas e o botão exportava 4. Agora há um conjunto só.
@@ -433,6 +439,7 @@ function AppContent() {
   useEffect(() => { allocationHistoryRepository.save(allocationHistory); }, [allocationHistory]);
   useEffect(() => { monitorGoalsRepository.save(monitorGoals); }, [monitorGoals]);
   useEffect(() => { colaboradorGoalsRepository.save(colaboradorGoals); }, [colaboradorGoals]);
+  useEffect(() => { planosMetasRepository.save(planosMetas); }, [planosMetas]);
   useEffect(() => { holidaysRepository.save(holidays); }, [holidays]);
   useEffect(() => { demandsRepository.save(demands); }, [demands]);
   useEffect(() => { announcementsRepository.save(announcements); }, [announcements]);
@@ -481,6 +488,27 @@ function AppContent() {
   // Período de competência corrente. Todo número mensal desta tela responde sobre ele.
   const hoje = todayISO();
   const periodoAtual = getCurrentPeriod();
+
+  /**
+   * Metas efetivas de uma competência: o que o plano vigente prevê, com as exceções do mês por
+   * cima. Ver `domain/planoMetasService`.
+   *
+   * Resolvido aqui, e três vezes, porque desde a 0.22.0 cada tela responde sobre um período
+   * diferente — a fila sobre o mês corrente, o Painel e Metas sobre o que o gestor escolheu.
+   * Resolver uma vez só devolveria a competência errada para duas das três.
+   *
+   * O resultado tem exatamente a forma que `goalService` já consumia, e é por isso que Painel,
+   * Relatórios, fila e o goalService inteiro não precisaram de uma linha de alteração: nenhum
+   * deles sabe que herança existe.
+   */
+  const metasDe = React.useCallback(
+    (periodo: Period) => resolverMetasDoPeriodo(planosMetas, colaboradorGoals, periodo),
+    [planosMetas, colaboradorGoals],
+  );
+
+  const metasDaFila = React.useMemo(() => metasDe(periodoAtual).metas, [metasDe, periodoAtual]);
+  const metasDoPainel = React.useMemo(() => metasDe(dashboardPeriod).metas, [metasDe, dashboardPeriod]);
+  const metasDoPlanejamento = React.useMemo(() => metasDe(planningPeriod), [metasDe, planningPeriod]);
 
   const getActiveMonitorForColab = (colaboradorId: string, dateStr: string = hoje) =>
     resolveActiveMonitorForColab({ allocations, holidays, users }, colaboradorId, dateStr);
@@ -857,6 +885,107 @@ function AppContent() {
     setColaboradorGoals(colaboradorGoals.filter(g => g.id !== goalId));
   };
 
+  // --- Plano de metas (0.23.0) ---------------------------------------------------------
+
+  const nomeDaColaboradora = (id: string) =>
+    collaborators.find(c => c.id === id)?.name ?? users.find(u => u.id === id)?.name ?? 'a colaboradora';
+
+  /**
+   * "Voltar ao plano": apaga a exceção da colaboradora naquela competência.
+   *
+   * É o único caminho de remoção que existe para uma linha herdada — ela não é um registro
+   * gravado, e sim o plano sendo lido. Apagar a exceção devolve a leitura ao plano.
+   */
+  const handleVoltarAoPlano = (monitorId: string, colaboradorId: string) => {
+    const { year, month } = planningPeriod;
+    setColaboradorGoals(colaboradorGoals.filter(
+      g => !(g.monitorId === monitorId && g.colaboradorId === colaboradorId
+        && g.year === year && g.month === month)
+    ));
+  };
+
+  /**
+   * "Sem meta neste mês": férias, afastamento ou situação especial.
+   *
+   * Grava uma exceção marcada, e não uma meta zero — zero somaria ao total e faria `hasGoal`
+   * verdadeiro, transformando "está de férias" em "tem meta zero".
+   *
+   * Substitui todas as linhas da colaboradora no mês: a sobreposição é por pessoa, senão uma
+   * meta por canal do plano sobreviveria ao lado do afastamento.
+   */
+  const handleSemMeta = (monitorId: string, colaboradorId: string) => {
+    const motivo = prompt(
+      `Por que ${nomeDaColaboradora(colaboradorId)} fica sem meta em ${periodLabel(planningPeriod)}?`,
+      'Férias',
+    );
+    if (motivo === null) return;
+
+    const { year, month } = planningPeriod;
+    const semAsAntigas = colaboradorGoals.filter(
+      g => !(g.monitorId === monitorId && g.colaboradorId === colaboradorId
+        && g.year === year && g.month === month)
+    );
+    setColaboradorGoals([...semAsAntigas, {
+      id: `cgoal-${Date.now()}`,
+      monitorId,
+      colaboradorId,
+      year,
+      month,
+      targetQty: 0,
+      semMeta: true,
+      motivo: motivo.trim() || undefined,
+    }]);
+  };
+
+  /**
+   * "Ajustar": pré-preenche o formulário de meta com o que o plano previa.
+   *
+   * Reaproveita o formulário que já existe, e com ele as validações de escopo da 2A.6.3 — a
+   * exceção está sujeita às mesmas regras que a meta sempre esteve.
+   */
+  const handleAjustarMeta = (monitorId: string, colaboradorId: string, alvoAtual: number, canal?: Canal) => {
+    setNewCGoalVal({
+      monitorId,
+      colaboradorId,
+      canal: canal ?? '',
+      targetQty: alvoAtual,
+    });
+  };
+
+  /**
+   * Salva o plano. Criação, ou sucessão quando a vigência já começou.
+   *
+   * A sucessão é o que faz a edição não reescrever o passado (ver `sucederPlano`): alterar a
+   * meta em dezembro não pode reavaliar agosto contra um alvo que não valia quando o trabalho
+   * foi feito.
+   */
+  const handleSalvarPlano = (plano: PlanoMetas) => {
+    const existente = planosMetas.find(p => p.id === plano.id);
+
+    if (vigenciaColide(planosMetas, plano.vigenciaInicio, plano.vigenciaFim, plano.id)) {
+      alert(
+        'Já existe um plano cobrindo essa vigência.\n\n'
+        + 'Dois planos ativos no mesmo mês deixariam a meta herdada dependendo de qual viesse '
+        + 'primeiro na lista. Ajuste as datas ou encerre o plano anterior.'
+      );
+      return;
+    }
+
+    if (!existente) {
+      setPlanosMetas([...planosMetas, plano]);
+      alert(`Plano "${plano.nome}" criado para ${plano.vigenciaInicio} a ${plano.vigenciaFim}.`);
+      return;
+    }
+
+    const { substitui, novo } = sucederPlano(existente, plano.linhas, periodoAtual, currentUser!.id);
+    setPlanosMetas([...planosMetas.filter(p => p.id !== existente.id), substitui, ...(novo ? [novo] : [])]);
+
+    alert(novo
+      ? `Alteração registrada. Vale a partir de ${periodLabel(periodoAtual)}.\n\n`
+        + `As competências até ${substitui.vigenciaFim} mantêm os valores que tinham.`
+      : `Plano "${plano.nome}" atualizado.`);
+  };
+
   // Aplica uma mutação a uma monitoria e mantém o painel de detalhe (que guarda um
   // snapshot próprio em selectedMonitoringDetail) sincronizado — sem isso, o gestor
   // aciona uma ação e o painel aberto continua exibindo o estado anterior.
@@ -998,7 +1127,7 @@ function AppContent() {
   // `hasGoal` existe para que a ausência de meta seja dita, e não preenchida com um número
   // inventado: sem meta no período, a tela informa a ausência em vez de exibir 0 ou 5.
   const getMonitorStats = (monitorId: string) => {
-    const progresso = getCarteiraProgress(colaboradorGoals, monitorings, monitorId, periodoAtual);
+    const progresso = getCarteiraProgress(metasDaFila, monitorings, monitorId, periodoAtual);
     const pace = businessDaysRemaining > 0
       ? (progresso.remaining / businessDaysRemaining).toFixed(1)
       : 0;
@@ -1151,7 +1280,7 @@ function AppContent() {
                     settings={settings}
                     areas={areas}
                     users={users}
-                    colaboradorGoals={colaboradorGoals}
+                    colaboradorGoals={metasDoPainel}
                     monitorings={monitorings}
                     currentUser={currentUser}
                     dashboardAreaId={dashboardAreaId}
@@ -1178,7 +1307,7 @@ function AppContent() {
                     users={users}
                     collaborators={collaborators}
                     monitorings={monitorings}
-                    colaboradorGoals={colaboradorGoals}
+                    colaboradorGoals={metasDoPlanejamento.metas}
                     periodoAtual={planningPeriod}
                     periodoLabel={periodLabel(planningPeriod)}
                     onPeriodoChange={setPlanningPeriod}
@@ -1186,6 +1315,12 @@ function AppContent() {
                     setNewCGoalVal={setNewCGoalVal}
                     onUpdateColabGoal={handleUpdateColabGoal}
                     onRemoveColabGoal={handleRemoveColabGoal}
+                    onAjustar={handleAjustarMeta}
+                    onVoltarAoPlano={handleVoltarAoPlano}
+                    onSemMeta={handleSemMeta}
+                    onEditarPlano={() => setShowPlanoEditor(true)}
+                    semMeta={metasDoPlanejamento.semMeta}
+                    planoVigente={getPlanoVigente(planosMetas, planningPeriod)}
                     getMonitors={getMonitors}
                     getCollaborators={getCollaborators}
                     renderUserAvatar={renderUserAvatar}
@@ -1200,7 +1335,7 @@ function AppContent() {
                     perfilAtivo={perfilAtivo}
                     areas={areas}
                     monitorings={monitorings}
-                    colaboradorGoals={colaboradorGoals}
+                    colaboradorGoals={metasDaFila}
                     collaborators={collaborators}
                     allocations={allocations}
                     holidays={holidays}
@@ -1445,6 +1580,17 @@ function AppContent() {
           Ele e a tela de Contas gravavam o mesmo registro por caminhos diferentes — e o rápido
           era o pior dos dois: não editava, não bloqueava, e a listagem que o acompanhava
           mostrava todo mundo como "Ativo" independentemente do status real. Sobrou uma tela. */}
+
+      {showPlanoEditor && (
+        <PlanoMetasEditor
+          plano={getPlanoVigente(planosMetas, planningPeriod)}
+          periodoAtual={periodoAtual}
+          getMonitors={getMonitors}
+          getCollaborators={getCollaborators}
+          onSalvar={(plano: PlanoMetas) => { handleSalvarPlano(plano); setShowPlanoEditor(false); }}
+          onFechar={() => setShowPlanoEditor(false)}
+        />
+      )}
 
       {/* MODAL: Adicionar Área */}
       {showAreaModal && (
