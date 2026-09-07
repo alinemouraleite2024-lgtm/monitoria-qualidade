@@ -123,7 +123,6 @@ export interface Criterion {
   eliminatorio: boolean;
   /** Peso 0 marca critério de classificação: não entra no denominador da nota. */
   weight: number;
-  minExpectedScore: number;
   active: boolean;
   channels: Canal[];
   subPerguntas?: SubPergunta[];
@@ -370,5 +369,11 @@ export interface AuthLogEntry {
   userRole: string;
   actionDetails: string;
   timestamp: string;
-  ip: string;
+  /**
+   * Registros anteriores à 0.21.0 trazem `ip`, gerado com `Math.random()` e exibido numa coluna
+   * rotulada "IP (Simulado)". Um endereço inventado numa trilha de auditoria é pior que nenhum:
+   * dá aparência de rastreabilidade a algo que não rastreia. O campo deixou de ser gravado e
+   * de ser exibido; sem backend não há IP real a registrar.
+   */
+  ip?: string;
 }

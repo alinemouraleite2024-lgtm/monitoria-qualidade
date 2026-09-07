@@ -86,7 +86,6 @@ import { PlanningScreen } from './features/planning/PlanningScreen';
 import { AllocationsScreen } from './features/allocations/AllocationsScreen';
 import { AdminScreen } from './features/admin/AdminScreen';
 import { CriterionModal } from './features/admin/modals/CriterionModal';
-import { UserModal } from './features/admin/modals/UserModal';
 import { AreaModal } from './features/admin/modals/AreaModal';
 import { CollaboratorModal } from './features/admin/modals/CollaboratorModal';
 import { AppShell } from './layout/AppShell';
@@ -137,6 +136,7 @@ import {
   type FiltrosHistorico,
 } from './domain/historyFilter';
 import { canalLabel } from './constants/canais';
+import { CHANNELS } from './constants/criteria';
 import { exibirDuracao } from './domain/duracao';
 import { getCarteiraProgress } from './domain/goalService';
 import { perfilAtivoValido, temPerfil } from './domain/perfis';
@@ -327,7 +327,6 @@ function AppContent() {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [showHolidayModal, setShowHolidayModal] = useState(false);
   const [showCriterionModal, setShowCriterionModal] = useState(false);
-  const [showUserModal, setShowUserModal] = useState(false);
   const [showAreaModal, setShowAreaModal] = useState(false);
   const [showCollaboratorModal, setShowCollaboratorModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -372,7 +371,6 @@ function AppContent() {
     orientacao: string;
     tipoResposta: Criterion['tipoResposta'];
     eliminatorio: boolean;
-    minExpectedScore: number | string;
     weight: number | string;
     channels: Criterion['channels'];
     active: boolean;
@@ -387,7 +385,6 @@ function AppContent() {
     orientacao: '',
     tipoResposta: 'ESCALA_4',
     eliminatorio: false,
-    minExpectedScore: 7.5,
     weight: 1.0,
     channels: ['Chat', 'WhatsApp'],
     active: true
@@ -396,16 +393,6 @@ function AppContent() {
   const [newArea, setNewArea] = useState<Area>({ id: '', name: '', gestorId: '', monitorIds: [], active: true });
   const [newCollaborator, setNewCollaborator] = useState<Collaborator>({ id: '', email: '', name: '', cargo: '', areaId: '', active: true });
 
-  const [newUser, setNewUser] = useState<{
-    email: string; name: string; login: string; password: string; perfis: Role[]; team: string;
-  }>({
-    email: '',
-    name: '',
-    login: '',
-    password: '',
-    perfis: ['MONITOR'],
-    team: ''
-  });
 
   // `canal` vazio significa meta geral — o escopo padrão do formulário.
   // Contexto que a fila passa ao formulário: abrir já sabendo quem monitorar e de que canal.
@@ -736,7 +723,6 @@ function AppContent() {
     const normalizado = {
       ...newCriterion,
       numero: newCriterion.numero ? parseInt(String(newCriterion.numero)) : null,
-      minExpectedScore: parseFloat(String(newCriterion.minExpectedScore)),
       weight: parseFloat(String(newCriterion.weight)),
     };
 
@@ -746,7 +732,7 @@ function AppContent() {
       setCriteria([...criteria, { ...normalizado, id: `crit-${Date.now()}` }]);
     }
     setShowCriterionModal(false);
-    setNewCriterion({ id: '', numero: '', category: '', name: '', description: '', orientacao: '', tipoResposta: 'ESCALA_4', eliminatorio: false, minExpectedScore: 7.5, weight: 1.0, channels: ['Chat', 'WhatsApp'], active: true });
+    setNewCriterion({ id: '', numero: '', category: '', name: '', description: '', orientacao: '', tipoResposta: 'ESCALA_4', eliminatorio: false, weight: 1.0, channels: [...CHANNELS], active: true });
   };
 
   const handleSaveArea = (e: FormEvent<HTMLFormElement>) => {
@@ -1359,10 +1345,8 @@ function AppContent() {
                     setNewArea={setNewArea}
                     setNewCollaborator={setNewCollaborator}
                     setShowCriterionModal={setShowCriterionModal}
-                    setShowUserModal={setShowUserModal}
                     setShowAreaModal={setShowAreaModal}
                     setShowCollaboratorModal={setShowCollaboratorModal}
-                    renderUserAvatar={renderUserAvatar}
                   />
               </Screen>
               ) : <NotFoundScreen />
@@ -1422,16 +1406,11 @@ function AppContent() {
         />
       )}
 
-      {/* MODAL: Adicionar Usuário */}
-      {showUserModal && (
-        <UserModal
-          users={users}
-          setUsers={setUsers}
-          newUser={newUser}
-          setNewUser={setNewUser}
-          setShowUserModal={setShowUserModal}
-        />
-      )}
+      {/* O modal de cadastro rápido de usuário saiu na 0.21.0, junto com a aba que o abria.
+          Ele e a tela de Contas gravavam o mesmo registro por caminhos diferentes — e o rápido
+          era o pior dos dois: não editava, não bloqueava, e a listagem que o acompanhava
+          mostrava todo mundo como "Ativo" independentemente do status real. Sobrou uma tela. */}
+
       {/* MODAL: Adicionar Área */}
       {showAreaModal && (
         <AreaModal

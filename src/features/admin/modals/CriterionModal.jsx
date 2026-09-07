@@ -157,29 +157,26 @@ export const CriterionModal = ({
           </div>
         </div>
 
-        <div className="form-row">
-          <div className="form-group">
-            <label className="form-label">Nota Mínima Esperada</label>
-            <input
-              type="number"
-              step="0.1"
-              min="0"
-              max="10"
-              className="form-control"
-              value={newCriterion.minExpectedScore}
-              onChange={(e) => setNewCriterion({ ...newCriterion, minExpectedScore: e.target.value })}
-            />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Peso do Critério</label>
-            <input
-              type="number"
-              step="0.1"
-              min="0.1"
-              className="form-control"
-              value={newCriterion.weight}
-              onChange={(e) => setNewCriterion({ ...newCriterion, weight: e.target.value })}
-            />
+        {/* "Nota Mínima Esperada" saiu na 0.21.0. Era um número na escala 0-10 — que deixou de
+            existir — e, mais decisivo, nunca participou de cálculo nenhum: não entrava na nota,
+            na régua, na validação nem na instrução do assistente. Ficava aqui e na grade
+            sugerindo uma regra que o sistema não aplicava. */}
+        <div className="form-group">
+          <label className="form-label">Peso do Critério</label>
+          <input
+            type="number"
+            step="0.1"
+            // min 0, e não 0.1: peso 0 é o que marca critério de classificação, que não entra
+            // no denominador da nota. O mínimo anterior tornava impossível cadastrar pela tela
+            // um dos oito critérios de classificação que já existem na régua.
+            min="0"
+            className="form-control"
+            value={newCriterion.weight}
+            onChange={(e) => setNewCriterion({ ...newCriterion, weight: e.target.value })}
+          />
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
+            Peso <strong>0</strong> marca um critério de classificação: ele registra informação
+            e não entra no cálculo da nota.
           </div>
         </div>
 

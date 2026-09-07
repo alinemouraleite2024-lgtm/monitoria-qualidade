@@ -1,6 +1,8 @@
-import { PlusCircle, Plus, Edit, AlertTriangle } from 'lucide-react';
+import { Fragment } from 'react';
+import { Plus, Edit, AlertTriangle } from 'lucide-react';
+import { CRITERION_CATEGORIES, CHANNELS } from '../../constants/criteria';
+import { canalLabel } from '../../constants/canais';
 import { DEFAULT_BRAND_CONFIG } from '../../mockData';
-import { perfisDe, ROTULO_PERFIL } from '../../domain/perfis';
 import { temGestorConfigurado } from '../../domain/validacaoService';
 import { UserManagement } from '../../modules/admin/UserManagement';
 import { RolesManagement } from '../../modules/admin/RolesManagement';
@@ -8,15 +10,132 @@ import { AuditLogs } from '../../modules/admin/AuditLogs';
 
 // Tela de Administração.
 //
-// Com a reorganização do menu, "Usuários", "Perfis e Permissões" e "Logs de Acesso" deixaram
-// de ser itens de primeiro nível. As três telas continuam existindo e passaram a ser sub-abas
-// daqui — nenhuma funcionalidade pode ficar acessível apenas por URL.
-//
-// Duplicidade conhecida, herdada e NÃO resolvida aqui: "Usuários do Portal" (cadastro rápido
-// via UserModal, grava só o núcleo do registro) e "Contas e Acessos" (UserManagement, grava o
-// registro completo, bloqueia/desbloqueia e audita) fazem coisas parecidas por caminhos
-// diferentes. A divergência já estava registrada no cabeçalho de UserManagement.jsx. Unificar
-// as duas é mudança de regra e pertence à história do hub de Administração.
+// As telas de Usuários, Perfis e Logs não são itens de primeiro nível: vivem como abas daqui.
+// A duplicidade entre "Usuários do Portal" e "Contas e Acessos", registrada desde a 0.19.0,
+// foi resolvida na 0.21.0 — sobrou uma tela só.
+/**
+ * Seções da Administração e as abas de cada uma (0.21.0).
+ *
+ * Até a 0.20.0 as três entradas do menu — Critérios, Usuários e Acessos, Sistema — caíam no
+ * MESMO painel de oito abas. O agrupamento do menu não simplificava nada: eram três portas
+ * para a mesma sala, e o cabeçalho carregava a lista inteira em qualquer uma delas.
+ *
+ * Aqui cada seção mostra só o que é dela, e os rótulos são curtos porque o contexto já foi dado
+ * pelo título da seção: dentro de "Usuários e Acessos", "Usuários" basta — "Contas e Acessos
+ * Corporativos" repetia o cabeçalho dentro da aba.
+ */
+const SECOES = {
+  criterios: {
+    titulo: 'Critérios de Avaliação',
+    subtitulo: 'A régua da monitoria: blocos, pesos, tipos de resposta e âncoras de decisão.',
+    abas: [{ id: 'criteria', label: 'Critérios' }],
+  },
+  acessos: {
+    titulo: 'Usuários e Acessos',
+    subtitulo: 'Quem entra na plataforma, sob quais perfis, e o registro do que foi feito.',
+    abas: [
+      { id: 'accounts', label: 'Usuários' },
+      { id: 'roles', label: 'Perfis' },
+      { id: 'audit-logs', label: 'Logs' },
+    ],
+  },
+  sistema: {
+    titulo: 'Sistema',
+    subtitulo: 'Estrutura da operação, regras de fluxo e identidade visual.',
+    abas: [
+      { id: 'areas', label: 'Áreas' },
+      { id: 'collaborators', label: 'Colaboradores' },
+      { id: 'settings', label: 'Fluxo' },
+      { id: 'brand', label: 'Marca' },
+    ],
+  },
+};
+
+/** Seção a que uma aba pertence. Deriva do mapa acima para não haver segunda lista a manter. */
+const SECAO_DA_ABA = Object.fromEntries(
+  Object.entries(SECOES).flatMap(([nome, s]) => s.abas.map(a => [a.id, nome])),
+);
+
+/**
+ * Critérios agrupados por bloco, na ordem oficial da metodologia.
+ *
+ * A ordem vem de CRITERION_CATEGORIES, e não da ordem de cadastro: o bloco é parte da régua —
+ * ABERTURA vem antes de ENCERRAMENTO porque o atendimento acontece nessa ordem. Blocos fora da
+ * taxonomia (cadastrados à mão) vão para o fim, visíveis em vez de descartados.
+ */
+const agruparPorBloco = (criteria) => {
+  const porBloco = new Map();
+  criteria.forEach((c) => {
+    const bloco = c.category || 'SEM BLOCO';
+    if (!porBloco.has(bloco)) porBloco.set(bloco, []);
+    porBloco.get(bloco).push(c);
+  });
+
+  const ordem = (b) => {
+    const i = CRITERION_CATEGORIES.indexOf(b);
+    return i === -1 ? CRITERION_CATEGORIES.length : i;
+  };
+
+  return [...porBloco.entries()]
+    .sort((a, b) => ordem(a[0]) - ordem(b[0]))
+    .map(([bloco, itens]) => ({
+      bloco,
+      itens: [...itens].sort((x, y) => (x.numero || 0) - (y.numero || 0)),
+    }));
+};
+
+/** Rótulos curtos por tipo de resposta. Os de RESPONSE_TYPES descrevem a escala inteira e não
+ *  cabem numa célula — aqui basta identificar o tipo. */
+const TIPO_CURTO = {
+  ESCALA_4: 'Escala',
+  SIM_NAO: 'Sim / Não',
+  CHECKLIST_SIM_NAO: 'Checklist',
+  FAIXA_TEMPO: 'Tempo',
+  MULTIPLA_ESCOLHA: 'Classificação',
+};
+
+const rotuloTipo = (c) => TIPO_CURTO[c.tipoResposta] || c.tipoResposta || '—';
+
+/**
+ * Canais do critério, resumidos.
+ *
+ * Hoje os 29 critérios valem para os 6 canais: a coluna anterior desenhava 174 selos idênticos
+ * para dizer "todos" 29 vezes. Só a exceção merece detalhe.
+ */
+const rotuloCanais = (c) => {
+  const total = (c.channels || []).length;
+  if (total === 0) return '—';
+  if (total === CHANNELS.length) return 'Todos';
+  return c.channels.map(canalLabel).join(', ');
+};
+
+/**
+ * Completude da régua: âncoras e regra de N/A.
+ *
+ * É o que a 3A.0 passou a exigir de cada critério e o que o assistente da 3A.1 vai ler. Sem
+ * isto, a lacuna só apareceria quando o agente errasse — e um critério sem âncora não tem como
+ * ser avaliado de forma consistente nem por pessoa nem por máquina.
+ *
+ * Classificação e checklist não usam âncora por valor (a régua deles é a lista de opções e as
+ * sub-perguntas), então cobrá-la ali seria inventar uma pendência que não existe.
+ */
+const selosDaRegua = (c) => {
+  const usaAncora = c.tipoResposta !== 'MULTIPLA_ESCOLHA' && c.tipoResposta !== 'CHECKLIST_SIM_NAO';
+  const selos = [];
+
+  if (usaAncora) {
+    selos.push(c.ancoras
+      ? <span key="a" className="badge-pill badge-success" style={{ fontSize: '0.62rem' }}>Âncoras</span>
+      : <span key="a" className="badge-pill badge-warning" style={{ fontSize: '0.62rem' }}>Sem âncoras</span>);
+  }
+  if (c.quandoNA) {
+    selos.push(<span key="na" className="badge-pill badge-info" style={{ fontSize: '0.62rem' }}>N/A</span>);
+  }
+
+  if (selos.length === 0) return <span style={{ color: 'var(--text-muted)' }}>—</span>;
+  return <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem' }}>{selos}</div>;
+};
+
 export const AdminScreen = ({
   brand,
   setBrand,
@@ -34,69 +153,39 @@ export const AdminScreen = ({
   setNewArea,
   setNewCollaborator,
   setShowCriterionModal,
-  setShowUserModal,
   setShowAreaModal,
   setShowCollaboratorModal,
-  renderUserAvatar
-}) => (
+}) => {
+  // Aba desconhecida cai em Critérios: é a entrada padrão da Administração e nunca deixa a
+  // tela sem cabeçalho.
+  const secao = SECOES[SECAO_DA_ABA[adminSubTab]] || SECOES.criterios;
+
+  return (
           <div className="animate-fade-in">
-            <div className="page-header" style={{ marginBottom: '1.5rem' }}>
+            <div className="page-header" style={{ marginBottom: '1.25rem' }}>
               <div>
-                <h1 className="page-title">Personalização e Controles Administrativos</h1>
-                <p className="page-subtitle">Configure regras gerais de negócio, White Label e critérios dinâmicos.</p>
+                <h1 className="page-title">{secao.titulo}</h1>
+                <p className="page-subtitle">{secao.subtitulo}</p>
               </div>
             </div>
 
-            <div className="tab-row">
-              <button 
-                className={`tab-btn ${adminSubTab === 'areas' ? 'active' : ''}`}
-                onClick={() => setAdminSubTab('areas')}
-              >
-                Áreas
-              </button>
-              <button 
-                className={`tab-btn ${adminSubTab === 'collaborators' ? 'active' : ''}`}
-                onClick={() => setAdminSubTab('collaborators')}
-              >
-                Colaboradores
-              </button>
-              <button 
-                className={`tab-btn ${adminSubTab === 'criteria' ? 'active' : ''}`}
-                onClick={() => setAdminSubTab('criteria')}
-              >
-                Critérios de Avaliação
-              </button>
-              <button 
-                className={`tab-btn ${adminSubTab === 'settings' ? 'active' : ''}`}
-                onClick={() => setAdminSubTab('settings')}
-              >
-                Configurações do Fluxo
-              </button>
-              <button 
-                className={`tab-btn ${adminSubTab === 'users' ? 'active' : ''}`}
-                onClick={() => setAdminSubTab('users')}
-              >
-                Usuários do Portal
-              </button>
-              <button 
-                className={`tab-btn ${adminSubTab === 'accounts' ? 'active' : ''}`}
-                onClick={() => setAdminSubTab('accounts')}
-              >
-                Contas e Acessos
-              </button>
-              <button 
-                className={`tab-btn ${adminSubTab === 'roles' ? 'active' : ''}`}
-                onClick={() => setAdminSubTab('roles')}
-              >
-                Perfis e Permissões
-              </button>
-              <button 
-                className={`tab-btn ${adminSubTab === 'audit-logs' ? 'active' : ''}`}
-                onClick={() => setAdminSubTab('audit-logs')}
-              >
-                Logs de Acesso
-              </button>
-            </div>
+            {/* Uma seção com aba única não mostra a barra: uma aba sozinha não oferece escolha,
+                só ocupa altura. É o caso de Critérios, que é tela e não conjunto de telas. */}
+            {secao.abas.length > 1 && (
+              <div className="tab-row" role="tablist">
+                {secao.abas.map(aba => (
+                  <button
+                    key={aba.id}
+                    role="tab"
+                    aria-selected={adminSubTab === aba.id}
+                    className={`tab-btn ${adminSubTab === aba.id ? 'active' : ''}`}
+                    onClick={() => setAdminSubTab(aba.id)}
+                  >
+                    {aba.label}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Sub-tab: Areas */}
             {adminSubTab === 'areas' && (
@@ -118,8 +207,8 @@ export const AdminScreen = ({
                     <thead>
                       <tr>
                         <th>Nome da Área</th>
-                        <th>Gestor Responsável</th>
-                        <th>Monitor Responsável</th>
+                        <th>Gestor</th>
+                        <th>Monitores</th>
                         <th>Status</th>
                         <th>Ações</th>
                       </tr>
@@ -230,9 +319,8 @@ export const AdminScreen = ({
                       orientacao: '',
                       tipoResposta: 'ESCALA_4',
                       eliminatorio: false,
-                      minExpectedScore: 7.5,
                       weight: 1.0,
-                      channels: ['Chat', 'WhatsApp'],
+                      channels: [...CHANNELS],
                       active: true
                     });
                     setShowCriterionModal(true);
@@ -241,58 +329,70 @@ export const AdminScreen = ({
                   </button>
                 </div>
 
+                {/* Grade da régua (0.21.0).
+                    Saíram três colunas: "Descrição" (truncada com reticências, ilegível — o
+                    texto segue no modal e no formulário, onde é lido de verdade), "Nota Mínima
+                    Esperada" (campo que nunca participou do cálculo) e "Categoria", que
+                    repetia o mesmo texto em até 18 linhas seguidas e agora é cabeçalho de
+                    grupo. Entraram Tipo, Peso e Régua — o que se administra desde a 3A.0. */}
                 <div className="table-responsive">
                   <table className="table-premium">
                     <thead>
                       <tr>
-                        <th>Nº</th>
-                        <th>Categoria</th>
-                        <th>Nome</th>
-                        <th>Descrição</th>
-                        <th>Nota Mínima Esperada</th>
-                        <th>Canais de Aplicação</th>
-                        <th>Status</th>
-                        <th>Ações</th>
+                        <th style={{ width: '48px' }}>Nº</th>
+                        <th>Critério</th>
+                        <th style={{ width: '120px' }}>Tipo</th>
+                        <th style={{ width: '70px' }}>Peso</th>
+                        <th style={{ width: '110px' }}>Canais</th>
+                        <th style={{ width: '110px' }}>Régua</th>
+                        <th style={{ width: '130px' }}>Status</th>
+                        <th style={{ width: '90px' }}>Ações</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {criteria.map(c => (
-                        <tr key={c.id}>
-                          <td>{c.numero || '—'}</td>
-                          <td style={{ fontSize: '0.8rem' }}>{c.category || '—'}</td>
-                          <td style={{ fontWeight: '600' }}>{c.name}</td>
-                          <td style={{ fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {c.description}
-                          </td>
-                          <td style={{ fontWeight: 'bold' }}>{c.minExpectedScore.toFixed(1)}</td>
-                          <td>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
-                              {c.channels.map(chan => (
-                                <span key={chan} className="badge-pill badge-info" style={{ fontSize: '0.62rem' }}>
-                                  {chan}
+                      {agruparPorBloco(criteria).map(({ bloco, itens }) => (
+                        <Fragment key={bloco}>
+                          <tr>
+                            <td colSpan={8} style={{ backgroundColor: 'var(--bg-main)', fontSize: '0.7rem', fontWeight: '700', letterSpacing: '0.06em', color: 'var(--text-muted)', padding: '0.5rem 0.75rem' }}>
+                              {bloco} · {itens.length} {itens.length === 1 ? 'critério' : 'critérios'}
+                            </td>
+                          </tr>
+                          {itens.map(c => (
+                            <tr key={c.id}>
+                              <td style={{ color: 'var(--text-muted)' }}>{c.numero || '—'}</td>
+                              <td style={{ fontWeight: '600' }}>{c.name}</td>
+                              <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{rotuloTipo(c)}</td>
+                              <td style={{ fontSize: '0.8rem' }}>
+                                {/* Peso 0 não é "peso zero": é o que marca classificação, que
+                                    não entra no denominador da nota. Mostrar o número faria
+                                    parecer um critério que vale nada. */}
+                                {c.weight === 0
+                                  ? <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>não pontua</span>
+                                  : <strong>{c.weight.toFixed(1)}</strong>}
+                              </td>
+                              <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{rotuloCanais(c)}</td>
+                              <td>{selosDaRegua(c)}</td>
+                              <td>
+                                <span className={`badge-pill ${c.active ? 'badge-success' : 'badge-danger'}`}>
+                                  {c.active ? 'Ativo' : 'Inativo'}
                                 </span>
-                              ))}
-                            </div>
-                          </td>
-                          <td>
-                            <span className={`badge-pill ${c.active ? 'badge-success' : 'badge-danger'}`}>
-                              {c.active ? 'Ativo' : 'Inativo'}
-                            </span>
-                            {c.eliminatorio && (
-                              <span className="badge-pill badge-danger" style={{ marginLeft: '0.25rem' }}>
-                                Eliminatório
-                              </span>
-                            )}
-                          </td>
-                          <td>
-                            <button className="btn btn-secondary btn-sm" onClick={() => {
-                              setNewCriterion(c);
-                              setShowCriterionModal(true);
-                            }}>
-                              <Edit size={12} /> Editar
-                            </button>
-                          </td>
-                        </tr>
+                                {c.eliminatorio && (
+                                  <span className="badge-pill badge-danger" style={{ marginLeft: '0.25rem' }}>
+                                    Eliminatório
+                                  </span>
+                                )}
+                              </td>
+                              <td>
+                                <button className="btn btn-secondary btn-sm" onClick={() => {
+                                  setNewCriterion(c);
+                                  setShowCriterionModal(true);
+                                }}>
+                                  <Edit size={12} /> Editar
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </Fragment>
                       ))}
                     </tbody>
                   </table>
@@ -307,7 +407,7 @@ export const AdminScreen = ({
                 {/* Workflow configuration V2 */}
                 <div className="section-card">
                   <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1rem', marginBottom: '1.25rem', fontWeight: 'bold' }}>
-                    Workflow e Validações
+                    Regras de Validação
                   </h3>
 
                   <div className="switch-group">
@@ -359,10 +459,18 @@ export const AdminScreen = ({
                   })()}
                 </div>
 
-                {/* Brand configuration */}
+              </div>
+            )}
+
+            {/* Sub-tab: Marca (0.21.0).
+                Saiu de dentro de "Configurações do Fluxo": identidade visual e regra de
+                validação não têm relação, e mantê-las na mesma aba obrigava a percorrer o
+                workflow para trocar uma cor. */}
+            {adminSubTab === 'brand' && (
+              <div className="animate-fade-in">
                 <div className="section-card">
                   <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1rem', marginBottom: '1.25rem', fontWeight: 'bold' }}>
-                    White Label Brand Config
+                    Identidade Visual
                   </h3>
 
                   <div className="form-group">
@@ -409,55 +517,6 @@ export const AdminScreen = ({
                     Restaurar Moura Leite
                   </button>
                 </div>
-
-              </div>
-            )}
-
-            {/* Sub-tab: users management */}
-            {adminSubTab === 'users' && (
-              <div className="section-card animate-fade-in">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                  <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1rem', fontWeight: 'bold', margin: 0 }}>
-                    Controle de Contas e Acessos Corporativos
-                  </h3>
-                  <button className="btn btn-primary btn-sm" onClick={() => setShowUserModal(true)}>
-                    <PlusCircle size={15} /> Adicionar Usuário
-                  </button>
-                </div>
-
-                <div className="table-responsive">
-                  <table className="table-premium">
-                    <thead>
-                      <tr>
-                        <th>Nome</th>
-                        <th>E-mail</th>
-                        <th>Papel (Role)</th>
-                        <th>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {users.map(u => (
-                        <tr key={u.id}>
-                          <td>
-                            <div className="user-cell-wrapper">
-                              {renderUserAvatar(u.name)}
-                              <span style={{ fontWeight: '600' }}>{u.name}</span>
-                            </div>
-                          </td>
-                          <td>{u.email}</td>
-                          <td>
-                            <span className="badge-pill badge-info">
-                              {perfisDe(u).map(p => ROTULO_PERFIL[p]).join(' · ') || 'Sem acesso'}
-                            </span>
-                          </td>
-                          <td>
-                            <span className="badge-pill badge-success">Ativo</span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
               </div>
             )}
 
@@ -471,4 +530,5 @@ export const AdminScreen = ({
             {adminSubTab === 'audit-logs' && <AuditLogs />}
 
           </div>
-);
+  );
+};

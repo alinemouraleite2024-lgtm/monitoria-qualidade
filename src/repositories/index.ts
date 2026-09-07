@@ -131,7 +131,7 @@ const migrateCategorias: Loader<string[]> = (stored, persist) => {
  * pelo Admin em qualquer critério ficam intactas: o cadastro da 3A.0 vai morar aqui, e uma
  * migração que sobrescrevesse o registro inteiro apagaria esse trabalho.
  */
-const CRITERIA_VERSION = 3;
+const CRITERIA_VERSION = 4;
 
 const CLASSIFICACAO_0_16: Record<string, { opcoes: string[]; active?: boolean }> = {
   'crit-01': { opcoes: ['Informação', 'Solicitação', 'Reclamação', 'Sugestão'] },
@@ -186,6 +186,18 @@ const migrateCriterios: Loader<Criterion[]> = (stored, persist) => {
   if (CRITERIO_29 && !next.some((c) => c.id === 'crit-29')) {
     next = [...next, CRITERIO_29];
   }
+
+  // 0.21.0 — `minExpectedScore` sai do registro. Era um número na escala 0-10, aposentada pela
+  // 0.14.0, e nunca foi lido por cálculo nenhum: não entrava na nota, na régua, na validação
+  // nem na instrução do assistente. Deixá-lo gravado manteria na base um campo que a próxima
+  // pessoa a ler o dado tentaria interpretar como regra.
+  next = next.map((c) => {
+    const registro = c as Criterion & { minExpectedScore?: number };
+    if (!('minExpectedScore' in registro)) return c;
+    const limpo = { ...registro };
+    delete limpo.minExpectedScore;
+    return limpo as Criterion;
+  });
 
   persist(next);
   write(KEYS.criteriaVersion, CRITERIA_VERSION);

@@ -53,7 +53,9 @@ export const PATH_MONITORING_EDIT = '/monitorings/:id/edit';
  */
 export const ADMIN_SECOES: Record<string, string> = {
   'admin-criterios': 'criteria',
-  'admin-acessos': 'users',
+  // 0.21.0: era 'users' — a aba "Usuários do Portal", que duplicava esta em pior estado
+  // (status fixo no código, sem edição). A entrada da seção passa a ser a tela completa.
+  'admin-acessos': 'accounts',
   'admin-sistema': 'areas',
 };
 
