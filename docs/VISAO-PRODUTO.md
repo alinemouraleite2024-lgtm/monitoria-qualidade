@@ -1,7 +1,22 @@
-# Visão de Produto — Cliente como entidade central
+# Visão de Produto
 
 > Documento de **direção**, não de escopo. Nada aqui está implementado.
-> Registrado em 21/08/2026, junto com a reorganização da navegação (versão 0.9.0).
+> Registrado em 21/08/2026 (versão 0.9.0). Segundo eixo acrescentado em 07/09/2026.
+
+O produto passou a ter **dois eixos de crescimento**, registrados em momentos diferentes e
+independentes entre si:
+
+| Eixo | O que muda | Seção |
+|---|---|---|
+| **Cliente** | O atendimento deixa de ser o topo do modelo; monitoria, CSAT e NPS convergem para o histórico de um cliente | abaixo |
+| **Desenvolvimento** | A monitoria deixa de terminar na nota e passa a alimentar o desenvolvimento de quem atende | no fim |
+
+Os dois se encontram no atendimento: é o mesmo registro que liga a monitoria ao cliente e ao
+atendente. Nenhum dos dois está implementado, e nenhum bloqueia o outro.
+
+---
+
+# Eixo 1 — Cliente como entidade central
 
 ## Hoje: o eixo é o colaborador
 
@@ -107,3 +122,59 @@ hub completo de Administração · Fase 1.
 
 O NPS operacional de verdade depende de backend: a persistência atual é `localStorage`, onde
 cada navegador é uma base isolada.
+
+---
+
+# Eixo 2 — Desenvolvimento dos atendentes
+
+> Registrado em 07/09/2026. **Direção, não escopo.** O documento conceitual do módulo será
+> escrito depois que a operação real da monitoria estiver rodando — por decisão explícita: um
+> módulo de desenvolvimento desenhado antes de existir histórico de notas seria desenhado no
+> vazio.
+
+## A mudança
+
+O MonitorIA nasceu para **avaliar atendimentos**. A monitoria termina numa nota, num relatório
+e numa conversa de feedback que acontece fora do sistema.
+
+A direção agora é que ele também seja a plataforma onde o atendente **se desenvolve** — o que
+significa que a monitoria deixa de ser o fim do processo e passa a ser a matéria-prima dele.
+
+## O que a direção prevê
+
+- **Histórico de notas por colaborador** — a série ao longo das competências, não só o registro
+  de cada monitoria isolada.
+- **Acompanhamento de evolução** — por bloco e por critério, com leitura de tendência.
+- **Focos de desenvolvimento** — critérios ou blocos que a gestão elege para acompanhar em um
+  período, sem alterar peso, régua, nota ou metodologia. Existem para medir progresso, e por
+  isso ficam **fora do formulário de avaliação**: uma monitora que sabe qual é o foco antes de
+  avaliar deixa de produzir o dado que mede aquele foco.
+- **Feedbacks recorrentes** — o registro do que foi conversado, e a continuidade entre uma
+  conversa e a seguinte. Hoje `strengths` e `opportunities` guardam texto por monitoria, sem
+  fio entre elas.
+- **Visualização para o atendente** — a colaboradora avaliada passa a ver a própria evolução.
+  É a mudança mais significativa de público: até aqui o sistema tem três perfis e nenhum deles
+  é a pessoa avaliada.
+- **Substituição do PDI**, hoje conduzido fora do MonitorIA.
+
+## Uma consequência de modelo, registrada desde já
+
+Hoje `Collaborator` é **objeto de avaliação**, não usuário: quem é avaliado não acessa a
+plataforma (`perfis: []`). "Visualização para os atendentes" muda isso — a colaboradora passa a
+ser também alguém que entra, com um perfil próprio e escopo restrito aos próprios dados.
+
+Isso não é um ajuste de tela: mexe em `User` × `Collaborator`, na matriz de permissões e no
+escopo de leitura. É a decisão estruturante do eixo, e é o que o documento conceitual terá de
+resolver primeiro.
+
+## O que vem antes — prioridade declarada em 07/09/2026
+
+Nenhuma linha do eixo 2 é escrita antes de a operação real acontecer:
+
+1. Operação real da monitoria
+2. Cadastro dos gestores
+3. Configuração das áreas
+4. Uso do fluxo completo, ponta a ponta
+
+O motivo é direto: acompanhamento de evolução sem histórico de notas reais é gráfico de dado
+inventado, e este projeto já removeu esse tipo de tela mais de uma vez.
