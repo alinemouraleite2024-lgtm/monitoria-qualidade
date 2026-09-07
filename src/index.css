@@ -174,6 +174,57 @@ body {
   margin-top: 0.25rem;
 }
 
+/* Abas da Administração (0.21.0).
+   As classes `tab-row` e `tab-btn` eram usadas no AdminScreen desde sempre, mas NÃO EXISTIAM em
+   nenhum arquivo de estilo. O resultado era o botão nativo do navegador: `border: outset 2px`
+   — a borda 3D do Windows 95 —, fundo cinza do sistema, Arial 13px e os oito botões empilhados
+   em 318px de altura antes de o conteúdo começar. A "aparência de sistema antigo" era literal.
+
+   Sublinhado em vez de caixa: a aba ativa é um estado de navegação, não um botão de ação, e
+   competir visualmente com os botões primários da tela confundia as duas coisas. */
+.tab-row {
+  display: flex;
+  gap: 0.25rem;
+  align-items: stretch;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.tab-btn {
+  flex: 0 0 auto;
+  padding: 0.6rem 1rem;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 6px 6px 0 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+}
+
+.tab-btn:hover {
+  color: var(--text-main);
+  background-color: var(--bg-main);
+}
+
+.tab-btn.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  background-color: transparent;
+  cursor: default;
+}
+
+.tab-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
 /* Troca de contexto (0.20.0). Os perfis aparecem lado a lado, e não num seletor suspenso:
    quem tem dois perfis alterna entre eles com frequência, e um <select> pediria dois cliques
    para uma escolha binária. O contorno marca o ativo sem depender só de cor. */

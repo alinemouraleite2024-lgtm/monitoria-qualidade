@@ -5,6 +5,76 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.21.0] - 2026-09-07 — Usabilidade da Administração
+
+> A Administração "parecia sistema antigo" por um motivo literal: as classes `tab-row` e
+> `tab-btn` eram usadas desde sempre e **não existiam em nenhum arquivo de estilo**. As abas
+> eram botões nativos do navegador, com `border: outset 2px` — a borda 3D do Windows 95 —,
+> fonte Arial 13px e 318px de altura empilhados antes de o conteúdo começar.
+
+### Changed
+
+- **As abas ganharam estilo** e a barra passou de 318px para 39px, com a fonte do produto.
+- **Cada seção do menu mostra só as suas abas.** Até a 0.20.0 as três entradas — Critérios,
+  Usuários e Acessos, Sistema — caíam no mesmo painel de oito abas: eram três portas para a
+  mesma sala, e o agrupamento do menu não simplificava nada. Agora: **Critérios** é tela única
+  (uma aba sozinha não oferece escolha, só ocupa altura), **Usuários e Acessos** tem três
+  (Usuários · Perfis · Logs) e **Sistema** tem quatro (Áreas · Colaboradores · Fluxo · Marca).
+- **"Marca" saiu de dentro de "Configurações do Fluxo"** e virou aba própria. Identidade visual
+  e regra de validação não têm relação; juntas, obrigavam a percorrer o workflow para trocar
+  uma cor.
+- **A grade de Critérios foi refeita** para a metodologia atual. Saíram três colunas: a
+  *Descrição* (truncada com reticências, ilegível — o texto segue no modal e no formulário,
+  onde é lido), a *Nota Mínima Esperada* e a *Categoria*, que repetia o mesmo texto em até nove
+  linhas seguidas e virou cabeçalho de grupo. Entraram **Tipo**, **Peso** e **Régua** — o que
+  se administra desde a 3A.0. Os critérios passam a aparecer agrupados por bloco, na ordem da
+  metodologia.
+- **Canais viraram um resumo.** Os 29 critérios valem para os mesmos 6 canais: a coluna
+  desenhava 174 selos idênticos para dizer "todos" 29 vezes. Agora só a exceção tem detalhe.
+- **Peso 0 aparece como "não pontua"**, que é o que ele significa — critério de classificação,
+  fora do denominador da nota — em vez de um número que sugeria um critério sem valor.
+- **A tela de Perfis foi reescrita em linguagem de negócio.** Era uma lista de nomes técnicos
+  em monospace (`VIEW_DASHBOARD`) que mandava "solicitar à equipe técnica a atualização do
+  arquivo `auth.js`". Virou uma tabela perfil × acesso, derivada de `PERMISSIONS` — a mesma
+  fonte que o RouteGuard consulta, de modo que o que a tela mostra é, por construção, o que o
+  sistema faz.
+- Nomenclaturas corrigidas: "Monitor Responsável" → **Monitores** (a área tem vários desde a
+  0.16.0), "Gestor Responsável" → **Gestor**, "Workflow e Validações" → **Regras de Validação**,
+  "White Label Brand Config" → **Identidade Visual**, e o rótulo da escala, que prometia
+  *"Ótimo / Bom / Regular / Ruim"* enquanto o formulário mostra **Excelente / Parcial / Não
+  realizou** — quatro níveis que não existem em lugar nenhum.
+
+### Removed
+
+- **`Criterion.minExpectedScore`**, do modelo, do seed, do formulário e dos registros gravados.
+  Era um número na escala 0-10, aposentada pela 0.14.0, e **nunca participou de cálculo algum**:
+  não entrava na nota, na régua, na validação nem na instrução do assistente. Nos 29 critérios
+  assumia apenas dois valores (0 e 2), e o padrão de um critério novo era 7,5 — herança de uma
+  escala que não existe. Ficava na tela sugerindo uma regra que o sistema não aplicava.
+- **A aba "Usuários do Portal"**, que duplicava "Contas e Acessos" em pior estado: não editava,
+  não bloqueava, e sua listagem mostrava **todo mundo como "Ativo"**, com o valor fixo no
+  código, independentemente do status real. Sobrou uma tela só.
+- **A coluna "IP (Simulado)" dos Logs** e a geração do valor. O endereço vinha de
+  `Math.random()`: um IP inventado numa trilha de auditoria é pior que nenhum, porque dá
+  aparência de rastreabilidade a algo que não rastreia.
+- **O botão "Filtros Avançados" dos Logs**, que não tinha nenhum `onClick` no arquivo.
+
+### Fixed
+
+- **A tela de Perfis exibia onze permissões que não existem mais** — removidas na 0.19.0 —
+  cada uma com ✗ vermelho, indistinguível de uma permissão negada. Ao mesmo tempo, quatro
+  permissões reais não estavam em grupo nenhum e não apareciam. A tela afirmava, com confiança,
+  coisas falsas sobre o sistema.
+- **O campo Peso impedia o valor 0** (`min="0.1"`), que é justamente o que marca critério de
+  classificação. Oito dos 29 critérios da régua não poderiam ser cadastrados pela própria tela.
+- Um critério novo nascia com apenas dois canais (`Chat`, `WhatsApp`) enquanto toda a régua usa
+  os seis; passa a nascer com todos.
+
+### Migration
+
+- `pm2_criteria_version` 3 → 4, removendo `minExpectedScore` dos critérios já gravados. Marcador
+  próprio, **nunca `DATABASE_VERSION`**.
+
 ## [0.20.0] - 2026-09-04 — Perfis múltiplos e perfil ativo
 
 > O sistema tinha um papel por pessoa. Quem administrava e monitorava só cabia nisso por meio

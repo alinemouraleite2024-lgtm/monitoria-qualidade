@@ -38,7 +38,6 @@ export const logAuthEvent = (
     userRole: perfilAtivo || 'N/A',
     actionDetails: details,
     timestamp: new Date().toISOString(),
-    ip: '192.168.' + Math.floor(Math.random() * 255) + '.' + Math.floor(Math.random() * 255) // IP simulado
   };
   
   const existingLogs: AuthLogEntry[] = JSON.parse(localStorage.getItem('pm2_auth_logs') || '[]');
