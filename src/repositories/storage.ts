@@ -32,6 +32,8 @@ export const KEYS = {
   // usuários já gravados. Alcançar a base existente por marcador é o que evita recorrer a
   // DATABASE_VERSION, que apagaria toda a configuração para converter um campo.
   usersPerfisVersion: 'pm2_users_perfis_version',
+  // 0.22.0: a competência deixou de ser deduzida de `date` e passou a ser campo próprio.
+  monitoringsCompetenciaVersion: 'pm2_monitorings_competencia_version',
   authSession: 'pm2_auth_session',
 } as const;
 

@@ -29,7 +29,7 @@
 
 import type { Canal, ColaboradorGoal, Monitoring } from '../types/domain';
 import type { Period } from './period';
-import { isInPeriod } from './period';
+import { naCompetencia } from './period';
 import {
   countsForCarteiraGoal,
   countsOutsideCarteira,
@@ -141,7 +141,7 @@ const doEscopo = (
     (m) =>
       m.monitorId === goal.monitorId &&
       m.colaboradorId === goal.colaboradorId &&
-      isInPeriod(m.date, period) &&
+      naCompetencia(m.competencia, period) &&
       countsForCarteiraGoal(m) &&
       (!goal.canal || m.canal === goal.canal)
   );
@@ -215,7 +215,7 @@ export const getCarteiraProgress = (
   const { target, hasGoal } = getCarteiraTarget(goals, monitorId, period);
 
   const doPeriodo = monitorings.filter(
-    (m) => m.monitorId === monitorId && isInPeriod(m.date, period)
+    (m) => m.monitorId === monitorId && naCompetencia(m.competencia, period)
   );
   const daCarteira = doPeriodo.filter(countsForCarteiraGoal);
 

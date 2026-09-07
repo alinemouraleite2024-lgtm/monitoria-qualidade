@@ -122,9 +122,8 @@ import {
 import {
   todayISO,
   getCurrentPeriod,
-  isInPeriod,
+  naCompetencia,
   periodLabel,
-  periodRange,
   previousPeriod,
   nextPeriod,
   businessDaysRemainingIn,
@@ -409,7 +408,12 @@ function AppContent() {
   //
   // O período agora é um Period de verdade, navegável, e a faixa de datas é derivada dele —
   // não há mais como a data exibida divergir da data consultada.
+  // Cada tela tem o seu período. A fila de Monitorias fica de fora de propósito: ela responde
+  // "o que eu preciso fazer agora", e navegar por competências ali transformaria a tela de
+  // trabalho em tela de consulta — que é o papel de Relatórios.
   const [reportPeriod, setReportPeriod] = useState(() => getCurrentPeriod());
+  const [planningPeriod, setPlanningPeriod] = useState(() => getCurrentPeriod());
+  const [dashboardPeriod, setDashboardPeriod] = useState(() => getCurrentPeriod());
   // 2B.5: os filtros do histórico deixaram de ser estado interno da tabela e subiram para cá.
   // Enquanto viviam lá dentro, a exportação usava outro caminho e levava um conjunto diferente
   // do exibido — a tela mostrava 2 linhas e o botão exportava 4. Agora há um conjunto só.
@@ -765,12 +769,12 @@ function AppContent() {
   // como fonte única, o formulário que a alimentava saiu do Planejamento e o handler saiu
   // daqui. Os registros já gravados em pm2_mgoals permanecem intocados — nada os lê.
   //
-  // A meta passou a ser gravada no período de competência corrente. Antes, os dois handlers
-  // fixavam `year: 2026, month: 5`: definir uma meta em agosto gravava a meta de junho, sem
-  // que a tela dissesse isso.
+  // A meta é gravada no período ESCOLHIDO na tela (0.22.0). Antes era sempre o mês corrente,
+  // o que impedia cadastrar meta retroativa — e sem meta na competência, o progresso daquele
+  // mês não tem denominador. Reconstruir o histórico desde janeiro depende disto.
   const handleUpdateColabGoal = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const { year, month } = periodoAtual;
+    const { year, month } = planningPeriod;
     const canal = newCGoalVal.canal ? (newCGoalVal.canal as Canal) : undefined;
 
     // 2A.6.3: bloqueio da combinação proibida.
@@ -792,7 +796,7 @@ function AppContent() {
 
     if (canal && jaTemGeral) {
       alert(
-        `${nome} já tem uma meta geral em ${periodLabel(periodoAtual)}.
+        `${nome} já tem uma meta geral em ${periodLabel(planningPeriod)}.
 
 `
         + 'Meta geral e meta por canal não podem coexistir: remova a meta geral no quadro ao '
@@ -802,7 +806,7 @@ function AppContent() {
     }
     if (!canal && jaTemPorCanal) {
       alert(
-        `${nome} já tem metas por canal em ${periodLabel(periodoAtual)}.
+        `${nome} já tem metas por canal em ${periodLabel(planningPeriod)}.
 
 `
         + 'Meta geral e meta por canal não podem coexistir: remova as metas por canal no '
@@ -836,7 +840,7 @@ function AppContent() {
       }]);
     }
     const escopo = canal ? canalLabel(canal) : 'geral';
-    alert(`Meta ${escopo} de ${nome} atualizada para ${periodLabel(periodoAtual)}.`);
+    alert(`Meta ${escopo} de ${nome} atualizada para ${periodLabel(planningPeriod)}.`);
   };
 
   // Exclusão de meta. Não existia: o formulário só criava e atualizava, então trocar uma
@@ -849,7 +853,7 @@ function AppContent() {
       ?? users.find(u => u.id === alvo.colaboradorId)?.name
       ?? 'a colaboradora';
     const escopo = alvo.canal ? canalLabel(alvo.canal) : 'geral';
-    if (!confirm(`Remover a meta ${escopo} de ${nome} em ${periodLabel(periodoAtual)}?`)) return;
+    if (!confirm(`Remover a meta ${escopo} de ${nome} em ${periodLabel(planningPeriod)}?`)) return;
     setColaboradorGoals(colaboradorGoals.filter(g => g.id !== goalId));
   };
 
@@ -939,16 +943,17 @@ function AppContent() {
   };
 
   // Filter monitorings list for view
-  /** Registros da competência selecionada, antes dos filtros do usuário. */
-  const monitoriasDoPeriodo = React.useMemo(() => {
-    const { startDate, endDate } = periodRange(reportPeriod);
-    const de = new Date(startDate + 'T00:00:00Z');
-    const ate = new Date(endDate + 'T23:59:59Z');
-    return monitorings.filter(m => {
-      const d = new Date(m.date);
-      return d >= de && d <= ate;
-    });
-  }, [monitorings, reportPeriod]);
+  /**
+   * Registros da competência selecionada, antes dos filtros do usuário.
+   *
+   * 0.22.0 — era um intervalo de datas montado com `periodRange`, duas conversões para `Date` e
+   * comparação em UTC. Toda essa aritmética existia para responder "esta monitoria é deste
+   * mês?", que agora o próprio registro responde.
+   */
+  const monitoriasDoPeriodo = React.useMemo(
+    () => monitorings.filter(m => naCompetencia(m.competencia, reportPeriod)),
+    [monitorings, reportPeriod],
+  );
 
   /**
    * O conjunto único de Relatórios.
@@ -979,7 +984,7 @@ function AppContent() {
 
     return base.filter(c => !monitorings.some(m =>
       m.colaboradorId === c.id
-      && isInPeriod(m.date, periodoAtual)
+      && naCompetencia(m.competencia, periodoAtual)
       && countsForCarteiraGoal(m)
     ));
   };
@@ -1006,7 +1011,7 @@ function AppContent() {
     // 0.14.0: o CSV passou a levar os identificadores, a categoria e a janela do atendimento.
     // Até aqui ele exportava a monitoria sem nenhuma chave que a ligasse ao atendimento — quem
     // recebia a planilha não tinha como cruzá-la com nada.
-    csvContent += 'ID,Data,Monitor,Colaborador,No Atendimento,No Protocolo,No Titulo,Categoria,Canal,Tipo,Inicio,Encerramento,Duracao,Status,Nota Final,Comentarios\n';
+    csvContent += 'ID,Competencia,Data do Atendimento,Monitor,Colaborador,No Atendimento,No Protocolo,No Titulo,Categoria,Canal,Tipo,Inicio,Encerramento,Duracao,Status,Nota Final,Comentarios\n';
     const filtered = getFilteredMonitorings();
     filtered.forEach(m => {
       const mon = users.find(u => u.id === m.monitorId)?.name || 'N/A';
@@ -1014,7 +1019,7 @@ function AppContent() {
       const formattedDate = new Date(m.date).toLocaleDateString('pt-BR');
       const cleanComments = (m.comments ?? '').replace(/"/g, '""');
       const fmtDataHora = (v?: string) => (v ? new Date(v).toLocaleString('pt-BR') : '');
-      csvContent += `"${m.id}","${formattedDate}","${mon}","${col}","${m.numeroAtendimento ?? ''}","${m.protocolo ?? ''}","${m.numeroTitulo ?? ''}","${m.categoriaAtendimento ?? ''}","${canalLabel(m.canal)}","${m.tipo}","${fmtDataHora(m.inicioAtendimento)}","${fmtDataHora(m.fimAtendimento)}","${exibirDuracao(m.duracaoMinutos, m.tempo)}","${m.status}","${m.finalScore.toFixed(2)}%","${cleanComments}"\n`;
+      csvContent += `"${m.id}","${m.competencia ?? ''}","${formattedDate}","${mon}","${col}","${m.numeroAtendimento ?? ''}","${m.protocolo ?? ''}","${m.numeroTitulo ?? ''}","${m.categoriaAtendimento ?? ''}","${canalLabel(m.canal)}","${m.tipo}","${fmtDataHora(m.inicioAtendimento)}","${fmtDataHora(m.fimAtendimento)}","${exibirDuracao(m.duracaoMinutos, m.tempo)}","${m.status}","${m.finalScore.toFixed(2)}%","${cleanComments}"\n`;
     });
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
@@ -1160,8 +1165,9 @@ function AppContent() {
                     getUnmonitoredCollaborators={getUnmonitoredCollaborators}
                     getCarteiraDe={getCarteiraDe}
                     businessDaysRemaining={businessDaysRemaining}
-                    periodoAtual={periodoAtual}
-                    periodoLabel={periodLabel(periodoAtual)}
+                    periodoAtual={dashboardPeriod}
+                    periodoLabel={periodLabel(dashboardPeriod)}
+                    onPeriodoChange={setDashboardPeriod}
                   />
               </Screen>
             } />
@@ -1173,8 +1179,9 @@ function AppContent() {
                     collaborators={collaborators}
                     monitorings={monitorings}
                     colaboradorGoals={colaboradorGoals}
-                    periodoAtual={periodoAtual}
-                    periodoLabel={periodLabel(periodoAtual)}
+                    periodoAtual={planningPeriod}
+                    periodoLabel={periodLabel(planningPeriod)}
+                    onPeriodoChange={setPlanningPeriod}
                     newCGoalVal={newCGoalVal}
                     setNewCGoalVal={setNewCGoalVal}
                     onUpdateColabGoal={handleUpdateColabGoal}
@@ -1242,6 +1249,31 @@ function AppContent() {
               </Screen>
             } />
 
+            {/* Lançamento retroativo (0.22.0). Mesmo formulário, mesma régua — o que muda é a
+                permissão que abre a rota, o status final e a marca de origem. Rota própria, e
+                não um parâmetro em /monitorings/new, porque a permissão é outra: quem monitora
+                registra o mês corrente; reabrir um mês fechado é decisão de gestão. */}
+            <Route path="/monitorings/retroativa" element={
+              <Screen tab="monitoring-retroativa" perfil={perfilAtivo}>
+                  <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
+                    <MonitoringForm
+                      modoRetroativo
+                      users={users}
+                      collaborators={getCollaborators()}
+                      criteria={criteria}
+                      currentUser={currentUser}
+                      monitorings={monitorings}
+                      areas={areas}
+                      settings={settings}
+                      catalogCategorias={catalogCategorias}
+                      onAddCategoria={handleAddCategoria}
+                      onClose={() => navigate('/reports')}
+                      onSave={handleSaveFormMonitoring}
+                    />
+                  </div>
+              </Screen>
+            } />
+
             <Route path="/monitorings/:id/edit" element={
               <Screen tab="monitoring-edit" perfil={perfilAtivo}>
                 {editingMonitoring ? (
@@ -1286,6 +1318,8 @@ function AppContent() {
                         onDelete={hasPermission(perfilAtivo, 'DELETE_MONITORING') ? handleCancelMonitoring : undefined}
                       />
                     }
+                    periodo={reportPeriod}
+                    onPeriodoChange={setReportPeriod}
                     periodoLabel={periodLabel(reportPeriod)}
                     periodoAnteriorLabel={periodLabel(previousPeriod(reportPeriod))}
                     periodoSeguinteLabel={periodLabel(nextPeriod(reportPeriod))}
@@ -1293,6 +1327,7 @@ function AppContent() {
                     onPeriodoSeguinte={() => setReportPeriod(nextPeriod(reportPeriod))}
                     totalNoPeriodo={monitoriasDoPeriodo.length}
                     totalRegistros={monitoriasFiltradas.length}
+                    onLancarRetroativa={hasPermission(perfilAtivo, 'LANCAR_RETROATIVO') ? () => navigate('/monitorings/retroativa') : undefined}
                     onExportExcel={handleExportExcel}
                     onExportPDF={handleExportPDF}
                   />

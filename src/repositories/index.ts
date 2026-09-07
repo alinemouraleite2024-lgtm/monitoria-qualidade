@@ -23,11 +23,14 @@ import {
   OFFICIAL_CATEGORIAS,
   OFFICIAL_CATEGORIAS_V1,
 } from '../constants/catalogData';
+import { competenciaDe } from '../domain/period';
 import type { Criterion, LegacyMonitoring, Monitoring, Role, User } from '../types/domain';
 
 // Migrações silenciosas aplicadas no carregamento de monitorias.
 // Transcritas do inicializador anterior à F0-12 sem alteração de regra: convertem dados
 // gravados por versões antigas da aplicação. Remover isto corromperia sessões existentes.
+const MONITORINGS_COMPETENCIA_VERSION = 1;
+
 const migrateMonitorings = (
   parsed: Monitoring[],
   persist: (value: Monitoring[]) => void,
@@ -78,7 +81,25 @@ const migrateMonitorings = (
 
   // Única asserção de tipo da camada, e deliberada: aqui termina a fronteira legada. As duas
   // migrações acima são exatamente o que converte LegacyMonitoring em Monitoring.
-  const migradas = result as unknown as Monitoring[];
+  let migradas = result as unknown as Monitoring[];
+
+  // Migração 3 (0.22.0) — competência explícita.
+  //
+  // `competencia = date.slice(0, 7)` **preserva exatamente o comportamento atual**: até aqui a
+  // competência já era o mês de `date`, deduzido a cada leitura. Nenhuma monitoria muda de mês;
+  // o que muda é que o eixo passa a estar declarado em vez de inferido de um campo cujo rótulo
+  // na tela era só "Data".
+  //
+  // Marcador próprio, como as demais desta família: converter um campo não pode disparar a
+  // limpeza geral do armazenamento.
+  if (read<number>(KEYS.monitoringsCompetenciaVersion, 0) < MONITORINGS_COMPETENCIA_VERSION) {
+    migradas = migradas.map((m) =>
+      m.competencia ? m : { ...m, competencia: competenciaDe(m.date) },
+    );
+    write(KEYS.monitoringsCompetenciaVersion, MONITORINGS_COMPETENCIA_VERSION);
+    needsSave = true;
+  }
+
   if (needsSave) persist(migradas);
   return migradas;
 };

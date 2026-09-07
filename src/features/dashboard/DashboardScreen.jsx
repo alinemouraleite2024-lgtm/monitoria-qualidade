@@ -1,3 +1,4 @@
+import { SeletorCompetencia } from '../../shared/components/SeletorCompetencia';
 import { FileSpreadsheet, CheckCircle2, AlertTriangle, Layers, Award, TrendingUp, Clock } from 'lucide-react';
 import { getMetaDaColaboradora, getEscoposDaColaboradora } from '../../domain/goalService';
 import { canalLabel } from '../../constants/canais';
@@ -23,7 +24,8 @@ export const DashboardScreen = ({
   getCarteiraDe,
   businessDaysRemaining,
   periodoAtual,
-  periodoLabel
+  periodoLabel,
+  onPeriodoChange
 }) => (
           <div className="animate-fade-in">
             <div className="page-header" style={{ marginBottom: '1.5rem' }}>
@@ -32,6 +34,11 @@ export const DashboardScreen = ({
                   {perfilAtivo === 'GESTOR' || perfilAtivo === 'ADMIN' ? 'Dashboard Executivo de Qualidade' : 'Painel Operacional do Monitor'}
                 </h1>
                 <p className="page-subtitle">Produtividade, cumprimento de metas e fluxo das avaliações — competência de {periodoLabel}.</p>
+                {/* 0.22.0 — o Painel respondia sempre sobre o mês corrente. Com histórico
+                    desde janeiro, comparar competências passa a ser o uso principal dele. */}
+                <div style={{ marginTop: '0.75rem' }}>
+                  <SeletorCompetencia periodo={periodoAtual} onChange={onPeriodoChange} />
+                </div>
               </div>
               { (perfilAtivo === 'GESTOR' || perfilAtivo === 'ADMIN') && (
                 <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

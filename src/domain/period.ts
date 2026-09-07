@@ -117,3 +117,40 @@ export const businessDaysRemainingIn = (
   if (!isInPeriod(fromDateStr, period)) return 0;
   return getBusinessDaysRemaining(period.year, period.month, fromDateStr);
 };
+
+// ---------------------------------------------------------------------------
+// Competência gravada na monitoria (0.22.0)
+// ---------------------------------------------------------------------------
+//
+// DUAS CONVENÇÕES DE MÊS, e a conversão entre elas acontece só aqui.
+//
+// `Period.month` é 0-indexado porque as metas já estão gravadas assim desde antes da 2A.1 —
+// mudar deslocaria toda meta existente em um mês, em silêncio.
+//
+// `Monitoring.competencia` é 'YYYY-MM' com mês 1-indexado, porque '2026-08' precisa significar
+// agosto para qualquer pessoa que abra o armazenamento. String também porque é comparável
+// direto e ordenável, e porque não atravessa fuso: `periodOf` precisa de tratamento especial
+// para não devolver julho no dia 1º de agosto, e a competência não tem esse problema.
+
+/** Period -> 'YYYY-MM'. */
+export const periodToCompetencia = ({ year, month }: Period): string =>
+  `${year}-${String(month + 1).padStart(2, '0')}`;
+
+/** 'YYYY-MM' -> Period. Entrada inválida devolve o período corrente, nunca uma data impossível. */
+export const competenciaToPeriod = (competencia: string): Period => {
+  const m = /^(\d{4})-(\d{2})$/.exec(competencia || '');
+  if (!m) return getCurrentPeriod();
+  return { year: Number(m[1]), month: Number(m[2]) - 1 };
+};
+
+/** Competência a que uma data pertence. Usada pela migração e pelo padrão do formulário. */
+export const competenciaDe = (dateStr: string): string =>
+  periodToCompetencia(periodOf(dateStr));
+
+/** Rótulo de uma competência gravada: "Agosto de 2026". */
+export const competenciaLabel = (competencia: string): string =>
+  periodLabel(competenciaToPeriod(competencia));
+
+/** A monitoria pertence a este período? Substitui `isInPeriod(m.date, period)`. */
+export const naCompetencia = (competencia: string, period: Period): boolean =>
+  competencia === periodToCompetencia(period);

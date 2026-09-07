@@ -1,3 +1,4 @@
+import { SeletorCompetencia } from '../../shared/components/SeletorCompetencia';
 import { Trash2 } from 'lucide-react';
 import { getEscopoProgresso, getMetaDaColaboradora, assertMetasConsistentes } from '../../domain/goalService';
 import { CANAIS, canalLabel } from '../../constants/canais';
@@ -23,6 +24,7 @@ export const PlanningScreen = ({
   monitorings = /** @type {import('../../types/domain').Monitoring[]} */ ([]),
   colaboradorGoals = /** @type {import('../../types/domain').ColaboradorGoal[]} */ ([]),
   periodoAtual,
+  onPeriodoChange,
   periodoLabel,
   newCGoalVal,
   setNewCGoalVal,
@@ -69,11 +71,19 @@ export const PlanningScreen = ({
     <div className="animate-fade-in">
       <div className="page-header" style={{ marginBottom: '1.5rem' }}>
         <div>
-          <h1 className="page-title">Planejamento e Metas Operacionais</h1>
+          <h1 className="page-title">Metas</h1>
           <p className="page-subtitle">
             Defina quantas monitorias cada colaboradora deve receber na competência de {periodoLabel}.
           </p>
         </div>
+        {/* 0.22.0 — a tela respondia sempre sobre o mês corrente, o que tornava impossível
+            cadastrar meta retroativa. Sem meta na competência, o progresso daquele mês fica
+            sem denominador, e é isso que o histórico desde janeiro precisa ter. */}
+        <SeletorCompetencia
+          periodo={periodoAtual}
+          onChange={onPeriodoChange}
+          titulo="Competência"
+        />
       </div>
 
       {inconsistencias.length > 0 && (

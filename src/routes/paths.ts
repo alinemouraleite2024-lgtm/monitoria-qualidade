@@ -14,6 +14,8 @@ export const TABS: string[] = [
 ];
 
 export const MONITORING_NEW = 'monitoring-new';
+/** Lançamento retroativo (0.22.0): mesmo formulário, permissão e destino próprios. */
+export const MONITORING_RETROATIVA = 'monitoring-retroativa';
 export const MONITORING_EDIT = 'monitoring-edit';
 
 /**
@@ -43,6 +45,7 @@ export const ENTRADA_POR_PERFIL: Record<string, string> = {
 export const PATH_LOGIN = '/login';
 
 export const PATH_MONITORING_NEW = '/monitorings/new';
+export const PATH_MONITORING_RETROATIVA = '/monitorings/retroativa';
 export const PATH_MONITORING_EDIT = '/monitorings/:id/edit';
 
 /**
@@ -67,6 +70,7 @@ export interface TabFromPath {
 
 export const tabToPath = (tab: string, monitoringId: string | null = null): string => {
   if (tab === MONITORING_NEW) return PATH_MONITORING_NEW;
+  if (tab === MONITORING_RETROATIVA) return PATH_MONITORING_RETROATIVA;
   if (tab === MONITORING_EDIT) {
     return monitoringId ? `/monitorings/${encodeURIComponent(monitoringId)}/edit` : '/monitorings';
   }
@@ -84,6 +88,7 @@ export const pathToTab = (pathname: string): TabFromPath => {
     return { tab: 'monitorings', monitoringId: null };
   }
   if (clean === PATH_MONITORING_NEW) return { tab: MONITORING_NEW, monitoringId: null };
+  if (clean === PATH_MONITORING_RETROATIVA) return { tab: MONITORING_RETROATIVA, monitoringId: null };
 
   const edit = clean.match(/^\/monitorings\/([^/]+)\/edit$/);
   if (edit) return { tab: MONITORING_EDIT, monitoringId: decodeURIComponent(edit[1]) };

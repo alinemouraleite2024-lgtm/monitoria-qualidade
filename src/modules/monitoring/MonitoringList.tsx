@@ -167,7 +167,7 @@ export const MonitoringList = ({
                 <th>Colaborador Avaliado</th>
                 <th>Monitor</th>
                 <th>Canal</th>
-                <th>Data</th>
+                <th>Atendimento</th>
                 <th>Nota</th>
                 <th>Status</th>
                 <th style={{ textAlign: 'right' }}>Ações</th>
@@ -199,6 +199,11 @@ export const MonitoringList = ({
                     <span className={getStatusBadge(m.status)}>{m.status}</span>
                     {m.zerada && (
                       <span className="badge-pill badge-danger" style={{ marginLeft: '0.25rem' }}>Zerada</span>
+                    )}
+                    {/* Uma monitoria que nunca passou por validação real não pode ser
+                        indistinguível de uma que passou. */}
+                    {m.lancamentoRetroativo && (
+                      <span className="badge-pill badge-warning" style={{ marginLeft: '0.25rem' }}>Retroativa</span>
                     )}
                     {!m.zerada && m.eliminatoryPending && (
                       <span className="badge-pill badge-danger" style={{ marginLeft: '0.25rem' }}>Elim. Pendente</span>

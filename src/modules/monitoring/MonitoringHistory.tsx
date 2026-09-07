@@ -3,6 +3,7 @@ import { X, FileText, Check, AlertCircle } from 'lucide-react';
 import { getScoreConcept } from '../../scoreUtils';
 import { canalLabel } from '../../constants/canais';
 import { exibirDuracao } from '../../domain/duracao';
+import { competenciaLabel } from '../../domain/period';
 import { podeValidar } from '../../domain/validacaoService';
 import type { Collaborator, Criterion, Monitoring, Role, User } from '../../types/domain';
 
@@ -100,8 +101,15 @@ export const MonitoringHistory = ({
               <div style={{ fontSize: '0.9rem', fontWeight: '500' }}>{canalLabel(monitoring.canal)}</div>
             </div>
             <div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>Data</div>
-              <div style={{ fontSize: '0.9rem', fontWeight: '500' }}>{new Date(monitoring.date).toLocaleString('pt-BR')}</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>Competência</div>
+              <div style={{ fontSize: '0.9rem', fontWeight: '500' }}>
+                {monitoring.competencia ? competenciaLabel(monitoring.competencia) : '—'}
+                {monitoring.lancamentoRetroativo && (
+                  <span className="badge-pill badge-warning" style={{ marginLeft: '0.4rem', fontSize: '0.65rem' }}>
+                    Retroativa
+                  </span>
+                )}
+              </div>
             </div>
             <div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>Status Atual</div>

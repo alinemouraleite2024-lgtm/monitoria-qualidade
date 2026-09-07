@@ -9,6 +9,7 @@ import { SearchableSelect } from '../../components/SearchableSelect';
 import { CANAIS, canalLabel } from '../../constants/canais';
 import { getScoreConcept } from '../../scoreUtils';
 import { calcularDuracao, formatarDuracao } from '../../domain/duracao';
+import { competenciaDe, competenciaLabel, getCurrentPeriod, periodToCompetencia } from '../../domain/period';
 import { gerarIdMonitoria, gerarProtocolo } from '../../domain/identificadores';
 import { getCriteriosBloqueados, temConflitoDeAutenticacao } from '../../domain/criterionGating';
 import { temPerfil } from '../../domain/perfis';
@@ -54,6 +55,12 @@ export interface MonitoringFormProps {
   catalogCategorias?: string[];
   onAddCategoria?: (nova: string) => void;
   onClose: () => void;
+  /**
+   * Lançamento retroativo (0.22.0): registro de competência passada, para reconstruir
+   * histórico. Não afrouxa a régua — todos os critérios continuam obrigatórios e a nota é
+   * calculada igual. O que muda é o status final e o destaque da competência.
+   */
+  modoRetroativo?: boolean;
   onSave: (monitoring: Monitoring) => void;
 }
 
@@ -63,6 +70,8 @@ interface FormDataMonitoria {
   colaboradorId: string;
   monitorId: string;
   gestorId?: string;
+  /** Competência declarada, 'YYYY-MM'. Ver `Monitoring.competencia`. */
+  competencia: string;
   date: string;
   canal: string;
   categoriaAtendimento?: string;
@@ -180,6 +189,7 @@ export const MonitoringForm = ({
   colaboradorIdInicial = '',
   canalInicial = '',
   onClose,
+  modoRetroativo = false,
   onSave
 }: MonitoringFormProps) => {
   const [step, setStep] = useState(1);
@@ -191,6 +201,7 @@ export const MonitoringForm = ({
     colaboradorId: colaboradorIdInicial,
     monitorId: currentUser?.id || '',
     gestorId: '',
+    competencia: periodToCompetencia(getCurrentPeriod()),
     date: new Date().toISOString().split('T')[0],
     canal: canalInicial,
     categoriaAtendimento: '',
@@ -240,6 +251,7 @@ export const MonitoringForm = ({
       setFormData({
         ...initialData,
         date: initialData.date.split('T')[0],
+        competencia: initialData.competencia || competenciaDe(initialData.date),
         evidencias: (initialData.evidencias || []) as Evidencia[],
         links: (initialData.links || []) as string[],
         evidenciaObservacoes: initialData.evidenciaObservacoes || '',
@@ -390,16 +402,28 @@ export const MonitoringForm = ({
     [formData.inicioAtendimento, formData.fimAtendimento],
   );
 
-  // `date` é o eixo de competência do sistema — metas, fila e relatórios são recortados por
-  // ele — e é independente de quando o atendimento aconteceu: avaliar hoje um atendimento de
-  // ontem é o caso normal. Derivar um do outro moveria monitorias entre competências e
-  // reescreveria metas já batidas. Então aqui não se corrige nada: só se avisa, porque mês
-  // diferente costuma significar ou competência errada, ou atendimento antigo sendo avaliado
-  // agora — e a monitora precisa saber qual dos dois é.
-  const competenciaDivergente = useMemo(() => {
-    if (!formData.inicioAtendimento || !formData.date) return false;
-    return formData.inicioAtendimento.slice(0, 7) !== formData.date.slice(0, 7);
-  }, [formData.inicioAtendimento, formData.date]);
+  /**
+   * A competência acompanha o mês do atendimento — até alguém editá-la à mão.
+   *
+   * Até a 0.21.0 o eixo era `date`, um campo rotulado só "Data", e o formulário se limitava a
+   * avisar quando o mês dele divergia do atendimento. Avisar sobre um campo ambíguo não o torna
+   * claro: quem avaliava em setembro um atendimento de agosto continuava tendo de adivinhar
+   * qual das duas datas o campo queria.
+   *
+   * Agora são dois campos com nomes próprios, e o padrão segue a decisão da operação —
+   * atendimento de agosto é competência de agosto, mesmo avaliado em setembro. O travamento ao
+   * primeiro toque existe porque o contrário desfaria a escolha: ajustar o horário do
+   * atendimento não pode reescrever uma competência que alguém definiu de propósito.
+   */
+  const [competenciaTocada, setCompetenciaTocada] = useState(false);
+
+  useEffect(() => {
+    if (competenciaTocada || !formData.inicioAtendimento) return;
+    const doAtendimento = formData.inicioAtendimento.slice(0, 7);
+    if (doAtendimento && doAtendimento !== formData.competencia) {
+      setFormData((prev) => ({ ...prev, competencia: doAtendimento }));
+    }
+  }, [formData.inicioAtendimento, formData.competencia, competenciaTocada]);
 
   // Registra a resposta de uma sub-pergunta de um critério do tipo CHECKLIST_SIM_NAO.
   // O score agregado (0-2) só é calculado quando todas as sub-perguntas estiverem respondidas;
@@ -432,7 +456,8 @@ export const MonitoringForm = ({
     if (!formData.numeroTitulo?.trim()) return 'O Nº do Título é obrigatório.';
 
     if (!formData.canal) return 'O Canal é obrigatório.';
-    if (!formData.date) return 'A Data é obrigatória.';
+    if (!formData.date) return 'A Data do atendimento é obrigatória.';
+    if (!formData.competencia) return 'A Competência é obrigatória.';
 
     if (!formData.inicioAtendimento) return 'O Início do atendimento é obrigatório.';
     if (!formData.fimAtendimento) return 'O Encerramento do atendimento é obrigatório.';
@@ -518,6 +543,7 @@ export const MonitoringForm = ({
       tipo: formData.tipo as Monitoring['tipo'],
       id,
       protocolo,
+      competencia: formData.competencia,
       date: formData.date + 'T12:00:00Z',
       // Gravada, e não recalculada na leitura, para que relatório e tela leiam o mesmo número
       // sem repetir a regra. `?? undefined` porque o campo é opcional em Monitoring: um
@@ -529,12 +555,22 @@ export const MonitoringForm = ({
       // mesmo trabalho nascia 'Pendente' ou 'Validada' conforme o papel de quem clicasse, e
       // acumular perfis mudaria o resultado conforme o contexto. Agora decide o fluxo: existe
       // gestor para a área, vai para validação; não existe, decide o parâmetro do sistema.
-      status: resolverStatusInicial({
-        isDraft,
-        monitorId: formData.monitorId || currentUser?.id || '',
-        areas,
-        settings,
-      }),
+      // 0.22.0 — lançamento retroativo nasce Validada e carrega a marca de origem. Não é
+      // atalho de aprovação: a fila de validação é recortada pela competência corrente, então
+      // uma monitoria de janeiro registrada como Pendente não apareceria em fila nenhuma e
+      // ficaria aguardando validação para sempre. O selo existe para que ela nunca seja
+      // confundida com uma que passou por validação real.
+      status: (modoRetroativo && !isDraft)
+        ? 'Validada'
+        : resolverStatusInicial({
+            isDraft,
+            monitorId: formData.monitorId || currentUser?.id || '',
+            areas,
+            settings,
+          }),
+      ...(modoRetroativo && !isDraft
+        ? { lancamentoRetroativo: { por: currentUser?.id || '', em: new Date().toISOString() } }
+        : {}),
       // F0-08: sinalização de eliminatório é independente do status de aprovação de conteúdo.
       // A nota (finalScore) NUNCA é zerada aqui — só a confirmação de um Gestor/Admin
       // (handleConfirmZerada, em App.jsx) pode zerar. Nunca é reaberta a false no re-save de
@@ -632,8 +668,19 @@ export const MonitoringForm = ({
               <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', display: 'flex', alignItems: 'center', padding: 0, marginRight: '0.5rem' }} title="Voltar">
                 <ChevronLeft size={24} />
               </button>
-              {initialData ? 'Editar Monitoria' : 'Nova Monitoria'}
+              {initialData ? 'Editar Monitoria' : modoRetroativo ? 'Lançamento Retroativo' : 'Nova Monitoria'}
+              {modoRetroativo && !initialData && (
+                <span className="badge-pill badge-warning" style={{ fontSize: '0.68rem' }}>
+                  Retroativa
+                </span>
+              )}
             </h2>
+            {modoRetroativo && !initialData && (
+              <span style={{ fontSize: '0.8rem', color: '#92400e', marginLeft: '3rem', marginTop: '0.25rem', display: 'inline-block' }}>
+                Registro de competência passada. Nasce validada e fica marcada como retroativa —
+                confira a competência antes de concluir.
+              </span>
+            )}
             {lastSaved && <span style={{ fontSize: '0.8rem', color: '#6b7280', marginLeft: '3rem', marginTop: '0.25rem', display: 'inline-block' }}>Salvo automaticamente às {lastSaved}</span>}
           </div>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -818,7 +865,7 @@ export const MonitoringForm = ({
                       </div>
                       
                       <div className="form-group">
-                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>📅 Data *</label>
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>📅 Data do atendimento *</label>
                         <input
                           type="date"
                           className="form-control"
@@ -826,6 +873,28 @@ export const MonitoringForm = ({
                           onChange={(e) => setFormData({...formData, date: e.target.value})}
                           style={{ borderColor: (hasAttemptedNext && !formData.date) ? '#ef4444' : '#d1d5db', backgroundColor: '#f9fafb' }}
                         />
+                      </div>
+
+                      {/* Competência ao lado da data do atendimento, e não escondida noutro
+                          passo: é a decisão que define em que mês este trabalho conta, e quem
+                          preenche a data é quem sabe respondê-la. */}
+                      <div className="form-group">
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>🗓️ Competência *</label>
+                        <input
+                          type="month"
+                          className="form-control"
+                          value={formData.competencia}
+                          onChange={(e) => {
+                            setCompetenciaTocada(true);
+                            setFormData({ ...formData, competencia: e.target.value });
+                          }}
+                          style={{ borderColor: (hasAttemptedNext && !formData.competencia) ? '#ef4444' : '#d1d5db', backgroundColor: '#f9fafb' }}
+                        />
+                        <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.35rem' }}>
+                          {formData.competencia
+                            ? <>Conta em <strong>{competenciaLabel(formData.competencia)}</strong> — metas, fila e relatórios.</>
+                            : 'Mês em que este trabalho conta.'}
+                        </div>
                       </div>
                     </div>
 
@@ -884,15 +953,10 @@ export const MonitoringForm = ({
                       </div>
                     )}
 
-                    {competenciaDivergente && (
-                      <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'flex-start', gap: '8px', color: '#92400e', fontSize: '0.85rem', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '0.6rem 0.75rem' }}>
-                        <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
-                        <span>
-                          O atendimento é de um mês diferente da Data da monitoria. A Data define a
-                          competência — metas, fila e relatórios. Confirme se é isso mesmo.
-                        </span>
-                      </div>
-                    )}
+                    {/* O aviso de "mês divergente" saiu na 0.22.0. Ele existia porque um único
+                        campo, rotulado "Data", carregava duas coisas — quando o atendimento
+                        aconteceu e a que mês ele conta. Com dois campos nomeados, não há
+                        divergência a avisar: há duas informações, cada uma no seu lugar. */}
                   </div>
                 </div>
               )}

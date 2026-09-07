@@ -17,7 +17,7 @@
 
 import type { Canal, Collaborator, Holiday, Monitoring, User } from '../types/domain';
 import type { Period } from './period';
-import { isInPeriod, parseData, businessDaysRemainingIn } from './period';
+import { naCompetencia, parseData, businessDaysRemainingIn } from './period';
 import { getCarteira, getSemVinculo } from './allocationService';
 import {
   countsForCarteiraGoal,
@@ -83,7 +83,7 @@ const dataDaUltima = (
       (m) =>
         m.monitorId === monitorId &&
         m.colaboradorId === colaboradorId &&
-        isInPeriod(m.date, period) &&
+        naCompetencia(m.competencia, period) &&
         countsForCarteiraGoal(m)
     )
     .map((m) => m.date)
@@ -213,7 +213,7 @@ const daColaboradoraNoPeriodo = (
 ): Monitoring[] =>
   monitorings
     .filter(
-      (m) => m.monitorId === monitorId && m.colaboradorId === colaboradorId && isInPeriod(m.date, period)
+      (m) => m.monitorId === monitorId && m.colaboradorId === colaboradorId && naCompetencia(m.competencia, period)
     )
     .sort(porData);
 
@@ -302,7 +302,7 @@ export const getPendencias = (
   period: Period
 ): Pendencias => {
   const minhas = monitorings.filter(
-    (m) => m.monitorId === monitorId && isInPeriod(m.date, period)
+    (m) => m.monitorId === monitorId && naCompetencia(m.competencia, period)
   );
   return {
     devolvidas: minhas.filter(foiDevolvida),
@@ -347,7 +347,7 @@ export const getAguardandoValidacao = (
   hojeISO: string
 ): NaFilaDeValidacao[] =>
   monitorings
-    .filter((m) => m.monitorId === monitorId && isInPeriod(m.date, period) && isAwaitingValidation(m))
+    .filter((m) => m.monitorId === monitorId && naCompetencia(m.competencia, period) && isAwaitingValidation(m))
     .map((m) => paraFila(m, hojeISO))
     .sort((a, b) => b.dias - a.dias);
 
@@ -358,7 +358,7 @@ export const getFilaDeValidacao = (
   hojeISO: string
 ): NaFilaDeValidacao[] =>
   monitorings
-    .filter((m) => isInPeriod(m.date, period) && isAwaitingValidation(m))
+    .filter((m) => naCompetencia(m.competencia, period) && isAwaitingValidation(m))
     .map((m) => paraFila(m, hojeISO))
     .sort((a, b) => b.dias - a.dias);
 
@@ -387,7 +387,7 @@ export const getForaDaQuota = (
 ): ForaDaQuota => {
   const { monitorings, goals } = ctx;
   const doPeriodo = monitorings.filter(
-    (m) => m.monitorId === monitorId && isInPeriod(m.date, period)
+    (m) => m.monitorId === monitorId && naCompetencia(m.competencia, period)
   );
 
   const semMeta = doPeriodo.filter((m) => {
