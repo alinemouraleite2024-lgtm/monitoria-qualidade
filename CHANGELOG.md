@@ -5,6 +5,67 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.0] - 2026-09-07 — Competência explícita e lançamento retroativo
+
+> A operação trabalha por competência: monitorias de agosto são realizadas em setembro. O
+> sistema já recortava tudo por mês, mas o eixo era `date` — um campo rotulado apenas "Data".
+> Quem avaliava em setembro um atendimento de agosto precisava adivinhar qual das duas datas o
+> campo queria, e a escolha errada movia a monitoria de competência em silêncio.
+
+### Added
+
+- **`Monitoring.competencia`** — o mês a que o trabalho pertence, `'YYYY-MM'`, declarado em campo
+  próprio. Passa a ser o eixo de metas, fila e relatórios. String, e não `{year, month}`: é
+  comparável direto, ordenável, e não atravessa fuso — `periodOf` precisa de tratamento especial
+  para não devolver julho no dia 1º de agosto, e a competência não tem esse problema.
+- **Campo Competência no formulário**, ao lado da data do atendimento. O padrão segue o **mês do
+  atendimento** — atendimento de agosto conta em agosto, mesmo avaliado em setembro — e para de
+  seguir assim que alguém o edita: ajustar o horário do atendimento não pode reescrever uma
+  competência definida de propósito.
+- **Seletor de competência em Metas, Painel e Relatórios.** Metas e Painel respondiam sempre
+  sobre o mês corrente; Relatórios navegava só com setas, e chegar a janeiro a partir de setembro
+  custava oito cliques. Agora há setas para o passo curto e campo de mês para o salto longo.
+- **Cadastro de meta retroativa**, consequência direta do seletor em Metas. Sem meta na
+  competência, o progresso daquele mês não tem denominador — é o que a reconstrução do histórico
+  desde janeiro exige.
+- **Lançamento retroativo** (`/monitorings/retroativa`), com permissão própria `LANCAR_RETROATIVO`
+  para GESTOR e ADMIN. Mesmo formulário e mesma régua: todos os critérios continuam obrigatórios
+  e a nota é calculada igual. O que muda é o status final e a marca de origem.
+- **Coluna Competência no CSV.** O PDF já trazia a competência no cabeçalho.
+
+### Changed
+
+- **`date` deixou de decidir a competência** e passou a ser, apenas, a data do atendimento —
+  rotulada assim na tela e na listagem.
+- **Onze pontos de decisão** trocaram `isInPeriod(m.date, período)` por `naCompetencia(...)`:
+  seis em `queueService`, dois em `goalService`, um em `App`, o filtro de Relatórios e a listagem.
+  O de Relatórios simplificou bastante — o intervalo de datas com duas conversões para `Date` e
+  comparação em UTC existia só para responder "esta monitoria é deste mês?", que agora o próprio
+  registro responde.
+- **A fila de Monitorias continua no mês corrente, de propósito.** Ela responde "o que eu preciso
+  fazer agora"; navegar por competências ali transformaria a tela de trabalho em tela de consulta,
+  que é o papel de Relatórios.
+
+### Removed
+
+- **O aviso de "mês divergente"** no formulário. Ele existia porque um único campo carregava duas
+  informações; com dois campos nomeados, não há divergência a avisar.
+
+### Security
+
+- **Monitoria retroativa nasce `Validada` e recebe o selo "Retroativa"** na listagem e no detalhe.
+  Nascer validada não é atalho de aprovação: a fila de validação é recortada pela competência
+  corrente, então uma monitoria de janeiro registrada como `Pendente` não apareceria em fila
+  nenhuma e ficaria aguardando validação para sempre. O selo garante que ela nunca seja
+  confundida com uma que passou por validação real.
+
+### Migration
+
+- `pm2_monitorings_competencia_version` 0 → 1: `competencia = date.slice(0, 7)`. **Preserva
+  exatamente o comportamento atual** — a competência já era o mês de `date`, deduzido a cada
+  leitura, e nenhuma monitoria muda de mês. Marcador próprio, **nunca `DATABASE_VERSION`**.
+- As metas não precisaram de migração: `year` e `month` já existiam no modelo desde a 2A.1.
+
 ## [0.21.0] - 2026-09-07 — Usabilidade da Administração
 
 > A Administração "parecia sistema antigo" por um motivo literal: as classes `tab-row` e

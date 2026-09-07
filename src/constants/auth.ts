@@ -58,6 +58,13 @@ export const PERMISSIONS: Record<Permission, Role[]> = {
   // Permissões granulares. O ADMIN saiu de criar e editar pelo mesmo motivo do formulário:
   // administrar não é monitorar. Saiu também de APPROVE_MONITORING — validar é ato de gestão,
   // e mantê-lo ali reintroduziria pela porta dos fundos o acúmulo que a 0.20.0 desfaz.
+  /**
+   * Lançamento retroativo (0.22.0): registrar monitoria de competência passada, já validada,
+   * para reconstruir histórico. É ato de gestão, não de avaliação — quem monitora avalia o
+   * trabalho corrente; decidir que um mês fechado recebe registros novos é decisão de quem
+   * responde pelo período.
+   */
+  LANCAR_RETROATIVO: ['GESTOR', 'ADMIN'],
   CREATE_MONITORING: ['MONITOR'],
   EDIT_MONITORING: ['MONITOR'],
   DELETE_MONITORING: ['ADMIN'],

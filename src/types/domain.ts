@@ -26,7 +26,7 @@ export type Permission =
   | 'VIEW_CSAT' | 'VIEW_NPS' | 'VIEW_REPORTS' | 'VIEW_COLLABORATORS'
   | 'VIEW_MY_PROFILE' | 'VIEW_MONITORING_FORM' | 'VIEW_ADMINISTRATION'
   | 'CREATE_MONITORING' | 'EDIT_MONITORING' | 'DELETE_MONITORING' | 'APPROVE_MONITORING'
-  | 'EXPORT_REPORTS' | 'MANAGE_USERS' | 'MANAGE_INTEGRATIONS';
+  | 'EXPORT_REPORTS' | 'MANAGE_USERS' | 'MANAGE_INTEGRATIONS' | 'LANCAR_RETROATIVO';
 
 /**
  * Registro de usuário. Dois formatos coexistem no mesmo array (débito 5 da Sprint 0):
@@ -189,6 +189,24 @@ export interface MonitoringScore {
 
 export interface Monitoring {
   id: string;
+  /**
+   * Mês a que o trabalho pertence, no formato `'YYYY-MM'`. É o eixo de metas, fila e
+   * relatórios.
+   *
+   * Até a 0.21.0 essa função era exercida por `date`, um campo rotulado apenas "Data" na tela.
+   * Quem avaliava em setembro um atendimento de agosto precisava adivinhar qual das duas datas
+   * o campo queria — e a escolha errada movia a monitoria de competência em silêncio. Havia um
+   * aviso quando o mês divergia de `inicioAtendimento`, mas avisar sobre um campo ambíguo não
+   * o torna claro.
+   *
+   * String, e não `{ year, month }`: é comparável direto, ordenável, e não atravessa fuso —
+   * `periodOf` precisa de tratamento especial para não devolver julho no dia 1º de agosto.
+   */
+  competencia: string;
+  /**
+   * Data do atendimento avaliado. Desde a 0.22.0 **não decide mais a competência** — descreve
+   * quando o atendimento aconteceu, e só isso.
+   */
   date: string;
   monitorId: string;
   colaboradorId: string;
@@ -259,6 +277,16 @@ export interface Monitoring {
   reviewedAt?: string;
   /** Motivo preservado quando o gestor devolve a monitoria como Rascunho. */
   adjustmentReason?: string;
+  /**
+   * Lançamento retroativo (0.22.0): monitoria de competência passada, registrada para
+   * reconstruir histórico. Nasce `Validada` porque a fila de validação é recortada pela
+   * competência corrente — lançada como `Pendente`, uma monitoria de janeiro não apareceria
+   * em fila nenhuma e ficaria aguardando validação para sempre.
+   *
+   * Presente só nesses registros, e é o que sustenta o selo na interface: uma monitoria que
+   * não passou por validação real não pode ser indistinguível de uma que passou.
+   */
+  lancamentoRetroativo?: { por: string; em: string };
 }
 
 /**

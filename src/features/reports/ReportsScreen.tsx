@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
-import { FileSpreadsheet, Download, ChevronLeft, ChevronRight, Inbox } from 'lucide-react';
+import { competenciaToPeriod, periodToCompetencia } from '../../domain/period';
+import type { Period } from '../../domain/period';
+import { FileSpreadsheet, Download, ChevronLeft, ChevronRight, Inbox, CalendarPlus } from 'lucide-react';
 
 // Tela de Relatórios.
 //
@@ -14,6 +16,8 @@ import { FileSpreadsheet, Download, ChevronLeft, ChevronRight, Inbox } from 'luc
 // exibe, porque ambos saem da mesma consulta.
 
 interface ReportsScreenProps {
+  periodo: Period;
+  onPeriodoChange: (p: Period) => void;
   periodoLabel: string;
   periodoAnteriorLabel: string;
   periodoSeguinteLabel: string;
@@ -23,6 +27,8 @@ interface ReportsScreenProps {
   totalNoPeriodo: number;
   /** Registros após os filtros — o que a tabela exibe e o que será exportado. */
   totalRegistros: number;
+  /** Só é renderizado quando o perfil ativo tem LANCAR_RETROATIVO. */
+  onLancarRetroativa?: () => void;
   onExportExcel: () => void;
   onExportPDF: () => void;
   /**
@@ -34,6 +40,8 @@ interface ReportsScreenProps {
 }
 
 export const ReportsScreen = ({
+  periodo,
+  onPeriodoChange,
   periodoLabel,
   periodoAnteriorLabel,
   periodoSeguinteLabel,
@@ -41,6 +49,7 @@ export const ReportsScreen = ({
   onPeriodoSeguinte,
   totalNoPeriodo,
   totalRegistros,
+  onLancarRetroativa,
   onExportExcel,
   onExportPDF,
   historico,
@@ -60,6 +69,11 @@ export const ReportsScreen = ({
             Consulte, filtre e exporte as monitorias de uma competência.
           </p>
         </div>
+        {onLancarRetroativa && (
+          <button className="btn btn-secondary" onClick={onLancarRetroativa}>
+            <CalendarPlus size={16} /> Lançar monitoria retroativa
+          </button>
+        )}
       </div>
 
       <div className="section-card" style={{ marginBottom: '1.5rem' }}>
@@ -97,7 +111,7 @@ export const ReportsScreen = ({
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <button
               type="button"
               className="btn btn-outline"
@@ -114,6 +128,20 @@ export const ReportsScreen = ({
             >
               {periodoSeguinteLabel} <ChevronRight size={16} />
             </button>
+
+            {/* Salto direto (0.22.0). As setas resolvem o passo curto; chegar a janeiro a
+                partir de setembro custava oito cliques, e é exatamente o que a reconstrução
+                do histórico vai exigir com frequência. */}
+            <input
+              type="month"
+              className="form-control"
+              style={{ width: '150px' }}
+              value={periodToCompetencia(periodo)}
+              onChange={(e) => {
+                if (e.target.value) onPeriodoChange(competenciaToPeriod(e.target.value));
+              }}
+              aria-label="Ir para competência"
+            />
           </div>
         </div>
       </div>
