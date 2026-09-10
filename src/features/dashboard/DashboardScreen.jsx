@@ -102,7 +102,7 @@ export const DashboardScreen = ({
                 }
                 
                 allMonitors.forEach(m => {
-                  const s = getMonitorStats(m.id);
+                  const s = getMonitorStats(m.id, periodoAtual);
                   totalRealizadas += s.cobertura;
                   totalMeta += s.target;
                 });
@@ -110,18 +110,22 @@ export const DashboardScreen = ({
                 // A base já exclui quem não tem vínculo vigente: isso não é "falta
                 // monitorar", é falta de carteira, e o conserto é em Equipe. O helper
                 // getSemVinculo existe para a fila operacional exibir esse caso à parte.
-                let colabs = getUnmonitoredCollaborators();
+                let colabs = getUnmonitoredCollaborators(null, periodoAtual);
                 if (dashboardAreaId !== 'ALL') {
                   colabs = colabs.filter(c => c.areaId === dashboardAreaId);
                 }
                 unmonitoredCount = colabs.length;
-                pace = Math.ceil((totalMeta - totalRealizadas) / Math.max(businessDaysRemaining, 1));
+                // Competência encerrada não tem "dias úteis restantes": o ritmo é nulo, e a
+                // tela diz isso em vez de exibir um número que não significa nada.
+                pace = businessDaysRemaining > 0
+                  ? Math.ceil((totalMeta - totalRealizadas) / businessDaysRemaining)
+                  : null;
               } else {
-                const stats = getMonitorStats(currentUser.id);
+                const stats = getMonitorStats(currentUser.id, periodoAtual);
                 totalRealizadas = stats.cobertura;
                 totalMeta = stats.target;
                 // Monitor's unmonitored colabs
-                const myUnmonitored = getUnmonitoredCollaborators(currentUser.id);
+                const myUnmonitored = getUnmonitoredCollaborators(currentUser.id, periodoAtual);
 // eslint-disable-next-line no-unused-vars
                 unmonitoredCount = myUnmonitored.length;
                 pace = stats.pace;
@@ -189,12 +193,12 @@ export const DashboardScreen = ({
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div className="card-horiz-info">
                           <span className="card-horiz-title">Ritmo Diário</span>
-                          <span className="card-horiz-value">{pace}/dia</span>
+                          <span className="card-horiz-value">{pace === null ? '—' : `${pace}/dia`}</span>
                         </div>
                         <div className="card-horiz-icon primary"><Clock size={18} /></div>
                       </div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 'auto' }}>
-                        Para bater a meta no prazo.
+                        {pace === null ? 'Competência encerrada.' : 'Para bater a meta no prazo.'}
                       </div>
                     </div>
                     
@@ -289,7 +293,7 @@ export const DashboardScreen = ({
                                   const equipe = getEquipeDoGestor(currentUser, areas);
                                   return equipe === null || equipe.includes(m.id);
                                 }).map(monitor => {
-                                  const s = getMonitorStats(monitor.id);
+                                  const s = getMonitorStats(monitor.id, periodoAtual);
                                   return (
                                     <tr key={monitor.id}>
                                       <td>

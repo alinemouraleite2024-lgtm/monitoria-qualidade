@@ -17,12 +17,12 @@ Esta pasta contém a documentação técnica, manuais e guias do projeto.
 | [`STATUS-SPRINT-0.md`](STATUS-SPRINT-0.md) | Estado técnico do código: histórias, bugs, componentes, métricas, débitos e arquitetura. Inclui as publicações posteriores ao fechamento |
 | [`../CHANGELOG.md`](../CHANGELOG.md) | Histórico de versões |
 
-## Estado em 07/09/2026
+## Estado em 10/09/2026
 
 | | |
 |---|---|
 | Sistema | em produção — https://monitoria-qualidade.vercel.app |
-| Versão em produção | 0.22.0 · commit `bdb000f` · tag `v0.22.0` |
+| Versão em produção | 0.22.1 · commit `cc49111` · tag `v0.22.1` |
 | Em branch | **0.23.0** — plano de metas com vigência, aguardando validação |
 | Frente aberta | **Operação real** — cadastro de gestores, áreas e uso do fluxo completo |
 | Fatia em curso | 3A.0 concluída (régua validada 32/32 e em produção) |

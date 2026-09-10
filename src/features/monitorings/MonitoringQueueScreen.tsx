@@ -106,7 +106,8 @@ export const MonitoringQueueScreen = ({
       // Além do escopo por área, a fila exclui as monitorias do próprio usuário: ninguém
       // valida o que fez, e oferecer o botão para depois recusar a ação seria pior que não
       // oferecer. O registro continua visível em Relatórios.
-      filaValidacao: getFilaDeValidacao(monitorings, periodo, hoje)
+      // A fila NÃO é recortada por competência (0.22.1): pendente é pendente em qualquer mês.
+      filaValidacao: getFilaDeValidacao(monitorings, hoje)
         .filter((f) => equipe === null || equipe.includes(f.monitoring.monitorId))
         .filter((f) => f.monitoring.monitorId !== currentUser.id),
       ritmoEquipe: getRitmoDaEquipe(ctx, monitoresNoEscopo, periodo, hoje),
@@ -144,10 +145,10 @@ export const MonitoringQueueScreen = ({
 
       <div className="page-header">
         <div>
-          <h1 className="page-title">Monitorias · {rotulo}</h1>
+          <h1 className="page-title">{ehGestao ? 'Validação' : `Monitorias · ${rotulo}`}</h1>
           <p className="page-subtitle">
             {ehGestao
-              ? 'O que precisa da sua validação neste mês.'
+              ? 'Tudo o que está aguardando a sua validação, de qualquer competência.'
               : 'O que você precisa monitorar neste mês.'}
           </p>
         </div>

@@ -9,6 +9,7 @@ import { Search, Check, RotateCcw, AlertTriangle, Inbox } from 'lucide-react';
 import type { Monitoring, User, Collaborator } from '../../types/domain';
 import type { NaFilaDeValidacao, RitmoDoMonitor, RiscoDoMes } from '../../domain/queueService';
 import { canalLabel } from '../../constants/canais';
+import { competenciaLabel } from '../../domain/period';
 import { getScoreConcept } from '../../scoreUtils';
 
 interface ManagerQueueProps {
@@ -52,7 +53,7 @@ export const ManagerQueue = ({
           display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem',
         }}>
           <Inbox size={28} style={{ opacity: 0.4 }} />
-          Nada aguardando sua validação neste mês.
+          Nada aguardando sua validação.
         </div>
       )}
 
@@ -80,7 +81,15 @@ export const ManagerQueue = ({
               </div>
             </div>
 
-            <div style={{ flex: '0 1 130px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            <div style={{ flex: '0 1 150px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              {/* A competência entrou na linha em 0.22.1, quando a fila deixou de ser recortada
+                  por mês: com registros de competências diferentes lado a lado, ela passou a ser
+                  a informação que distingue um do outro. */}
+              {m.competencia && (
+                <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>
+                  {competenciaLabel(m.competencia)}
+                </div>
+              )}
               atendimento {dataCurta(m.date)}
               {dias > 0 && (
                 <div style={{ fontSize: '0.74rem', color: dias >= 5 ? 'var(--warning)' : 'var(--text-muted)' }}>

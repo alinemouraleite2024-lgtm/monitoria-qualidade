@@ -65,6 +65,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - O seed de planos é vazio: um plano descreve a operação de uma empresa, não a estrutura do
   sistema. Gravá-lo no código faria toda base nova nascer com metas que não são dela.
 
+## [0.22.1] - 2026-09-10 — Fila de validação e competência do Painel
+
+> Dois defeitos encontrados na primeira monitoria real da operação. Ambos nasceram na 0.22.0,
+> e ambos vêm do mesmo engano: tratar a competência como se fosse sempre o mês corrente.
+
+### Fixed
+
+- **A fila de validação não mostrava monitorias de competências anteriores.** Ela filtrava pela
+  competência corrente e a tela sempre passava o mês atual — então a MON-10001, um atendimento
+  de 28/08 avaliado em setembro, ficou `Pendente` e **não apareceu em fila nenhuma**: nem em
+  setembro, porque a competência era agosto, nem depois, porque agosto não volta a ser o mês
+  corrente.
+
+  O erro foi tratar a fila como recorte de período. Ela não é: é a lista do que está parado
+  esperando alguém, e trabalho parado não deixa de existir porque o calendário virou — ainda
+  mais nesta operação, que avalia o mês anterior, onde competência passada é a **regra**.
+
+  A fila passa a listar todas as pendentes, de qualquer competência, e **cada linha mostra a
+  sua** — a competência sai do filtro, não da tela. A carteira da monitora continua no mês
+  corrente, que é o recorte certo para "o que preciso fazer agora".
+
+- **O Painel mostrava números de setembro sob um cabeçalho que dizia agosto.** O seletor de
+  competência da 0.22.0 movia o subtítulo e a meta por colaboradora, mas não os KPIs:
+  `getMonitorStats` e `getUnmonitoredCollaborators` estavam fixos no mês corrente. Ambos passam
+  a receber o período, e o Painel passa o seu.
+
+- **O ritmo diário em competência encerrada exibia `0/dia`.** Não existem dias úteis restantes
+  num mês fechado; a resposta certa é a ausência, não um zero que parece meta batida. Passa a
+  mostrar `—` com a nota "Competência encerrada".
+
+### Changed
+
+- O título da tela no perfil GESTOR passou de "Monitorias · [mês]" para **"Validação"**, e o
+  subtítulo de "O que precisa da sua validação neste mês" para "Tudo o que está aguardando a
+  sua validação, de qualquer competência". O rótulo antigo prometia um recorte mensal que
+  deixou de existir.
+- `businessDaysRemaining` deixou de ser um valor único no App. Cada tela calcula o seu, a partir
+  da competência que exibe — era esse valor compartilhado que fazia o Painel em agosto medir o
+  ritmo de setembro.
+
 ## [0.22.0] - 2026-09-07 — Competência explícita e lançamento retroativo
 
 > A operação trabalha por competência: monitorias de agosto são realizadas em setembro. O

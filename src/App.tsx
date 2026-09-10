@@ -526,9 +526,9 @@ function AppContent() {
   const getSemVinculo = (dateStr: string = hoje) =>
     resolveSemVinculo({ allocations, holidays, users }, collaborators, dateStr);
 
-  // businessDaysTotal/Elapsed eram usados apenas por getInArrearsCount, removido na F0-12
-  // por ser órfão. Mantido apenas o valor efetivamente consumido pelo Dashboard.
-  const businessDaysRemaining = businessDaysRemainingIn(periodoAtual, hoje);
+  // Os dias úteis restantes deixaram de ser um valor único no App (0.22.1): cada tela calcula
+  // os seus, a partir da competência que está exibindo. Enquanto era um só, fixo no mês
+  // corrente, o Painel navegado para agosto media o ritmo de setembro.
 
   // Autenticação.
   //
@@ -1106,14 +1106,16 @@ function AppContent() {
   // Sem `monitorId`, responde sobre todas as colaboradoras COM vínculo vigente (visão da
   // gestora). As sem vínculo saem daqui e ficam em `getSemVinculo`: não é falta de monitoria,
   // é falta de carteira, e o conserto é outro — resolver o vínculo em Equipe.
-  const getUnmonitoredCollaborators = (monitorId: string | null = null) => {
+  // Período parametrizado na 0.22.1, pelo mesmo motivo de getMonitorStats: o Painel navega
+  // por competência, e "quem falta monitorar" precisa responder sobre a que está na tela.
+  const getUnmonitoredCollaborators = (monitorId: string | null = null, periodo: Period = periodoAtual) => {
     const base = monitorId
       ? getCarteiraDe(monitorId)
       : collaborators.filter(c => Boolean(getActiveMonitorForColab(c.id).monitor));
 
     return base.filter(c => !monitorings.some(m =>
       m.colaboradorId === c.id
-      && naCompetencia(m.competencia, periodoAtual)
+      && naCompetencia(m.competencia, periodo)
       && countsForCarteiraGoal(m)
     ));
   };
@@ -1126,12 +1128,24 @@ function AppContent() {
   //
   // `hasGoal` existe para que a ausência de meta seja dita, e não preenchida com um número
   // inventado: sem meta no período, a tela informa a ausência em vez de exibir 0 ou 5.
-  const getMonitorStats = (monitorId: string) => {
-    const progresso = getCarteiraProgress(metasDaFila, monitorings, monitorId, periodoAtual);
-    const pace = businessDaysRemaining > 0
-      ? (progresso.remaining / businessDaysRemaining).toFixed(1)
-      : 0;
-    return { ...progresso, pace };
+  /**
+   * Progresso de um monitor numa competência.
+   *
+   * 0.22.1 — o período era fixo em `periodoAtual`, o mês corrente. Quando a 0.22.0 deu um
+   * seletor de competência ao Painel, o seletor passou a mover o subtítulo e a meta por
+   * colaboradora, mas **não estes números**: o Painel em agosto exibia os KPIs de setembro sob
+   * um cabeçalho que dizia agosto. Uma tela que mente sobre o próprio recorte é pior que uma
+   * tela sem recorte.
+   *
+   * O ritmo diário só existe dentro da competência corrente: `businessDaysRemainingIn` devolve
+   * 0 fora dela, e perguntar quantos dias úteis restam de um mês encerrado não tem resposta
+   * útil. Em competência passada, o ritmo é `null` e a tela mostra a ausência.
+   */
+  const getMonitorStats = (monitorId: string, periodo: Period = periodoAtual) => {
+    const progresso = getCarteiraProgress(metasDe(periodo).metas, monitorings, monitorId, periodo);
+    const diasUteis = businessDaysRemainingIn(periodo, hoje);
+    const pace = diasUteis > 0 ? (progresso.remaining / diasUteis).toFixed(1) : null;
+    return { ...progresso, pace, diasUteis };
   };
 
   // Export handlers
@@ -1293,7 +1307,7 @@ function AppContent() {
                     getMonitorStats={getMonitorStats}
                     getUnmonitoredCollaborators={getUnmonitoredCollaborators}
                     getCarteiraDe={getCarteiraDe}
-                    businessDaysRemaining={businessDaysRemaining}
+                    businessDaysRemaining={businessDaysRemainingIn(dashboardPeriod, hoje)}
                     periodoAtual={dashboardPeriod}
                     periodoLabel={periodLabel(dashboardPeriod)}
                     onPeriodoChange={setDashboardPeriod}

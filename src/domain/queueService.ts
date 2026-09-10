@@ -352,13 +352,26 @@ export const getAguardandoValidacao = (
     .sort((a, b) => b.dias - a.dias);
 
 /** A fila da gestora: tudo que espera validação no período, de todos os monitores. */
+/**
+ * Fila de validação: **todas** as monitorias pendentes, de qualquer competência.
+ *
+ * 0.22.1 — esta função filtrava pela competência corrente, e a tela sempre passava o mês atual.
+ * A consequência apareceu na primeira monitoria real da operação: um atendimento de agosto,
+ * avaliado em setembro, ficou `Pendente` e **não apareceu em fila nenhuma** — nem em setembro,
+ * porque a competência era agosto, nem depois, porque agosto não volta a ser o mês corrente.
+ *
+ * O erro foi tratar a fila como recorte de período. Ela não é: é a lista do que está parado
+ * esperando alguém. Trabalho parado não deixa de existir porque o calendário virou, e o modelo
+ * de operação daqui avalia o mês anterior — competência do mês passado é a regra, não a exceção.
+ *
+ * A competência continua sendo mostrada em cada linha: some do filtro, não da tela.
+ */
 export const getFilaDeValidacao = (
   monitorings: Monitoring[],
-  period: Period,
   hojeISO: string
 ): NaFilaDeValidacao[] =>
   monitorings
-    .filter((m) => naCompetencia(m.competencia, period) && isAwaitingValidation(m))
+    .filter(isAwaitingValidation)
     .map((m) => paraFila(m, hojeISO))
     .sort((a, b) => b.dias - a.dias);
 
