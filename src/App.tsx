@@ -129,6 +129,7 @@ import {
   previousPeriod,
   nextPeriod,
   businessDaysRemainingIn,
+  competenciaLabel,
 } from './domain/period';
 import type { Period } from './domain/period';
 import { countsForCarteiraGoal } from './domain/monitoringRules';
@@ -959,7 +960,7 @@ function AppContent() {
    * meta em dezembro não pode reavaliar agosto contra um alvo que não valia quando o trabalho
    * foi feito.
    */
-  const handleSalvarPlano = (plano: PlanoMetas) => {
+  const handleSalvarPlano = (plano: PlanoMetas): boolean => {
     const existente = planosMetas.find(p => p.id === plano.id);
 
     if (vigenciaColide(planosMetas, plano.vigenciaInicio, plano.vigenciaFim, plano.id)) {
@@ -968,13 +969,13 @@ function AppContent() {
         + 'Dois planos ativos no mesmo mês deixariam a meta herdada dependendo de qual viesse '
         + 'primeiro na lista. Ajuste as datas ou encerre o plano anterior.'
       );
-      return;
+      return false;
     }
 
     if (!existente) {
       setPlanosMetas([...planosMetas, plano]);
-      alert(`Plano "${plano.nome}" criado para ${plano.vigenciaInicio} a ${plano.vigenciaFim}.`);
-      return;
+      alert(`Plano "${plano.nome}" criado para ${competenciaLabel(plano.vigenciaInicio)} a ${competenciaLabel(plano.vigenciaFim)}.`);
+      return true;
     }
 
     const { substitui, novo } = sucederPlano(existente, plano.linhas, periodoAtual, currentUser!.id);
@@ -982,8 +983,9 @@ function AppContent() {
 
     alert(novo
       ? `Alteração registrada. Vale a partir de ${periodLabel(periodoAtual)}.\n\n`
-        + `As competências até ${substitui.vigenciaFim} mantêm os valores que tinham.`
+        + `As competências até ${competenciaLabel(substitui.vigenciaFim)} mantêm os valores que tinham.`
       : `Plano "${plano.nome}" atualizado.`);
+    return true;
   };
 
   // Aplica uma mutação a uma monitoria e mantém o painel de detalhe (que guarda um
@@ -1595,13 +1597,16 @@ function AppContent() {
           era o pior dos dois: não editava, não bloqueava, e a listagem que o acompanhava
           mostrava todo mundo como "Ativo" independentemente do status real. Sobrou uma tela. */}
 
+      {/* O editor fecha só quando o plano foi de fato salvo. Recusada a vigência por colisão,
+          ele permanece aberto com tudo o que foi digitado — é exatamente ali que a gestora
+          precisa corrigir as datas, e fechar significaria remontar o plano inteiro. */}
       {showPlanoEditor && (
         <PlanoMetasEditor
           plano={getPlanoVigente(planosMetas, planningPeriod)}
           periodoAtual={periodoAtual}
           getMonitors={getMonitors}
           getCollaborators={getCollaborators}
-          onSalvar={(plano: PlanoMetas) => { handleSalvarPlano(plano); setShowPlanoEditor(false); }}
+          onSalvar={(plano: PlanoMetas) => { if (handleSalvarPlano(plano)) setShowPlanoEditor(false); }}
           onFechar={() => setShowPlanoEditor(false)}
         />
       )}

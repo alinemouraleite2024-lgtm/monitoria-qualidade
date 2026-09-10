@@ -2,6 +2,7 @@ import { SeletorCompetencia } from '../../shared/components/SeletorCompetencia';
 import { Trash2 } from 'lucide-react';
 import { getEscopoProgresso, getMetaDaColaboradora, assertMetasConsistentes } from '../../domain/goalService';
 import { CANAIS, canalLabel } from '../../constants/canais';
+import { competenciaLabel } from '../../domain/period';
 
 // Planejamento de metas.
 //
@@ -105,7 +106,7 @@ export const PlanningScreen = ({
           <span style={{ fontSize: '0.88rem' }}>
             <strong>{planoVigente.nome}</strong>
             <span style={{ color: 'var(--text-muted)' }}>
-              {' '}— vigência {planoVigente.vigenciaInicio} a {planoVigente.vigenciaFim}
+              {' '}— vigência de {competenciaLabel(planoVigente.vigenciaInicio)} a {competenciaLabel(planoVigente.vigenciaFim)}
               {' · '}{planoVigente.linhas.length} {planoVigente.linhas.length === 1 ? 'colaboradora' : 'colaboradoras'}
             </span>
           </span>
@@ -373,17 +374,26 @@ export const PlanningScreen = ({
                                 Voltar ao plano
                               </button>
                             )}
-                            <button
-                              type="button"
-                              className="btn btn-secondary btn-sm"
-                              style={{ color: 'var(--danger)', borderColor: 'var(--danger-light)' }}
-                              title={goal.origem === 'plano' ? 'Remover a meta desta competência' : 'Remover este ajuste'}
-                              onClick={() => (goal.origem === 'plano'
-                                ? onSemMeta(grupo.monitorId, grupo.colaboradorId)
-                                : onRemoveColabGoal(goal.id))}
-                            >
-                              <Trash2 size={14} />
-                            </button>
+                            {goal.origem === 'plano' ? (
+                              <button
+                                type="button"
+                                className="btn btn-secondary btn-sm"
+                                title="Férias, afastamento ou outra razão para esta colaboradora não ter meta nesta competência"
+                                onClick={() => onSemMeta(grupo.monitorId, grupo.colaboradorId)}
+                              >
+                                Sem meta
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                className="btn btn-secondary btn-sm"
+                                style={{ color: 'var(--danger)', borderColor: 'var(--danger-light)' }}
+                                title="Remover este ajuste"
+                                onClick={() => onRemoveColabGoal(goal.id)}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
