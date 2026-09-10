@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.23.0] - 2026-09-07 — Plano de metas com vigência
+## [0.23.0] - 2026-09-10 — Plano de metas com vigência
 
 > A meta era cadastrada mês a mês. Cinco colaboradoras × doze competências são sessenta
 > cadastros por ano para dizer sempre a mesma coisa — e a competência esquecida ficava sem
@@ -56,11 +56,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   como exceções. Sem plano cadastrado, a resolução devolve exatamente as exceções — comportamento
   idêntico ao anterior. Nem marcador de versão foi preciso.
 
+### Corrigido na validação
+
+> Três defeitos encontrados exercitando a tela com o plano real da operação, antes da publicação.
+
+- **Vigência recusada fechava o editor e jogava fora o plano digitado.** A recusa por colisão
+  acontece exatamente quando a gestora precisa da tela aberta para corrigir a data — e o modal
+  fechava mesmo assim, obrigando a remontar as cinco linhas. `handleSalvarPlano` passa a devolver
+  se gravou, e o editor fecha só quando gravou.
+- **"Sem meta neste mês" estava atrás de um ícone de lixeira** com o título "Remover a meta desta
+  competência". Quem procura como registrar férias não procura por uma lixeira, e quem clicava
+  nela esperando apagar recebia um prompt perguntando o motivo do afastamento. Nas linhas herdadas
+  o botão passa a se chamar **"Sem meta"**; a lixeira fica só onde de fato apaga algo — a remoção
+  de um ajuste.
+- **Competência crua na interface.** A faixa do plano dizia "vigência 2026-01 a 2026-12" e o aviso
+  de sucessão, "as competências até 2026-08". Passam a usar `competenciaLabel`, como o resto do
+  sistema desde a 0.22.0.
+
 ### Notas
 
 - Painel, Relatórios, fila e `goalService` **não tiveram uma linha alterada**: recebem a lista
   resolvida, que tem a forma que já consumiam. Nenhum deles sabe que herança existe.
-- A resolução acontece três vezes no App, uma por período — desde a 0.22.0 a fila responde sobre
+- A resolução acontece três vezes no App, uma por período — a carteira da monitora responde sobre
   o mês corrente enquanto Painel e Metas respondem sobre o que o gestor escolheu.
 - O seed de planos é vazio: um plano descreve a operação de uma empresa, não a estrutura do
   sistema. Gravá-lo no código faria toda base nova nascer com metas que não são dela.
