@@ -22,8 +22,8 @@ Esta pasta contém a documentação técnica, manuais e guias do projeto.
 | | |
 |---|---|
 | Sistema | em produção — https://monitoria-qualidade.vercel.app |
-| Versão em produção | 0.22.0 · commit `bdb000f` · tag `v0.22.0` |
-| Em branch | **0.22.1** — correção da fila e do Painel · **0.23.0** — plano de metas |
+| Versão em produção | 0.22.1 · commit `cc49111` · tag `v0.22.1` |
+| Em branch | **0.23.0** — plano de metas com vigência |
 | Frente aberta | **Operação real** — cadastro de gestores, áreas e uso do fluxo completo |
 | Fatia em curso | 3A.0 concluída (régua validada 32/32 e em produção) |
 | Próximo marco | documento conceitual do módulo de Desenvolvimento, após a operação rodar |
