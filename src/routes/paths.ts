@@ -9,7 +9,7 @@
 
 export const TABS: string[] = [
   'monitorings', 'reports', 'dashboard', 'planning', 'allocations',
-  'admin-criterios', 'admin-acessos', 'admin-sistema',
+  'admin-criterios', 'admin-acessos', 'admin-sistema', 'admin-plano-metas',
   'csat', 'nps', 'profile',
 ];
 
@@ -60,6 +60,8 @@ export const ADMIN_SECOES: Record<string, string> = {
   // (status fixo no código, sem edição). A entrada da seção passa a ser a tela completa.
   'admin-acessos': 'accounts',
   'admin-sistema': 'areas',
+  // 0.25.0: o plano de metas recorrentes, que até a 0.24.0 vivia na tela da gestão.
+  'admin-plano-metas': 'plano',
 };
 
 /** Resolução de um path para a aba correspondente. tab nulo significa rota inexistente. */
@@ -93,7 +95,9 @@ export const pathToTab = (pathname: string): TabFromPath => {
   const edit = clean.match(/^\/monitorings\/([^/]+)\/edit$/);
   if (edit) return { tab: MONITORING_EDIT, monitoringId: decodeURIComponent(edit[1]) };
 
-  const admin = clean.match(/^\/admin\/([a-z]+)$/);
+  // O segmento aceita hífen desde a 0.25.0: 'admin-plano-metas' é a primeira seção de nome
+  // composto, e sem isso /admin/plano-metas caía em rota inexistente com o item no menu.
+  const admin = clean.match(/^\/admin\/([a-z-]+)$/);
   if (admin) {
     const tab = `admin-${admin[1]}`;
     return { tab: TABS.includes(tab) ? tab : null, monitoringId: null };

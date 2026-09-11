@@ -30,7 +30,14 @@ export const PERMISSIONS: Record<Permission, Role[]> = {
   VIEW_DASHBOARD: ['ADMIN', 'GESTOR'],
   // Metas e Equipe e Carteiras são trabalho de gestão da equipe, não de configuração do
   // sistema — por isso não acompanham o ADMIN.
+  // 0.25.0 — a tela de Metas passou a ser só o AJUSTE da competência. O plano recorrente
+  // saiu daqui e virou MANAGE_PLANO_METAS, do ADMIN: quem declara o padrão do ano não é quem
+  // reage ao mês. A gestora continua vendo o plano, em leitura, porque ajustar sem enxergar
+  // de onde se está partindo seria ajustar no escuro.
   VIEW_PLANNING: ['GESTOR'],
+  // O plano anual pertence a quem administra. É declaração de estrutura, como os critérios e
+  // os acessos — e não uma decisão do mês, que é o que a gestão toma.
+  MANAGE_PLANO_METAS: ['ADMIN'],
   // O ADMIN sai daqui: no contexto de administração não se monitora nem se valida. Quem
   // administra e também monitora troca de perfil, que é o mecanismo que a 0.20.0 introduz.
   VIEW_MONITORINGS: ['GESTOR', 'MONITOR'],

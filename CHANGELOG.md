@@ -5,6 +5,69 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.25.0] - 2026-09-11 — Plano do ADMIN, ajustes da gestão
+
+> O plano e o ajuste do mês são atos de naturezas diferentes e estavam na mesma tela, sob o
+> mesmo botão. Quem declara o padrão do ano não é quem reage ao mês.
+
+### Changed
+
+- **O plano de metas passou para a Administração.** Nova seção `Configuração → Plano de Metas`,
+  com permissão própria `MANAGE_PLANO_METAS: ['ADMIN']`. `VIEW_PLANNING` continua `['GESTOR']` e
+  passa a significar só o ajuste da competência.
+
+- **O ajuste da gestão virou DELTA.** Antes a gestora digitava o valor absoluto: `8`. Agora
+  clica em `−` e `+`, e o que fica gravado é a diferença — `-2`, `+3`.
+
+  A mudança não é de interface. Com o plano pertencendo a outra pessoa, um valor absoluto perde
+  a intenção na primeira vez que o plano muda: `8` vira um número sem origem, enquanto `-2`
+  continua significando "duas a menos do que o plano manda" mesmo depois que o plano vai de 10
+  para 12. É o mesmo motivo pelo qual o plano existe em vez de sessenta cadastros — guardar a
+  decisão, não o resultado.
+
+- **O ajuste vale por ESCOPO**, e não pela pessoa: `+1` no WhatsApp não toca a meta de Ligação
+  da mesma colaboradora. `semMeta` continua valendo pela pessoa inteira, porque férias tiram a
+  colaboradora do mês em todo canal.
+
+- **A faixa do plano, na tela de Metas, virou leitura** — sem botão, com a nota "definido pela
+  Administração". Ela ficou mais necessária do que antes: ajustar sem enxergar de onde se parte
+  seria ajustar no escuro.
+
+- **O formulário de meta absoluta só aparece quando nenhum plano cobre a competência.** Com
+  plano, dois caminhos para a mesma decisão teriam significados diferentes — um guarda a
+  intenção, o outro só o número. Sem plano ele continua sendo a única forma de o mês ter
+  denominador.
+
+### Added
+
+- **Lista de planos**, na nova seção. Até a 0.24.0 nenhuma tela listava planos: a faixa mostrava
+  só o que cobria a competência aberta, e o plano encerrado por sucessão ficava invisível mesmo
+  continuando a governar o passado. Traz vigência, nº de colaboradoras, total mensal e status
+  (Vigente / Encerrado / Futuro).
+
+- **"Efeito na competência"**, no mesmo lugar: o que a gestão fez com o plano naquele mês, em
+  leitura, com autor e data de cada ajuste. É o que fecha o ciclo entre os dois donos — sem
+  isso o ADMIN declara 35 no vazio e nunca descobre que a operação está entregando 21.
+
+- **Autor e data no ajuste** (`ajustadoPor`, `ajustadoEm`). Com dois donos, "quem mudou" deixa
+  de ser enfeite e vira o que permite a conversa entre quem define o plano e quem o ajusta.
+
+- **Piso no ajuste.** O `−` para em 1 e desabilita: zerar é outra decisão e tem mecanismo
+  próprio. O título do botão diz isso — *a meta não vai a zero por ajuste, para isso existe
+  "Sem meta"*.
+
+### Fixed
+
+- `pathToTab` não aceitava hífen no segmento de `/admin/:secao`. `admin-plano-metas` é a
+  primeira seção de nome composto, e sem isso o item aparecia no menu e levava a "rota
+  inexistente".
+
+### Migração
+
+- **Nenhuma.** Exceções gravadas antes da 0.25.0 não têm `ajuste` e continuam sendo lidas como
+  metas absolutas, que substituem a pessoa inteira — o comportamento que sempre tiveram. O
+  delta é um caminho novo, não uma reinterpretação do que já existe.
+
 ## [0.24.0] - 2026-09-11 — Agenda operacional
 
 > O plano anual passou a dizer quantas monitorias existem, mas a tela não dizia quais. E a

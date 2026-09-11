@@ -5,6 +5,7 @@ import { canalLabel } from '../../constants/canais';
 import { DEFAULT_BRAND_CONFIG } from '../../mockData';
 import { temGestorConfigurado } from '../../domain/validacaoService';
 import { competenciaDaAgenda, getCurrentPeriod, periodLabel } from '../../domain/period';
+import { PlanoMetasAdmin } from './PlanoMetasAdmin';
 import { UserManagement } from '../../modules/admin/UserManagement';
 import { RolesManagement } from '../../modules/admin/RolesManagement';
 import { AuditLogs } from '../../modules/admin/AuditLogs';
@@ -39,6 +40,11 @@ const SECOES = {
       { id: 'roles', label: 'Perfis' },
       { id: 'audit-logs', label: 'Logs' },
     ],
+  },
+  plano: {
+    titulo: 'Plano de Metas',
+    subtitulo: 'O padrão anual de monitorias por colaboradora. A gestão ajusta a competência; o plano é daqui.',
+    abas: [{ id: 'plano', label: 'Plano' }],
   },
   sistema: {
     titulo: 'Sistema',
@@ -149,6 +155,13 @@ export const AdminScreen = ({
   monitorings = /** @type {import('../../types/domain').Monitoring[]} */ ([]),
   onUsersChange,
   adminSubTab,
+  planosMetas,
+  planoPeriodo,
+  setPlanoPeriodo,
+  metasDoPlanoAdmin,
+  nomeDePessoa,
+  onNovoPlano,
+  onEditarPlano,
   setAdminSubTab,
   setNewCriterion,
   setNewArea,
@@ -563,6 +576,18 @@ export const AdminScreen = ({
             )}
 
             {adminSubTab === 'roles' && <RolesManagement />}
+
+            {adminSubTab === 'plano' && (
+              <PlanoMetasAdmin
+                planos={planosMetas}
+                periodo={planoPeriodo}
+                onPeriodo={setPlanoPeriodo}
+                metasDoPeriodo={metasDoPlanoAdmin}
+                nomeDe={nomeDePessoa}
+                onNovoPlano={onNovoPlano}
+                onEditarPlano={onEditarPlano}
+              />
+            )}
 
             {adminSubTab === 'audit-logs' && <AuditLogs />}
 

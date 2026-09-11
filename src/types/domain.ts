@@ -26,7 +26,8 @@ export type Permission =
   | 'VIEW_CSAT' | 'VIEW_NPS' | 'VIEW_REPORTS' | 'VIEW_COLLABORATORS'
   | 'VIEW_MY_PROFILE' | 'VIEW_MONITORING_FORM' | 'VIEW_ADMINISTRATION'
   | 'CREATE_MONITORING' | 'EDIT_MONITORING' | 'DELETE_MONITORING' | 'APPROVE_MONITORING'
-  | 'EXPORT_REPORTS' | 'MANAGE_USERS' | 'MANAGE_INTEGRATIONS' | 'LANCAR_RETROATIVO';
+  | 'EXPORT_REPORTS' | 'MANAGE_USERS' | 'MANAGE_INTEGRATIONS' | 'LANCAR_RETROATIVO'
+  | 'MANAGE_PLANO_METAS';
 
 /**
  * Registro de usuário. Dois formatos coexistem no mesmo array (débito 5 da Sprint 0):
@@ -373,6 +374,29 @@ export interface ColaboradorGoal extends MonitorGoal {
   semMeta?: boolean;
   /** Por que ficou sem meta. Exibido no lugar do escopo. */
   motivo?: string;
+  /**
+   * Ajuste da gestão sobre a meta do plano, relativo: `+3`, `-2` (0.25.0).
+   *
+   * O que fica gravado é a DIFERENÇA, não o resultado. Com o plano pertencendo ao ADMIN e o
+   * ajuste à gestão, um valor absoluto perderia a intenção na primeira vez que o plano
+   * mudasse: "8" vira um número sem origem, enquanto "-2" continua significando "duas a
+   * menos do que o plano manda" mesmo depois que o plano vai de 10 para 12.
+   *
+   * Vale POR ESCOPO: a linha ajustada é (colaboradora, canal), e os demais canais dela
+   * continuam vindo do plano. É o oposto de `semMeta`, que vale pela pessoa inteira.
+   *
+   * Nunca leva a meta a zero — para isso existe `semMeta`, que é outra decisão.
+   */
+  ajuste?: number;
+  /**
+   * `targetQty` absoluto continua existindo para a competência que nenhum plano cobre: sem
+   * plano não há de que ser relativo. Exceções gravadas antes da 0.25.0 também são absolutas
+   * e continuam sendo lidas assim — por isso não houve migração.
+   */
+  /** Quem fez o ajuste (id do usuário) e quando, em ISO. Com dois donos, "quem mudou" deixa
+   *  de ser enfeite: é o que permite a conversa entre quem define o plano e quem o ajusta. */
+  ajustadoPor?: string;
+  ajustadoEm?: string;
 }
 
 /**

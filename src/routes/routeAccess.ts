@@ -24,6 +24,10 @@ export const tabPermissionMap: Record<string, Permission | null> = {
   'admin-criterios': 'VIEW_ADMINISTRATION',
   'admin-acessos': 'VIEW_ADMINISTRATION',
   'admin-sistema': 'VIEW_ADMINISTRATION',
+  // A exceção à frase acima: o plano de metas tem permissão própria porque a divisão aqui não
+  // é entre papéis intermediários de administração, e sim entre quem define o padrão do ano e
+  // quem ajusta o mês. Ver PERMISSIONS.MANAGE_PLANO_METAS.
+  'admin-plano-metas': 'MANAGE_PLANO_METAS',
 
   // Fora do menu desde a 0.19.0, mas com rota e permissão mantidas: o rumo está registrado em
   // docs/VISAO-PRODUTO.md, e o menu é ferramenta de trabalho — não vitrine de roadmap.

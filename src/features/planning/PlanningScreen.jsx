@@ -31,10 +31,11 @@ export const PlanningScreen = ({
   setNewCGoalVal,
   onUpdateColabGoal,
   onRemoveColabGoal,
-  onAjustar,
+  onAjustarDelta,
+  onVoltarAoEscopoDoPlano,
   onVoltarAoPlano,
   onSemMeta,
-  onEditarPlano,
+
   semMeta = /** @type {import('../../domain/planoMetasService').SemMetaEfetiva[]} */ ([]),
   planoVigente = /** @type {import('../../types/domain').PlanoMetas | null} */ (null),
   getMonitors,
@@ -95,7 +96,11 @@ export const PlanningScreen = ({
       </div>
 
       {/* Faixa do plano vigente (0.23.0). Fica no topo de toda competência coberta: é a
-          explicação de por que as metas aparecem sem ninguém ter cadastrado nada neste mês. */}
+          explicação de por que as metas aparecem sem ninguém ter cadastrado nada neste mês.
+
+          0.25.0 — virou leitura. O plano passou a ser da Administração, e o botão de editar
+          saiu daqui. A faixa continua, e mais necessária do que antes: ajustar sem enxergar
+          de onde se está partindo seria ajustar no escuro. */}
       <div className="section-card" style={{
         marginBottom: '1.5rem',
         borderLeft: `3px solid ${planoVigente ? 'var(--primary)' : 'var(--border-color)'}`,
@@ -112,12 +117,15 @@ export const PlanningScreen = ({
           </span>
         ) : (
           <span style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>
-            Nenhum plano cobre {periodoLabel}. As metas deste mês precisam ser cadastradas uma a uma.
+            Nenhum plano cobre {periodoLabel}. Sem plano não há de que ajustar: as metas deste mês
+            precisam ser lançadas uma a uma, abaixo.
           </span>
         )}
-        <button type="button" className="btn btn-secondary btn-sm" onClick={onEditarPlano}>
-          {planoVigente ? 'Editar plano' : 'Criar plano de metas'}
-        </button>
+        {planoVigente && (
+          <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+            definido pela Administração
+          </span>
+        )}
       </div>
 
       {inconsistencias.length > 0 && (
@@ -131,6 +139,16 @@ export const PlanningScreen = ({
 
       <div className="allocation-manager-grid">
 
+        {/* Lançamento direto, só quando NENHUM plano cobre a competência (0.25.0).
+
+            Com plano, a gestão ajusta em passos sobre o que o plano manda — e um formulário de
+            valor absoluto ao lado dos botões de passo ofereceria dois caminhos para a mesma
+            decisão, com significados diferentes: um guarda a intenção, o outro só o número.
+
+            Sem plano não há de que ser relativo, e o formulário continua sendo a única forma de
+            a competência ter denominador. Tirá-lo aqui deixaria o mês descoberto à espera da
+            Administração, que é o problema que o plano nasceu para resolver, invertido. */}
+        {!planoVigente && (
         <div className="section-card">
           <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1rem', marginBottom: '1.25rem', fontWeight: 'bold' }}>
             Meta por colaboradora — {periodoLabel}
@@ -215,11 +233,18 @@ export const PlanningScreen = ({
             </button>
           </form>
         </div>
+        )}
 
         <div className="section-card">
           <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1rem', marginBottom: '1.25rem', fontWeight: 'bold' }}>
-            Quadro de Metas Ativo ({periodoLabel})
+            {planoVigente ? `Ajustes de ${periodoLabel}` : `Quadro de Metas Ativo (${periodoLabel})`}
           </h3>
+          {planoVigente && (
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '-0.85rem', marginBottom: '1.25rem' }}>
+              As metas vêm do plano. Use − e + para ajustar esta competência, ou declare que a
+              colaboradora fica sem meta neste mês.
+            </p>
+          )}
 
           {grupos.length === 0 && semMeta.length === 0 && (
             <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', margin: '0 0 1rem' }}>
@@ -305,12 +330,21 @@ export const PlanningScreen = ({
                             {falta > 0 ? ` · faltam ${falta}` : ' · completa'}
                           </span>
                           {/* Chip de origem (0.23.0): é o que o gestor lê primeiro para saber
-                              se este mês foi tocado ou se veio do plano. */}
-                          {grupo.linhas[0].origem === 'excecao' ? (
+                              se este mês foi tocado ou se veio do plano.
+
+                              0.25.0 — o ajuste virou delta, e o chip mostra o delta. "Ajustada"
+                              sozinho dizia que alguém mexeu; "Ajustada +3 · plano 5" diz o que
+                              foi decidido, que é a informação que sobrevive a uma mudança do
+                              plano. */}
+                          {grupo.linhas[0].origem === 'ajuste' ? (
                             <span className="badge-pill badge-warning" style={{ fontSize: '0.68rem' }}>
-                              Ajustada
+                              Ajustada {grupo.linhas[0].ajuste > 0 ? `+${grupo.linhas[0].ajuste}` : grupo.linhas[0].ajuste}
                               {typeof grupo.linhas[0].alvoDoPlano === 'number'
                                 && ` · plano ${grupo.linhas[0].alvoDoPlano}`}
+                            </span>
+                          ) : grupo.linhas[0].origem === 'excecao' ? (
+                            <span className="badge-pill badge-warning" style={{ fontSize: '0.68rem' }}>
+                              Lançada neste mês
                             </span>
                           ) : grupo.linhas[0].origem === 'plano' ? (
                             <span className="badge-pill badge-info" style={{ fontSize: '0.68rem' }}>
@@ -350,31 +384,60 @@ export const PlanningScreen = ({
                             </span>
                           </div>
                         </td>
-                        {/* Ações por origem (0.23.0). Uma linha herdada não tem "remover":
-                            ela não é registro gravado, é o plano sendo lido. O que existe é
-                            ajustar (cria exceção), declarar sem meta, ou desfazer o ajuste. */}
+                        {/* Ações por origem. Uma linha herdada não tem "remover": ela não é
+                            registro gravado, é o plano sendo lido.
+
+                            0.25.0 — o ajuste deixou de ser um formulário com valor absoluto e
+                            virou dois botões de passo. A gestão pensa em "uma a mais neste
+                            mês", não em "o alvo dela agora é oito": digitar o resultado exigia
+                            recalcular de cabeça o que o plano já sabe. O passo age por ESCOPO,
+                            que é onde o delta pousa — mexer no WhatsApp não toca a Ligação. */}
                         <td style={{ textAlign: 'right' }}>
-                          <div style={{ display: 'flex', gap: '0.3rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                            {goal.origem === 'plano' ? (
-                              <button
-                                type="button"
-                                className="btn btn-secondary btn-sm"
-                                title="Definir uma meta diferente só para esta competência"
-                                onClick={() => onAjustar(grupo.monitorId, grupo.colaboradorId, goal.targetQty, goal.canal)}
-                              >
-                                Ajustar
-                              </button>
-                            ) : (
+                          <div style={{ display: 'flex', gap: '0.3rem', justifyContent: 'flex-end', flexWrap: 'wrap', alignItems: 'center' }}>
+                            {planoVigente && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.15rem' }}>
+                                <button
+                                  type="button"
+                                  className="btn btn-secondary btn-sm"
+                                  disabled={goal.targetQty <= 1}
+                                  title={goal.targetQty <= 1
+                                    ? 'A meta não vai a zero por ajuste — para isso existe "Sem meta"'
+                                    : 'Uma monitoria a menos neste mês'}
+                                  onClick={() => onAjustarDelta(grupo.monitorId, grupo.colaboradorId, goal.canal, -1)}
+                                >
+                                  −
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-secondary btn-sm"
+                                  title="Uma monitoria a mais neste mês"
+                                  onClick={() => onAjustarDelta(grupo.monitorId, grupo.colaboradorId, goal.canal, 1)}
+                                >
+                                  +
+                                </button>
+                              </div>
+                            )}
+                            {goal.origem === 'ajuste' && (
                               <button
                                 type="button"
                                 className="btn btn-secondary btn-sm"
                                 title="Desfazer o ajuste e voltar ao valor do plano"
+                                onClick={() => onVoltarAoEscopoDoPlano(goal.id)}
+                              >
+                                Voltar ao plano
+                              </button>
+                            )}
+                            {goal.origem === 'excecao' && planoVigente && (
+                              <button
+                                type="button"
+                                className="btn btn-secondary btn-sm"
+                                title="Desfazer e voltar ao valor do plano"
                                 onClick={() => onVoltarAoPlano(grupo.monitorId, grupo.colaboradorId)}
                               >
                                 Voltar ao plano
                               </button>
                             )}
-                            {goal.origem === 'plano' ? (
+                            {goal.origem !== 'excecao' ? (
                               <button
                                 type="button"
                                 className="btn btn-secondary btn-sm"

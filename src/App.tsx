@@ -4,7 +4,7 @@ import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-
 import { pathToTab, tabToPath, PATH_LOGIN, PATH_ENTRADA, ADMIN_SECOES, ENTRADA_POR_PERFIL } from './routes/paths';
 import type { FormEvent, ReactNode } from 'react';
 import type {
-  Area, Canal, Collaborator, Criterion, Monitoring, PlanoMetas, Role, User,
+  Area, Canal, Collaborator, ColaboradorGoal, Criterion, Monitoring, PlanoMetas, Role, User,
 } from './types/domain';
 import {
   LayoutDashboard,
@@ -196,6 +196,9 @@ const MENU_CONFIG: MenuConfig = {
   // que sai o cancelamento de monitoria, permissão exclusiva do ADMIN.
   ADMIN: [
     { id: 'admin-criterios', label: 'Critérios de Avaliação', icon: ClipboardCheck, grupo: 'Configuração' },
+    // 0.25.0 — o plano anual passou para o ADMIN. A gestão deixou de criá-lo e passou a só
+    // ajustar a competência; ver PERMISSIONS.MANAGE_PLANO_METAS.
+    { id: 'admin-plano-metas', label: 'Plano de Metas', icon: Layers },
     { id: 'admin-acessos', label: 'Usuários e Acessos', icon: UserCog },
     { id: 'admin-sistema', label: 'Sistema', icon: Settings },
     { id: 'dashboard', label: 'Painel', icon: LayoutDashboard, grupo: 'Governança' },
@@ -431,7 +434,16 @@ function AppContent() {
    * concluiria que não funcionou.
    */
   const [monitoringsPeriod, setMonitoringsPeriod] = useState<Period | null>(null);
-  const [showPlanoEditor, setShowPlanoEditor] = useState(false);
+  /**
+   * Editor de plano: `undefined` fechado, `null` criando, objeto editando (0.25.0).
+   *
+   * Era um booleano, e o plano editado era sempre `getPlanoVigente(planningPeriod)` — servia
+   * quando só existia um botão, na tela da gestão. Com a lista na Administração, a escolha de
+   * QUAL plano editar passou a ser do usuário, e precisa caber no estado.
+   */
+  const [planoEmEdicao, setPlanoEmEdicao] = useState<PlanoMetas | null | undefined>(undefined);
+  /** Competência do painel "efeito na competência", na Administração. */
+  const [planoPeriodo, setPlanoPeriodo] = useState(() => getCurrentPeriod());
   // 2B.5: os filtros do histórico deixaram de ser estado interno da tabela e subiram para cá.
   // Enquanto viviam lá dentro, a exportação usava outro caminho e levava um conjunto diferente
   // do exibido — a tela mostrava 2 linhas e o botão exportava 4. Agora há um conjunto só.
@@ -906,6 +918,11 @@ function AppContent() {
   const nomeDaColaboradora = (id: string) =>
     collaborators.find(c => c.id === id)?.name ?? users.find(u => u.id === id)?.name ?? 'a colaboradora';
 
+  /** Nome de qualquer pessoa por id — colaboradora ou usuário. Usado onde o id pode ser os
+   *  dois, como no autor de um ajuste. */
+  const nomeDePessoa = (id: string) =>
+    collaborators.find(c => c.id === id)?.name ?? users.find(u => u.id === id)?.name ?? id;
+
   /**
    * "Voltar ao plano": apaga a exceção da colaboradora naquela competência.
    *
@@ -950,23 +967,68 @@ function AppContent() {
       targetQty: 0,
       semMeta: true,
       motivo: motivo.trim() || undefined,
+      ajustadoPor: currentUser!.id,
+      ajustadoEm: new Date().toISOString(),
     }]);
   };
 
   /**
-   * "Ajustar": pré-preenche o formulário de meta com o que o plano previa.
+   * Ajuste da competência: um passo para cima ou para baixo sobre a meta do plano (0.25.0).
    *
-   * Reaproveita o formulário que já existe, e com ele as validações de escopo da 2A.6.3 — a
-   * exceção está sujeita às mesmas regras que a meta sempre esteve.
+   * Grava o DELTA acumulado, não o resultado. Clicar duas vezes em "+" sobre um plano de 10
+   * guarda `+2`, e não `12` — se o plano depois virar 12, a meta efetiva acompanha para 14 e a
+   * decisão da gestão continua significando "duas a mais do que o plano manda". Com o plano
+   * pertencendo ao ADMIN, essa é a única forma de a intenção sobreviver a uma edição que não
+   * é dela.
+   *
+   * Pousa no ESCOPO, e não na pessoa: a chave é (monitora, colaboradora, canal). Ajustar o
+   * WhatsApp não move a meta de Ligação.
+   *
+   * O delta que zera some do armazenamento em vez de virar `0`: um ajuste de zero é a ausência
+   * de ajuste, e deixá-lo gravado faria a linha continuar marcada como "Ajustada" sem ter
+   * ajuste nenhum.
    */
-  const handleAjustarMeta = (monitorId: string, colaboradorId: string, alvoAtual: number, canal?: Canal) => {
-    setNewCGoalVal({
+  const handleAjustarDelta = (
+    monitorId: string,
+    colaboradorId: string,
+    canal: Canal | undefined,
+    passo: number,
+  ) => {
+    const { year, month } = planningPeriod;
+    const mesmoEscopo = (g: ColaboradorGoal) =>
+      g.monitorId === monitorId && g.colaboradorId === colaboradorId
+      && g.year === year && g.month === month && (g.canal ?? undefined) === canal;
+
+    const atual = colaboradorGoals.find(g => mesmoEscopo(g) && typeof g.ajuste === 'number');
+    const novoDelta = (atual?.ajuste ?? 0) + passo;
+    const semOAntigo = colaboradorGoals.filter(g => !mesmoEscopo(g));
+
+    if (novoDelta === 0) {
+      setColaboradorGoals(semOAntigo);
+      return;
+    }
+
+    setColaboradorGoals([...semOAntigo, {
+      id: atual?.id ?? `cgoal-${Date.now()}`,
       monitorId,
       colaboradorId,
-      canal: canal ?? '',
-      targetQty: alvoAtual,
-    });
+      year,
+      month,
+      // `targetQty` não é o alvo aqui: o alvo sai de plano + ajuste, em resolverMetasDoPeriodo.
+      // Fica em 0 para que uma leitura que ignore `ajuste` não some um número inventado.
+      targetQty: 0,
+      ...(canal ? { canal } : {}),
+      ajuste: novoDelta,
+      ajustadoPor: currentUser!.id,
+      ajustadoEm: new Date().toISOString(),
+    }]);
   };
+
+  /** Desfaz um ajuste de escopo. A linha volta a ser lida do plano. */
+  const handleVoltarAoEscopoDoPlano = (goalId: string) => {
+    setColaboradorGoals(colaboradorGoals.filter(g => g.id !== goalId));
+  };
+
 
   /**
    * Salva o plano. Criação, ou sucessão quando a vigência já começou.
@@ -1346,10 +1408,10 @@ function AppContent() {
                     setNewCGoalVal={setNewCGoalVal}
                     onUpdateColabGoal={handleUpdateColabGoal}
                     onRemoveColabGoal={handleRemoveColabGoal}
-                    onAjustar={handleAjustarMeta}
+                    onAjustarDelta={handleAjustarDelta}
+                    onVoltarAoEscopoDoPlano={handleVoltarAoEscopoDoPlano}
                     onVoltarAoPlano={handleVoltarAoPlano}
                     onSemMeta={handleSemMeta}
-                    onEditarPlano={() => setShowPlanoEditor(true)}
                     semMeta={metasDoPlanejamento.semMeta}
                     planoVigente={getPlanoVigente(planosMetas, planningPeriod)}
                     getMonitors={getMonitors}
@@ -1546,6 +1608,13 @@ function AppContent() {
                     criteria={criteria}
                     adminSubTab={adminSubTab}
                     setAdminSubTab={setAdminSubTab}
+                    planosMetas={planosMetas}
+                    planoPeriodo={planoPeriodo}
+                    setPlanoPeriodo={setPlanoPeriodo}
+                    metasDoPlanoAdmin={metasDe(planoPeriodo)}
+                    nomeDePessoa={nomeDePessoa}
+                    onNovoPlano={() => setPlanoEmEdicao(null)}
+                    onEditarPlano={(p: PlanoMetas) => setPlanoEmEdicao(p)}
                     setNewCriterion={setNewCriterion}
                     setNewArea={setNewArea}
                     setNewCollaborator={setNewCollaborator}
@@ -1619,14 +1688,14 @@ function AppContent() {
       {/* O editor fecha só quando o plano foi de fato salvo. Recusada a vigência por colisão,
           ele permanece aberto com tudo o que foi digitado — é exatamente ali que a gestora
           precisa corrigir as datas, e fechar significaria remontar o plano inteiro. */}
-      {showPlanoEditor && (
+      {planoEmEdicao !== undefined && (
         <PlanoMetasEditor
-          plano={getPlanoVigente(planosMetas, planningPeriod)}
+          plano={planoEmEdicao}
           periodoAtual={periodoAtual}
           getMonitors={getMonitors}
           getCollaborators={getCollaborators}
-          onSalvar={(plano: PlanoMetas) => { if (handleSalvarPlano(plano)) setShowPlanoEditor(false); }}
-          onFechar={() => setShowPlanoEditor(false)}
+          onSalvar={(plano: PlanoMetas) => { if (handleSalvarPlano(plano)) setPlanoEmEdicao(undefined); }}
+          onFechar={() => setPlanoEmEdicao(undefined)}
         />
       )}
 

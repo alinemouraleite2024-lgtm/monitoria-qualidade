@@ -16,12 +16,19 @@ import type { ColaboradorGoal, PlanoMetas } from '../types/domain';
 import type { Period } from './period';
 import { periodToCompetencia, previousPeriod } from './period';
 
-/** Meta resolvida, com a origem que a tela de Metas usa para desenhar o chip. */
+/**
+ * Meta resolvida, com a origem que a tela de Metas usa para desenhar o chip.
+ *
+ *   'plano'    herdada, ninguém tocou.
+ *   'ajuste'   o plano mais o delta da gestão (0.25.0). `ajuste` e `alvoDoPlano` vêm junto.
+ *   'excecao'  meta absoluta: competência sem plano, ou exceção anterior à 0.25.0.
+ */
 export interface MetaEfetiva extends ColaboradorGoal {
-  origem: 'plano' | 'excecao';
+  origem: 'plano' | 'ajuste' | 'excecao';
   /**
-   * Alvo que o plano previa, presente só quando a linha é exceção E existe plano por trás.
-   * Alimenta o chip "Ajustada · plano 5" — sem plano, não se inventa um valor de comparação.
+   * Alvo que o plano previa, presente quando a linha foi ajustada ou substituída E existe
+   * plano por trás. Alimenta o chip "Ajustada +3 · plano 5" — sem plano, não se inventa um
+   * valor de comparação.
    */
   alvoDoPlano?: number;
 }
@@ -42,6 +49,10 @@ export interface MetasDoPeriodo {
 
 const chave = (monitorId: string, colaboradorId: string) => `${monitorId}::${colaboradorId}`;
 
+/** Chave do escopo: é nela que o ajuste da gestão pousa, e não na pessoa. */
+const chaveEscopo = (monitorId: string, colaboradorId: string, canal?: string) =>
+  `${monitorId}::${colaboradorId}::${canal ?? 'geral'}`;
+
 /** O plano que cobre a competência. `null` quando nenhum cobre — situação normal, não erro. */
 export const getPlanoVigente = (planos: PlanoMetas[], period: Period): PlanoMetas | null => {
   const c = periodToCompetencia(period);
@@ -51,10 +62,21 @@ export const getPlanoVigente = (planos: PlanoMetas[], period: Period): PlanoMeta
 /**
  * Metas efetivas de uma competência.
  *
- * A sobreposição é **por colaboradora**, não por linha. Se o plano dá a alguém 5 de WhatsApp e 5
- * de Ligação e a exceção do mês é uma meta geral de 30, a exceção precisa substituir as duas
- * linhas — sobrepor uma só faria coexistirem meta geral e meta por canal, que é exatamente o
- * estado que `assertMetasConsistentes` proíbe desde a 2A.6.3.
+ * Desde a 0.25.0 há DOIS donos e três formas de exceção, e a granularidade de cada uma é
+ * diferente — é isso que a função precisa acertar:
+ *
+ *   semMeta      vale pela PESSOA. Férias tiram a colaboradora do mês inteiro, em todo canal.
+ *   ajuste       vale pelo ESCOPO. "+1 no WhatsApp" não toca a meta de Ligação dela.
+ *   targetQty    vale pela PESSOA, e substitui o plano. É o caso sem plano, e o das exceções
+ *                gravadas antes da 0.25.0 — por isso não houve migração.
+ *
+ * A absoluta continua substituindo a pessoa inteira pelo motivo de sempre: se o plano dá 5 de
+ * WhatsApp e 5 de Ligação e a exceção é uma meta geral de 30, sobrepor só uma linha faria
+ * coexistirem meta geral e meta por canal, que é o estado que `assertMetasConsistentes` proíbe
+ * desde a 2A.6.3.
+ *
+ * Um ajuste cujo escopo saiu do plano fica órfão e é ignorado: um delta sem base não tem o que
+ * ajustar, e inventar um alvo para ele seria criar meta que ninguém declarou.
  */
 export const resolverMetasDoPeriodo = (
   planos: PlanoMetas[],
@@ -62,59 +84,87 @@ export const resolverMetasDoPeriodo = (
   period: Period,
 ): MetasDoPeriodo => {
   const competencia = periodToCompetencia(period);
-
   const doMes = excecoes.filter((g) => g.year === period.year && g.month === period.month);
-  const colaboradorasComExcecao = new Set(doMes.map((g) => chave(g.monitorId, g.colaboradorId)));
-
   const plano = getPlanoVigente(planos, period);
 
-  // Alvo previsto pelo plano, por colaboradora — só para o comparativo do chip.
-  const alvoPrevisto = new Map<string, number>();
-  if (plano) {
-    for (const linha of plano.linhas) {
-      if (linha.entraEm && linha.entraEm > competencia) continue;
-      const k = chave(linha.monitorId, linha.colaboradorId);
-      alvoPrevisto.set(k, (alvoPrevisto.get(k) ?? 0) + linha.targetQty);
+  // Linhas do plano que valem nesta competência. Quem entra no meio da vigência não aparece
+  // nas competências anteriores à entrada.
+  const linhasDoPlano = plano
+    ? plano.linhas.filter((l) => !(l.entraEm && l.entraEm > competencia))
+    : [];
+
+  const semMeta: SemMetaEfetiva[] = [];
+  const foraDoMes = new Set<string>();
+  const absolutas: ColaboradorGoal[] = [];
+  const ajustes = new Map<string, ColaboradorGoal>();
+
+  for (const g of doMes) {
+    const kPessoa = chave(g.monitorId, g.colaboradorId);
+    if (g.semMeta) {
+      semMeta.push({ monitorId: g.monitorId, colaboradorId: g.colaboradorId, motivo: g.motivo });
+      foraDoMes.add(kPessoa);
+    } else if (typeof g.ajuste === 'number') {
+      ajustes.set(chaveEscopo(g.monitorId, g.colaboradorId, g.canal), g);
+    } else {
+      absolutas.push(g);
     }
+  }
+
+  const substituidas = new Set(absolutas.map((g) => chave(g.monitorId, g.colaboradorId)));
+
+  // Alvos do plano: por pessoa alimenta o chip da exceção absoluta, por escopo alimenta o do
+  // ajuste. São contas diferentes porque as duas exceções têm granularidades diferentes.
+  const alvoPorPessoa = new Map<string, number>();
+  const alvoPorEscopo = new Map<string, number>();
+  for (const l of linhasDoPlano) {
+    const kPessoa = chave(l.monitorId, l.colaboradorId);
+    alvoPorPessoa.set(kPessoa, (alvoPorPessoa.get(kPessoa) ?? 0) + l.targetQty);
+    alvoPorEscopo.set(chaveEscopo(l.monitorId, l.colaboradorId, l.canal), l.targetQty);
   }
 
   const metas: MetaEfetiva[] = [];
-  const semMeta: SemMetaEfetiva[] = [];
 
-  for (const g of doMes) {
-    const k = chave(g.monitorId, g.colaboradorId);
-    if (g.semMeta) {
-      semMeta.push({ monitorId: g.monitorId, colaboradorId: g.colaboradorId, motivo: g.motivo });
-      continue;
-    }
+  for (const g of absolutas) {
+    const kPessoa = chave(g.monitorId, g.colaboradorId);
+    if (foraDoMes.has(kPessoa)) continue;
     metas.push({
       ...g,
       origem: 'excecao',
-      ...(alvoPrevisto.has(k) ? { alvoDoPlano: alvoPrevisto.get(k) } : {}),
+      ...(alvoPorPessoa.has(kPessoa) ? { alvoDoPlano: alvoPorPessoa.get(kPessoa) } : {}),
     });
   }
 
-  if (plano) {
-    for (const linha of plano.linhas) {
-      const k = chave(linha.monitorId, linha.colaboradorId);
-      // Exceção manda: quem tem ajuste ou "sem meta" no mês não herda nada do plano.
-      if (colaboradorasComExcecao.has(k)) continue;
-      // Quem entra no meio da vigência não aparece nas competências anteriores à entrada.
-      if (linha.entraEm && linha.entraEm > competencia) continue;
+  for (const linha of linhasDoPlano) {
+    const kPessoa = chave(linha.monitorId, linha.colaboradorId);
+    if (foraDoMes.has(kPessoa)) continue;
+    if (substituidas.has(kPessoa)) continue;
 
-      metas.push({
-        // Id sintético e estável: as chaves de React e `getEscopoProgresso` precisam de um id,
-        // e uma linha de plano não existe como registro gravado.
-        id: `plano:${plano.id}:${linha.colaboradorId}:${linha.canal ?? 'geral'}`,
-        monitorId: linha.monitorId,
-        colaboradorId: linha.colaboradorId,
-        year: period.year,
-        month: period.month,
-        targetQty: linha.targetQty,
-        ...(linha.canal ? { canal: linha.canal } : {}),
-        origem: 'plano',
-      });
-    }
+    const ajuste = ajustes.get(chaveEscopo(linha.monitorId, linha.colaboradorId, linha.canal));
+    // Piso de 1: o ajuste nunca zera a meta. Zerar é outra decisão, e tem mecanismo próprio —
+    // "sem meta neste mês", que diz que a pessoa está fora, e não que o alvo dela é nada.
+    const alvo = ajuste ? Math.max(1, linha.targetQty + (ajuste.ajuste ?? 0)) : linha.targetQty;
+
+    metas.push({
+      // Com ajuste, o id é o do registro gravado — a tela precisa dele para remover o ajuste.
+      // Sem ajuste, um id sintético e estável: a linha de plano não existe como registro, e
+      // as chaves de React e `getEscopoProgresso` precisam de um.
+      id: ajuste ? ajuste.id : `plano:${plano!.id}:${linha.colaboradorId}:${linha.canal ?? 'geral'}`,
+      monitorId: linha.monitorId,
+      colaboradorId: linha.colaboradorId,
+      year: period.year,
+      month: period.month,
+      targetQty: alvo,
+      ...(linha.canal ? { canal: linha.canal } : {}),
+      ...(ajuste
+        ? {
+            ajuste: ajuste.ajuste,
+            ajustadoPor: ajuste.ajustadoPor,
+            ajustadoEm: ajuste.ajustadoEm,
+            origem: 'ajuste' as const,
+            alvoDoPlano: linha.targetQty,
+          }
+        : { origem: 'plano' as const }),
+    });
   }
 
   return { metas, semMeta };
