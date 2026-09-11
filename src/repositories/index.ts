@@ -24,7 +24,7 @@ import {
   OFFICIAL_CATEGORIAS_V1,
 } from '../constants/catalogData';
 import { competenciaDe } from '../domain/period';
-import type { Criterion, LegacyMonitoring, Monitoring, PlanoMetas, Role, User } from '../types/domain';
+import type { Criterion, LegacyMonitoring, Monitoring, PlanoMetas, Role, SystemSettings, User } from '../types/domain';
 
 // Migrações silenciosas aplicadas no carregamento de monitorias.
 // Transcritas do inicializador anterior à F0-12 sem alteração de regra: convertem dados
@@ -291,7 +291,25 @@ export const catalogCategoriasRepository = createRepository(
 
 // --- Singletons de configuração ---
 export const brandRepository = createRepository(KEYS.brand, DEFAULT_BRAND_CONFIG);
-export const settingsRepository = createRepository(KEYS.settings, INITIAL_SYSTEM_SETTINGS);
+
+/**
+ * Preenche parâmetros de negócio que nasceram depois da base (0.24.0).
+ *
+ * Não é migração e não usa marcador de versão: `read` devolve o que está gravado, e um
+ * singleton gravado antes da 0.24.0 simplesmente não tem `defasagemCompetencia`. Preencher
+ * na leitura é idempotente e não destrói nada — o oposto de `DATABASE_VERSION`, que apaga.
+ *
+ * O valor escolhido é 1 porque é o que a operação já praticava à mão antes de existir campo.
+ */
+const completarSettings: Loader<SystemSettings> = (stored) => ({
+  ...stored,
+  defasagemCompetencia:
+    typeof stored?.defasagemCompetencia === 'number' && stored.defasagemCompetencia >= 0
+      ? stored.defasagemCompetencia
+      : INITIAL_SYSTEM_SETTINGS.defasagemCompetencia,
+});
+
+export const settingsRepository = createRepository(KEYS.settings, INITIAL_SYSTEM_SETTINGS, completarSettings);
 
 // --- Sessão (ciclo de vida próprio) ---
 export { sessionRepository } from './sessionRepository';

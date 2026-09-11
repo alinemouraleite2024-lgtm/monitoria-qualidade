@@ -29,6 +29,7 @@ import {
   getMetaDaColaboradora,
   getEscoposDaColaboradora,
   getGoalsDaColaboradora,
+  getGoalsForPeriod,
   getEscopoProgresso,
   getCarteiraProgress,
   type CarteiraProgress,
@@ -113,7 +114,23 @@ export const getFilaDaCarteira = (
 
   const carteira = getCarteira({ allocations, holidays, users }, collaborators, monitorId, dateStr);
 
-  const linhas: LinhaDaFila[] = carteira.map((colaborador) => {
+  // A agenda é a UNIÃO de duas declarações (0.24.0). Até aqui ela era só a carteira alocada, e
+  // o plano de metas ficava de fora — a tela somava 35 no alvo e listava ninguém, porque o alvo
+  // vinha das metas e a lista vinha das alocações. Duas respostas para "de quem eu sou monitora"
+  // na mesma tela, e a gestora que cadastrasse só uma delas não tinha como saber qual faltava.
+  //
+  // A linha do plano já diz monitora, colaboradora e volume: é uma declaração de carteira com
+  // meta junto. Entra na agenda por direito próprio. A alocação continua existindo e continua
+  // necessária — é ela que carrega vigência e resolve substituição em férias, coisas que o plano
+  // não sabe responder.
+  const comMeta = new Set(getGoalsForPeriod(goals, monitorId, period).map((g) => g.colaboradorId));
+  const jaNaCarteira = new Set(carteira.map((c) => c.id));
+  const naAgenda = [
+    ...carteira,
+    ...collaborators.filter((c) => comMeta.has(c.id) && !jaNaCarteira.has(c.id)),
+  ];
+
+  const linhas: LinhaDaFila[] = naAgenda.map((colaborador) => {
     const meta = getMetaDaColaboradora(goals, monitorId, colaborador.id, period);
     const escopos = getEscoposDaColaboradora(
       goals,
@@ -434,14 +451,20 @@ export interface RitmoDoMonitor {
  *
  * "Atrasado" aqui é o ritmo necessário, não a lacuna absoluta: quem precisa de 3 por dia está
  * em situação pior do que quem precisa de 1, mesmo que a lacuna do segundo seja maior.
+ *
+ * Recebe os DOIS períodos (0.24.0). A meta vem da competência auditada; os dias úteis, do mês
+ * de trabalho. Antes era um só, e com a defasagem isso passou a medir o ritmo dentro de um mês
+ * encerrado: a gestora via "1 dia útil restante, precisa de 35 por dia" em setembro, porque a
+ * conta era feita sobre agosto.
  */
 export const getRitmoDaEquipe = (
   ctx: FilaContexto,
   monitores: User[],
   period: Period,
+  mesDeTrabalho: Period,
   hojeISO: string
 ): RitmoDoMonitor[] => {
-  const diasUteis = businessDaysRemainingIn(period, hojeISO);
+  const diasUteis = businessDaysRemainingIn(mesDeTrabalho, hojeISO);
   return monitores
     .map((monitor) => {
       const progresso = getCarteiraProgress(ctx.goals, ctx.monitorings, monitor.id, period);
@@ -477,7 +500,7 @@ export const getRiscoDoMes = (
   period: Period,
   hojeISO: string
 ): RiscoDoMes => {
-  const { collaborators, allocations = [], holidays = [], users = [] } = ctx;
+  const { collaborators, goals, allocations = [], holidays = [], users = [] } = ctx;
   const semCobertura: ColaboradoraEmRisco[] = [];
 
   for (const monitor of monitores) {
@@ -488,9 +511,20 @@ export const getRiscoDoMes = (
     }
   }
 
+  // "Sem vínculo" passou a significar sem vínculo E sem meta (0.24.0). Com a agenda sendo a
+  // união das duas declarações, quem tem linha no plano está sendo monitorada — e continuar
+  // avisando que ela "não entra em meta nenhuma" seria repetir, como risco, um estado que
+  // deixou de existir. O alerta fica para quem não está em nenhuma das duas.
+  const comMetaNoPeriodo = new Set(
+    goals
+      .filter((g) => g.year === period.year && g.month === period.month)
+      .map((g) => g.colaboradorId),
+  );
+
   return {
     semCobertura,
-    semVinculo: getSemVinculo({ allocations, holidays, users }, collaborators, hojeISO),
+    semVinculo: getSemVinculo({ allocations, holidays, users }, collaborators, hojeISO)
+      .filter((c) => !comMetaNoPeriodo.has(c.id)),
   };
 };
 

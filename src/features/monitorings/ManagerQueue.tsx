@@ -141,7 +141,7 @@ export const ManagerQueue = ({
     <div className="section-card" style={{ padding: 0, overflow: 'hidden' }}>
       <Cabecalho
         titulo="Ritmo da equipe"
-        nota={ritmo[0] ? `${ritmo[0].diasUteis} dias úteis restantes` : undefined}
+        nota={ritmo[0] ? `${ritmo[0].diasUteis} ${ritmo[0].diasUteis === 1 ? 'dia útil restante' : 'dias úteis restantes'}` : undefined}
       />
       {ritmo.map(({ monitor, progresso, ritmo: porDia }) => (
         <div key={monitor.id} style={{

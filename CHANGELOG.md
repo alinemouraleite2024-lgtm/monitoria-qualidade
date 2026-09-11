@@ -5,6 +5,68 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.24.0] - 2026-09-11 — Agenda operacional
+
+> O plano anual passou a dizer quantas monitorias existem, mas a tela não dizia quais. E a
+> agenda montava o mês corrente numa operação que avalia o mês anterior — em setembro, a
+> agenda de setembro, que só seria trabalhada em outubro.
+
+### Fixed
+
+- **A agenda vinha vazia com o plano cadastrado.** A tela somava 35 no alvo e não listava
+  ninguém: o alvo vinha das metas e a lista vinha de `getCarteira`, que só conhece alocação.
+  Duas respostas para "de quem eu sou monitora" na mesma tela, e nada dizendo qual dos dois
+  cadastros faltava.
+
+  `getFilaDaCarteira` passa a listar a **união** — quem tem vínculo vigente **mais** quem tem
+  meta resolvida para aquela monitora naquela competência. A linha do plano já diz monitora,
+  colaboradora e volume: é uma declaração de carteira com meta junto, e entra na agenda por
+  direito próprio. Cadastrar o plano passa a bastar.
+
+  As alocações ficam. Elas carregam vigência e resolvem substituição em férias, que o plano não
+  sabe responder, e continuam sendo a porta de quem é monitorada sem meta declarada.
+
+- **O ritmo da equipe era medido dentro do mês auditado.** Com a defasagem, `getRitmoDaEquipe`
+  calculava os dias úteis sobre agosto: a gestora via "1 dia útil restante · precisa de 35 por
+  dia" em pleno setembro. Passa a receber os dois períodos.
+
+- **"Sem Carteira"** avisava que a colaboradora "não entra em meta nenhuma". Com a união isso
+  deixou de valer para quem tem linha no plano; o alerta passa a exigir as duas ausências.
+
+- **"1 dias úteis restantes"** no Painel da gestora.
+
+### Added
+
+- **`settings.defasagemCompetencia`** — quantos meses a monitoria fica atrás do atendimento que
+  audita. Padrão **1**, campo em Administração → Sistema → Fluxo, com a frase do efeito ao lado
+  ("Trabalhando em Setembro de 2026, a agenda abre na competência de Agosto de 2026"). É
+  parâmetro, e não constante, porque descreve o calendário de uma operação e não uma regra do
+  sistema.
+
+- **Seletor de competência na tela de Monitorias**, revertendo a decisão da 0.22.0 de que ela
+  responde só sobre o mês corrente. Atraso, reavaliação e auditoria retroativa são rotina, e
+  mandá-las para Relatórios era mandar a monitora para a única tela sem o botão de monitorar.
+
+### Changed
+
+- **Dois períodos com nomes próprios.** `competência` é o mês auditado — eixo de meta, fila,
+  cobertura e pendências. `mês de trabalho` é o corrente — único eixo de dias úteis e ritmo.
+  Confundi-los é o erro que esta tela já cometeu duas vezes, e agora na direção oposta: medir o
+  ritmo pelo mês auditado daria zero dia restante justamente quando há trabalho a fazer.
+- **Cabeçalho:** "Monitorias · Agosto de 2026", com "Competência de agosto, monitorada em
+  setembro." no subtítulo. Fora da competência padrão, o subtítulo diz em que mês você está.
+- **A carteira é resolvida por uma data dentro da competência**, e não por hoje. Uma alocação
+  encerrada em julho não pode sumir da agenda de julho porque hoje é setembro.
+- **O formulário nasce na competência da agenda.** Antes abria no mês corrente e só voltava a
+  agosto depois de preenchido o início do atendimento.
+- **O vazio da agenda** nomeia as duas portas de entrada, em vez de descrever o estado.
+
+### Migração
+
+- **Nenhuma.** `defasagemCompetencia` é preenchido com 1 na leitura para bases anteriores —
+  aditivo, idempotente, sem marcador de versão e sem apagar nada. 1 é o que a operação já
+  praticava à mão.
+
 ## [0.23.0] - 2026-09-11 — Plano de metas com vigência
 
 > A meta era cadastrada mês a mês. Cinco colaboradoras × doze competências são sessenta

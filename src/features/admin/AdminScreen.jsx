@@ -4,6 +4,7 @@ import { CRITERION_CATEGORIES, CHANNELS } from '../../constants/criteria';
 import { canalLabel } from '../../constants/canais';
 import { DEFAULT_BRAND_CONFIG } from '../../mockData';
 import { temGestorConfigurado } from '../../domain/validacaoService';
+import { competenciaDaAgenda, getCurrentPeriod, periodLabel } from '../../domain/period';
 import { UserManagement } from '../../modules/admin/UserManagement';
 import { RolesManagement } from '../../modules/admin/RolesManagement';
 import { AuditLogs } from '../../modules/admin/AuditLogs';
@@ -457,6 +458,42 @@ export const AdminScreen = ({
                       </div>
                     );
                   })()}
+                </div>
+
+                {/* Calendário da operação (0.24.0).
+                    A monitoria de agosto é realizada em setembro. Até aqui esse "menos um mês"
+                    não existia em lugar nenhum: a agenda montava o mês corrente e a monitora
+                    via, em setembro, as metas de setembro — que só seriam trabalhadas em
+                    outubro. Vira parâmetro porque descreve o calendário de uma operação, não
+                    uma regra do sistema. */}
+                <div className="section-card">
+                  <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1rem', marginBottom: '1.25rem', fontWeight: 'bold' }}>
+                    Calendário da Operação
+                  </h3>
+
+                  <div className="form-group" style={{ maxWidth: '22rem' }}>
+                    <label className="form-label">Defasagem da competência</label>
+                    <select
+                      className="form-control"
+                      value={String(settings.defasagemCompetencia ?? 1)}
+                      onChange={(e) => setSettings({ ...settings, defasagemCompetencia: Number(e.target.value) })}
+                    >
+                      <option value="0">Nenhuma — avalia o mês corrente</option>
+                      <option value="1">1 mês — avalia o mês anterior</option>
+                      <option value="2">2 meses</option>
+                      <option value="3">3 meses</option>
+                    </select>
+                    <div className="switch-label-desc" style={{ marginTop: '0.5rem' }}>
+                      Quantos meses a monitoria fica atrás do atendimento que ela audita. Decide para
+                      qual competência a agenda da monitora abre — não altera nenhuma monitoria já
+                      registrada, nem move meta de lugar.
+                    </div>
+                    <div style={{ marginTop: '0.75rem', padding: '0.7rem 0.85rem', borderRadius: '8px', backgroundColor: 'var(--bg-app)', fontSize: '0.83rem', lineHeight: 1.55 }}>
+                      {Number(settings.defasagemCompetencia ?? 1) === 0
+                        ? <>Trabalhando em <strong>{periodLabel(getCurrentPeriod())}</strong>, a agenda abre na competência de <strong>{periodLabel(getCurrentPeriod())}</strong>.</>
+                        : <>Trabalhando em <strong>{periodLabel(getCurrentPeriod())}</strong>, a agenda abre na competência de <strong>{periodLabel(competenciaDaAgenda(getCurrentPeriod(), Number(settings.defasagemCompetencia ?? 1)))}</strong>.</>}
+                    </div>
+                  </div>
                 </div>
 
               </div>
