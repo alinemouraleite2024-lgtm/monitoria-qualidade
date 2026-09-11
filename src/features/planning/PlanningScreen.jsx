@@ -2,6 +2,7 @@ import { SeletorCompetencia } from '../../shared/components/SeletorCompetencia';
 import { Trash2 } from 'lucide-react';
 import { getEscopoProgresso, getMetaDaColaboradora, assertMetasConsistentes } from '../../domain/goalService';
 import { CANAIS, canalLabel } from '../../constants/canais';
+import { competenciaLabel } from '../../domain/period';
 
 // Planejamento de metas.
 //
@@ -30,13 +31,20 @@ export const PlanningScreen = ({
   setNewCGoalVal,
   onUpdateColabGoal,
   onRemoveColabGoal,
+  onAjustar,
+  onVoltarAoPlano,
+  onSemMeta,
+  onEditarPlano,
+  semMeta = /** @type {import('../../domain/planoMetasService').SemMetaEfetiva[]} */ ([]),
+  planoVigente = /** @type {import('../../types/domain').PlanoMetas | null} */ (null),
   getMonitors,
   getCollaborators,
   renderUserAvatar
 }) => {
-  const doPeriodo = colaboradorGoals.filter(
-    g => g.year === periodoAtual.year && g.month === periodoAtual.month
-  );
+  // 0.23.0 — `colaboradorGoals` chega já RESOLVIDO para esta competência: o plano vigente com
+  // as exceções do mês por cima (ver domain/planoMetasService). O filtro por ano/mês some, e
+  // com ele o motivo pelo qual esta tela precisava conhecer a forma do registro gravado.
+  const doPeriodo = colaboradorGoals;
 
   const nomeDe = (id) =>
     collaborators.find(c => c.id === id)?.name ?? users.find(u => u.id === id)?.name ?? 'N/A';
@@ -84,6 +92,32 @@ export const PlanningScreen = ({
           onChange={onPeriodoChange}
           titulo="Competência"
         />
+      </div>
+
+      {/* Faixa do plano vigente (0.23.0). Fica no topo de toda competência coberta: é a
+          explicação de por que as metas aparecem sem ninguém ter cadastrado nada neste mês. */}
+      <div className="section-card" style={{
+        marginBottom: '1.5rem',
+        borderLeft: `3px solid ${planoVigente ? 'var(--primary)' : 'var(--border-color)'}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        gap: '1rem', flexWrap: 'wrap',
+      }}>
+        {planoVigente ? (
+          <span style={{ fontSize: '0.88rem' }}>
+            <strong>{planoVigente.nome}</strong>
+            <span style={{ color: 'var(--text-muted)' }}>
+              {' '}— vigência de {competenciaLabel(planoVigente.vigenciaInicio)} a {competenciaLabel(planoVigente.vigenciaFim)}
+              {' · '}{planoVigente.linhas.length} {planoVigente.linhas.length === 1 ? 'colaboradora' : 'colaboradoras'}
+            </span>
+          </span>
+        ) : (
+          <span style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>
+            Nenhum plano cobre {periodoLabel}. As metas deste mês precisam ser cadastradas uma a uma.
+          </span>
+        )}
+        <button type="button" className="btn btn-secondary btn-sm" onClick={onEditarPlano}>
+          {planoVigente ? 'Editar plano' : 'Criar plano de metas'}
+        </button>
       </div>
 
       {inconsistencias.length > 0 && (
@@ -187,10 +221,52 @@ export const PlanningScreen = ({
             Quadro de Metas Ativo ({periodoLabel})
           </h3>
 
-          {grupos.length === 0 && (
+          {grupos.length === 0 && semMeta.length === 0 && (
             <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', margin: '0 0 1rem' }}>
               Sem meta definida para o período.
             </p>
+          )}
+
+          {/* "Sem meta neste mês" (0.23.0). A linha continua visível, com o motivo no lugar do
+              escopo: férias é uma decisão, e uma decisão que some da tela não pode ser revista.
+              Fora do quadro de progresso porque não há alvo contra o qual medir. */}
+          {semMeta.length > 0 && (
+            <div style={{ marginBottom: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              {semMeta.map(s => (
+                <div
+                  key={`${s.monitorId}::${s.colaboradorId}`}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    gap: '1rem', flexWrap: 'wrap',
+                    padding: '0.6rem 0.75rem',
+                    border: '1px dashed var(--border-color)',
+                    borderRadius: 'var(--border-radius-sm)',
+                  }}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ fontWeight: '600', color: 'var(--text-muted)' }}>
+                      {nomeDe(s.colaboradorId)}
+                    </span>
+                    <span className="badge-pill" style={{
+                      fontSize: '0.68rem', border: '1px dashed var(--border-color)',
+                      color: 'var(--text-muted)', background: 'transparent',
+                    }}>
+                      Sem meta neste mês
+                    </span>
+                    {s.motivo && (
+                      <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>· {s.motivo}</span>
+                    )}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => onVoltarAoPlano(s.monitorId, s.colaboradorId)}
+                  >
+                    Voltar ao plano
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
 
           <div className="table-responsive">
@@ -228,6 +304,19 @@ export const PlanningScreen = ({
                             {' · '}{cobertura} de {alvo}
                             {falta > 0 ? ` · faltam ${falta}` : ' · completa'}
                           </span>
+                          {/* Chip de origem (0.23.0): é o que o gestor lê primeiro para saber
+                              se este mês foi tocado ou se veio do plano. */}
+                          {grupo.linhas[0].origem === 'excecao' ? (
+                            <span className="badge-pill badge-warning" style={{ fontSize: '0.68rem' }}>
+                              Ajustada
+                              {typeof grupo.linhas[0].alvoDoPlano === 'number'
+                                && ` · plano ${grupo.linhas[0].alvoDoPlano}`}
+                            </span>
+                          ) : grupo.linhas[0].origem === 'plano' ? (
+                            <span className="badge-pill badge-info" style={{ fontSize: '0.68rem' }}>
+                              Do plano
+                            </span>
+                          ) : null}
                         </div>
                       </td>
                     </tr>,
@@ -261,16 +350,51 @@ export const PlanningScreen = ({
                             </span>
                           </div>
                         </td>
+                        {/* Ações por origem (0.23.0). Uma linha herdada não tem "remover":
+                            ela não é registro gravado, é o plano sendo lido. O que existe é
+                            ajustar (cria exceção), declarar sem meta, ou desfazer o ajuste. */}
                         <td style={{ textAlign: 'right' }}>
-                          <button
-                            type="button"
-                            className="btn btn-secondary btn-sm"
-                            style={{ color: 'var(--danger)', borderColor: 'var(--danger-light)' }}
-                            title="Remover esta meta"
-                            onClick={() => onRemoveColabGoal(goal.id)}
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                          <div style={{ display: 'flex', gap: '0.3rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                            {goal.origem === 'plano' ? (
+                              <button
+                                type="button"
+                                className="btn btn-secondary btn-sm"
+                                title="Definir uma meta diferente só para esta competência"
+                                onClick={() => onAjustar(grupo.monitorId, grupo.colaboradorId, goal.targetQty, goal.canal)}
+                              >
+                                Ajustar
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                className="btn btn-secondary btn-sm"
+                                title="Desfazer o ajuste e voltar ao valor do plano"
+                                onClick={() => onVoltarAoPlano(grupo.monitorId, grupo.colaboradorId)}
+                              >
+                                Voltar ao plano
+                              </button>
+                            )}
+                            {goal.origem === 'plano' ? (
+                              <button
+                                type="button"
+                                className="btn btn-secondary btn-sm"
+                                title="Férias, afastamento ou outra razão para esta colaboradora não ter meta nesta competência"
+                                onClick={() => onSemMeta(grupo.monitorId, grupo.colaboradorId)}
+                              >
+                                Sem meta
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                className="btn btn-secondary btn-sm"
+                                style={{ color: 'var(--danger)', borderColor: 'var(--danger-light)' }}
+                                title="Remover este ajuste"
+                                onClick={() => onRemoveColabGoal(goal.id)}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     )),

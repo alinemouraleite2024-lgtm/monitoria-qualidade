@@ -362,6 +362,58 @@ export interface MonitorGoal {
 export interface ColaboradorGoal extends MonitorGoal {
   colaboradorId: string;
   canal?: Canal;
+  /**
+   * "Sem meta neste mês" (0.23.0): férias, afastamento ou situação especial. É diferente de
+   * não ter meta cadastrada — aqui alguém decidiu, e a decisão fica visível na tela.
+   *
+   * Não é `targetQty: 0`: zero somaria ao total da carteira e faria `hasGoal` verdadeiro, ou
+   * seja, "está de férias" apareceria como "tem meta zero". A régua de `hasGoal` existe desde a
+   * 2A.2 justamente para não confundir ausência com zero.
+   */
+  semMeta?: boolean;
+  /** Por que ficou sem meta. Exibido no lugar do escopo. */
+  motivo?: string;
+}
+
+/**
+ * Plano de metas recorrentes (0.23.0).
+ *
+ * Antes, a meta era cadastrada mês a mês: cinco colaboradoras × doze competências = sessenta
+ * cadastros por ano para dizer a mesma coisa. O plano declara o padrão uma vez, com vigência, e
+ * a meta de cada competência passa a ser herdada.
+ *
+ * `ColaboradorGoal` não mudou de forma: passou a ser a **exceção** — o mês em que a operação
+ * fugiu do padrão. Por isso não houve migração: o que já estava gravado continua valendo, agora
+ * lido como exceção.
+ *
+ * EDIÇÃO NÃO REESCREVE O PASSADO. Alterar um plano em curso não muda meses já decorridos: o
+ * plano corrente é encerrado na competência anterior e um novo nasce da competência atual em
+ * diante (ver `sucederPlano`). Sem isso, mudar a meta em dezembro reavaliaria agosto,
+ * setembro e outubro contra um alvo que não valia quando o trabalho foi feito.
+ */
+export interface PlanoMetasLinha {
+  monitorId: string;
+  colaboradorId: string;
+  canal?: Canal;
+  targetQty: number;
+  /**
+   * Competência a partir da qual a linha vale, `'YYYY-MM'`. Ausente = desde o início da
+   * vigência. Existe para quem entra na operação no meio do plano: em vez de virar uma exceção
+   * repetida todo mês, a pessoa entra no plano com a data em que começou.
+   */
+  entraEm?: string;
+}
+
+export interface PlanoMetas {
+  id: string;
+  nome: string;
+  /** 'YYYY-MM', inclusivo. */
+  vigenciaInicio: string;
+  /** 'YYYY-MM', inclusivo. */
+  vigenciaFim: string;
+  linhas: PlanoMetasLinha[];
+  criadoPor: string;
+  criadoEm: string;
 }
 
 export interface BrandConfig {

@@ -15,6 +15,7 @@ export const KEYS = {
   allocationHistory: 'pm2_alloc_history',
   monitorGoals: 'pm2_mgoals',
   colaboradorGoals: 'pm2_cgoals',
+  planosMetas: 'pm2_planos_metas',
   monitorings: 'pm2_monitorings',
   holidays: 'pm2_holidays',
   demands: 'pm2_demands',
