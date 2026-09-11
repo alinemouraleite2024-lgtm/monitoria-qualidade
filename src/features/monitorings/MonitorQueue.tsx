@@ -59,8 +59,16 @@ export const MonitorQueue = ({
       <div className="section-card" style={{ padding: 0, overflow: 'hidden' }}>
         <Cabecalho titulo="Quem falta monitorar" nota="Em ordem de urgência" />
 
+        {/* O vazio precisa dizer onde se resolve. A mensagem anterior — "nenhuma colaboradora
+            vinculada à sua carteira" — era verdadeira e inútil: descrevia o estado sem apontar
+            o cadastro que falta, e quem monitora não tem acesso a nenhum dos dois lugares onde
+            ele se faz. Desde a 0.24.0 há duas portas de entrada para a agenda, e a mensagem
+            nomeia as duas. */}
         {fila.length === 0 && (
-          <Vazio texto="Nenhuma colaboradora vinculada à sua carteira neste mês." />
+          <Vazio
+            texto="Nenhuma colaboradora nesta competência."
+            detalhe="A agenda vem do plano de metas ou de um vínculo em Equipe e Carteiras. Peça à gestão para cadastrar um dos dois."
+          />
         )}
 
         {fila.map((linha) => {
@@ -325,7 +333,7 @@ const Linha = ({ children, destaque = false }: { children: React.ReactNode; dest
   </div>
 );
 
-const Vazio = ({ texto }: { texto: string }) => (
+const Vazio = ({ texto, detalhe }: { texto: string; detalhe?: string }) => (
   <div style={{
     padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--text-muted)',
     fontSize: '0.88rem', borderTop: '1px solid var(--border-color)',
@@ -333,5 +341,8 @@ const Vazio = ({ texto }: { texto: string }) => (
   }}>
     <Clock size={28} style={{ opacity: 0.4 }} />
     {texto}
+    {detalhe && (
+      <span style={{ fontSize: '0.8rem', maxWidth: '36rem', lineHeight: 1.5 }}>{detalhe}</span>
+    )}
   </div>
 );
