@@ -35,6 +35,17 @@ export interface MonitoringFormProps {
    */
   colaboradorIdInicial?: string;
   canalInicial?: string;
+  /**
+   * Competência com que o formulário nasce, 'YYYY-MM' (0.24.0).
+   *
+   * É a competência da agenda de onde se clicou. Sem ela o formulário abria sempre no mês
+   * corrente: quem saísse da agenda de agosto para monitorar via setembro no campo, e a
+   * monitoria só voltaria a agosto depois de preencher o início do atendimento.
+   *
+   * Continua sendo apenas o valor inicial — o início do atendimento ainda a corrige, e o
+   * campo ainda é editável.
+   */
+  competenciaInicial?: string;
   users?: User[];
   collaborators?: Collaborator[];
   criteria?: Criterion[];
@@ -188,6 +199,7 @@ export const MonitoringForm = ({
   onAddCategoria = () => {},
   colaboradorIdInicial = '',
   canalInicial = '',
+  competenciaInicial,
   onClose,
   modoRetroativo = false,
   onSave
@@ -201,7 +213,7 @@ export const MonitoringForm = ({
     colaboradorId: colaboradorIdInicial,
     monitorId: currentUser?.id || '',
     gestorId: '',
-    competencia: periodToCompetencia(getCurrentPeriod()),
+    competencia: competenciaInicial || periodToCompetencia(getCurrentPeriod()),
     date: new Date().toISOString().split('T')[0],
     canal: canalInicial,
     categoriaAtendimento: '',

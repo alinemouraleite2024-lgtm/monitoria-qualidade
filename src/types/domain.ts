@@ -428,6 +428,20 @@ export interface BrandConfig {
 
 export interface SystemSettings {
   requireGestorValidation: boolean;
+  /**
+   * Quantos meses a monitoria fica atrás do atendimento que ela audita (0.24.0).
+   *
+   * Nesta operação a monitoria de agosto é realizada em setembro, então o valor é 1 e a
+   * agenda de setembro aponta para agosto. `0` significa avaliar o mês corrente.
+   *
+   * É parâmetro e não constante porque descreve o calendário de uma operação, não uma regra
+   * do sistema — e um "menos um mês" escrito no código é o tipo de decisão que ninguém
+   * encontra quando ela precisar mudar.
+   *
+   * Bases anteriores à 0.24.0 não têm o campo; o carregamento preenche com 1, que é o
+   * comportamento que a operação já praticava à mão.
+   */
+  defasagemCompetencia: number;
 }
 
 /** Sessão persistida: grava só o par mínimo, o usuário completo é re-resolvido na leitura. */

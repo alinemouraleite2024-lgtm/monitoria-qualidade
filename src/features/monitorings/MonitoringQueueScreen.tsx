@@ -4,13 +4,31 @@
 // dados prontos. É aqui que o contrato da 2B se sustenta: nenhuma regra de negócio vive nos
 // componentes da fila.
 //
-// A tela responde SEMPRE sobre o mês corrente, por decisão de produto. A pergunta é "o que eu
-// preciso fazer agora"; consultar meses anteriores é papel de Relatórios.
+// DOIS PERÍODOS, e confundi-los é o erro que esta tela já cometeu duas vezes (0.24.0).
+//
+//   competência   o mês AUDITADO — de quando são os atendimentos. É o eixo da meta, da fila,
+//                 da cobertura e das pendências.
+//   mês de trabalho   o mês CORRENTE, em que a monitoria está sendo feita. É o único eixo
+//                 de dias úteis restantes e de ritmo diário.
+//
+// A operação avalia o mês anterior: em setembro se monitora agosto. Até a 0.23.0 a tela usava
+// o mês corrente para as duas coisas e montava, em setembro, a agenda de setembro — que só
+// será trabalhada em outubro. A distância entre os dois é `settings.defasagemCompetencia`.
+//
+// Medir o ritmo pela competência auditada seria o mesmo engano da 0.22.1 ao contrário: agosto
+// está encerrado, não tem dias úteis restantes, e o ritmo cairia a zero justamente no mês em
+// que há trabalho a fazer.
+//
+// A tela deixou de responder só sobre o mês corrente (decisão revista na 0.24.0): atraso,
+// reavaliação e auditoria retroativa são rotina, e mandá-las para Relatórios era mandar a
+// monitora para uma tela que não tem o botão de monitorar.
 
 import { useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
-import type { Area, Collaborator, ColaboradorGoal, Monitoring, User, Allocation, Holiday, Role } from '../../types/domain';
-import { getCurrentPeriod, periodLabel, todayISO, businessDaysRemainingIn } from '../../domain/period';
+import type { Area, Collaborator, ColaboradorGoal, Monitoring, User, Allocation, Holiday, Role, SystemSettings } from '../../types/domain';
+import type { Period } from '../../domain/period';
+import { getCurrentPeriod, periodLabel, todayISO, businessDaysRemainingIn, competenciaDaAgenda, periodRange, monthLabel } from '../../domain/period';
+import { SeletorCompetencia } from '../../shared/components/SeletorCompetencia';
 import { getCarteiraProgress } from '../../domain/goalService';
 import {
   getFilaDaCarteira,
@@ -40,6 +58,12 @@ interface MonitoringQueueScreenProps {
   users: User[];
   /** Necessário para o escopo do gestor: a área é quem declara gestor e monitores. */
   areas: Area[];
+  /** Só por `defasagemCompetencia`: quantos meses a monitoria fica atrás do atendimento. */
+  settings: SystemSettings;
+  /** Competência auditada. Mora no App, como a do Painel e a de Metas, porque é ela que
+      decide quais metas resolver — e a resolução acontece lá. */
+  periodo: Period;
+  onPeriodo: (p: Period) => void;
   onNovaMonitoria: (colaboradorId?: string, canal?: string | null) => void;
   onAbrir: (m: Monitoring) => void;
   onEditar: (m: Monitoring) => void;
@@ -57,6 +81,9 @@ export const MonitoringQueueScreen = ({
   holidays,
   users,
   areas,
+  settings,
+  periodo,
+  onPeriodo,
   onNovaMonitoria,
   onAbrir,
   onEditar,
@@ -70,10 +97,21 @@ export const MonitoringQueueScreen = ({
   // validação de si mesma. Agora quem monitora monitora, e troca de contexto para validar.
   const ehGestao = perfilAtivo === 'GESTOR';
 
-  const periodo = getCurrentPeriod();
   const hoje = todayISO();
-  const rotulo = periodLabel(periodo);
   const monitorId = currentUser.id;
+
+  // O mês em que se trabalha. Não navega: é sempre hoje.
+  const mesDeTrabalho = getCurrentPeriod();
+  const competenciaPadrao = competenciaDaAgenda(mesDeTrabalho, settings.defasagemCompetencia);
+
+  const rotulo = periodLabel(periodo);
+  const ehPadrao = periodo.year === competenciaPadrao.year && periodo.month === competenciaPadrao.month;
+
+  // A carteira é resolvida por uma data DENTRO da competência, e não por hoje. Uma alocação
+  // encerrada em julho não pode desaparecer da agenda de julho só porque hoje é setembro —
+  // a pergunta é de quem a colaboradora era naquele mês. No mês corrente, hoje é essa data.
+  const fimDaCompetencia = periodRange(periodo).endDate;
+  const dataDaCarteira = hoje < fimDaCompetencia ? hoje : fimDaCompetencia;
 
   const dados = useMemo(() => {
     const ctx = { monitorings, goals: colaboradorGoals, collaborators, allocations, holidays, users };
@@ -86,7 +124,9 @@ export const MonitoringQueueScreen = ({
       .filter((u) => equipe === null || equipe.includes(u.id));
 
     const progresso = getCarteiraProgress(colaboradorGoals, monitorings, monitorId, periodo);
-    const diasUteis = businessDaysRemainingIn(periodo, hoje);
+    // Dias úteis e ritmo vêm do MÊS DE TRABALHO, nunca da competência auditada: agosto está
+    // encerrado e não tem dias restantes, mas o trabalho de agosto acontece em setembro.
+    const diasUteis = businessDaysRemainingIn(mesDeTrabalho, hoje);
 
     // Decomposição da barra: a cobertura é a parte que fecha meta, e dentro dela distinguimos
     // o que já passou pela gestora. `validated` e `awaiting` do serviço contam sem teto, então
@@ -110,14 +150,16 @@ export const MonitoringQueueScreen = ({
       filaValidacao: getFilaDeValidacao(monitorings, hoje)
         .filter((f) => equipe === null || equipe.includes(f.monitoring.monitorId))
         .filter((f) => f.monitoring.monitorId !== currentUser.id),
-      ritmoEquipe: getRitmoDaEquipe(ctx, monitoresNoEscopo, periodo, hoje),
-      risco: getRiscoDoMes(ctx, monitoresNoEscopo, periodo, hoje),
-      fila: getFilaDaCarteira(ctx, monitorId, periodo, hoje),
+      // Ritmo e risco da equipe seguem a mesma competência auditada: é sobre ela que a equipe
+      // está trabalhando agora. A fila de validação continua sem recorte de mês (0.22.1).
+      ritmoEquipe: getRitmoDaEquipe(ctx, monitoresNoEscopo, periodo, mesDeTrabalho, hoje),
+      risco: getRiscoDoMes(ctx, monitoresNoEscopo, periodo, dataDaCarteira),
+      fila: getFilaDaCarteira(ctx, monitorId, periodo, dataDaCarteira),
       pendencias: getPendencias(monitorings, monitorId, periodo),
       aguardando: getAguardandoValidacao(monitorings, monitorId, periodo, hoje),
       foraDaQuota: getForaDaQuota(ctx, monitorId, periodo),
     };
-  }, [monitorings, colaboradorGoals, collaborators, allocations, holidays, users, areas, currentUser, perfilAtivo, monitorId, hoje, periodo]);
+  }, [monitorings, colaboradorGoals, collaborators, allocations, holidays, users, areas, currentUser, perfilAtivo, monitorId, hoje, periodo, mesDeTrabalho, dataDaCarteira]);
 
   // A busca é discreta e restringe as listas de registros — nunca a lista de quem falta
   // monitorar, que é a resposta da tela e não deve sumir por causa de um termo digitado.
@@ -146,12 +188,25 @@ export const MonitoringQueueScreen = ({
       <div className="page-header">
         <div>
           <h1 className="page-title">{ehGestao ? 'Validação' : `Monitorias · ${rotulo}`}</h1>
+          {/* O mês auditado é o título; a relação entre os dois meses é o subtítulo. Sem essa
+              frase, "Monitorias · Agosto" em setembro parece erro de tela. */}
           <p className="page-subtitle">
             {ehGestao
               ? 'Tudo o que está aguardando a sua validação, de qualquer competência.'
-              : 'O que você precisa monitorar neste mês.'}
+              : ehPadrao && settings.defasagemCompetencia > 0
+                ? `Competência de ${monthLabel(periodo).toLowerCase()}, monitorada em ${monthLabel(mesDeTrabalho).toLowerCase()}.`
+                : ehPadrao
+                  ? 'O que você precisa monitorar neste mês.'
+                  : `Competência encerrada, aberta para consulta e lançamento. Você está em ${periodLabel(mesDeTrabalho)}.`}
           </p>
         </div>
+
+        {/* Navegar competências deixou de ser papel só de Relatórios (0.24.0): atraso,
+            reavaliação e auditoria retroativa são rotina, e é aqui que existe o botão de
+            monitorar. Fica fora do perfil de gestão, cuja fila não tem recorte de mês. */}
+        {!ehGestao && (
+          <SeletorCompetencia periodo={periodo} onChange={onPeriodo} titulo="Competência" />
+        )}
         {/* A ação primária pertence a quem monitora. Até a 0.19.0 o botão aparecia também para
             a gestão, contra a decisão da 0.17.0 de que gestor valida e não avalia — e desde a
             0.20.0 o formulário sequer abre nesse perfil, o que deixaria um botão que erra. */}

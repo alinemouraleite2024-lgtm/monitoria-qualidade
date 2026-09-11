@@ -90,6 +90,30 @@ export const nextPeriod = ({ year, month }: Period): Period =>
   month === 11 ? { year: year + 1, month: 0 } : { year, month: month + 1 };
 
 /**
+ * Período deslocado em `meses`, para trás quando negativo (0.24.0).
+ *
+ * Existe para a defasagem de competência, que precisa recuar N meses e não exatamente um.
+ * Passa pelo `Date` em vez de fazer a aritmética à mão porque o vai-um de ano precisa valer
+ * para qualquer deslocamento, e não só para a passagem de janeiro para dezembro.
+ */
+export const shiftPeriod = ({ year, month }: Period, meses: number): Period => {
+  const d = new Date(year, month + meses, 1);
+  return { year: d.getFullYear(), month: d.getMonth() };
+};
+
+/**
+ * Competência que a agenda de um mês de trabalho audita (0.24.0).
+ *
+ * Com defasagem 1, trabalhar em setembro é auditar agosto. Com 0, é auditar o próprio mês.
+ *
+ * Existe como nome, e não como `shiftPeriod` solto nas telas, porque a relação entre os dois
+ * meses é o conceito que a 0.24.0 introduz — e um `-defasagem` repetido em cada chamada é
+ * como as duas convenções de mês viraram armadilha antes da 0.22.0.
+ */
+export const competenciaDaAgenda = (mesDeTrabalho: Period, defasagemMeses: number): Period =>
+  shiftPeriod(mesDeTrabalho, -defasagemMeses);
+
+/**
  * Primeiro e último dia do período, em YYYY-MM-DD.
  *
  * Usa `new Date(year, month + 1, 0)` para o último dia, que resolve fevereiro e ano

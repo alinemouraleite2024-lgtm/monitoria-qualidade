@@ -130,6 +130,8 @@ import {
   nextPeriod,
   businessDaysRemainingIn,
   competenciaLabel,
+  competenciaDaAgenda,
+  periodToCompetencia,
 } from './domain/period';
 import type { Period } from './domain/period';
 import { countsForCarteiraGoal } from './domain/monitoringRules';
@@ -420,6 +422,15 @@ function AppContent() {
   const [reportPeriod, setReportPeriod] = useState(() => getCurrentPeriod());
   const [planningPeriod, setPlanningPeriod] = useState(() => getCurrentPeriod());
   const [dashboardPeriod, setDashboardPeriod] = useState(() => getCurrentPeriod());
+  /**
+   * Competência da agenda (0.24.0). `null` significa "a padrão", e não "nenhuma".
+   *
+   * Guardar a escolha só depois que ela é feita mantém a tela colada ao parâmetro: mudar a
+   * defasagem em Administração move a agenda na hora. Com um valor calculado na montagem, o
+   * parâmetro só passaria a valer no próximo carregamento — e quem acabou de mudá-lo
+   * concluiria que não funcionou.
+   */
+  const [monitoringsPeriod, setMonitoringsPeriod] = useState<Period | null>(null);
   const [showPlanoEditor, setShowPlanoEditor] = useState(false);
   // 2B.5: os filtros do histórico deixaram de ser estado interno da tabela e subiram para cá.
   // Enquanto viviam lá dentro, a exportação usava outro caminho e levava um conjunto diferente
@@ -507,7 +518,11 @@ function AppContent() {
     [planosMetas, colaboradorGoals],
   );
 
-  const metasDaFila = React.useMemo(() => metasDe(periodoAtual).metas, [metasDe, periodoAtual]);
+  const competenciaDaFila = React.useMemo(
+    () => monitoringsPeriod ?? competenciaDaAgenda(periodoAtual, settings.defasagemCompetencia),
+    [monitoringsPeriod, periodoAtual, settings.defasagemCompetencia],
+  );
+  const metasDaFila = React.useMemo(() => metasDe(competenciaDaFila).metas, [metasDe, competenciaDaFila]);
   const metasDoPainel = React.useMemo(() => metasDe(dashboardPeriod).metas, [metasDe, dashboardPeriod]);
   const metasDoPlanejamento = React.useMemo(() => metasDe(planningPeriod), [metasDe, planningPeriod]);
 
@@ -1350,6 +1365,9 @@ function AppContent() {
                     currentUser={currentUser}
                     perfilAtivo={perfilAtivo}
                     areas={areas}
+                    settings={settings}
+                    periodo={competenciaDaFila}
+                    onPeriodo={setMonitoringsPeriod}
                     monitorings={monitorings}
                     colaboradorGoals={metasDaFila}
                     collaborators={collaborators}
@@ -1383,6 +1401,7 @@ function AppContent() {
                       initialData={editingMonitoring}
                       colaboradorIdInicial={seedNovaMonitoria.colaboradorId}
                       canalInicial={seedNovaMonitoria.canal}
+                      competenciaInicial={periodToCompetencia(competenciaDaFila)}
                       users={users}
                       collaborators={getCollaborators()}
                       criteria={criteria}

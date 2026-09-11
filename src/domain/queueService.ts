@@ -451,14 +451,20 @@ export interface RitmoDoMonitor {
  *
  * "Atrasado" aqui é o ritmo necessário, não a lacuna absoluta: quem precisa de 3 por dia está
  * em situação pior do que quem precisa de 1, mesmo que a lacuna do segundo seja maior.
+ *
+ * Recebe os DOIS períodos (0.24.0). A meta vem da competência auditada; os dias úteis, do mês
+ * de trabalho. Antes era um só, e com a defasagem isso passou a medir o ritmo dentro de um mês
+ * encerrado: a gestora via "1 dia útil restante, precisa de 35 por dia" em setembro, porque a
+ * conta era feita sobre agosto.
  */
 export const getRitmoDaEquipe = (
   ctx: FilaContexto,
   monitores: User[],
   period: Period,
+  mesDeTrabalho: Period,
   hojeISO: string
 ): RitmoDoMonitor[] => {
-  const diasUteis = businessDaysRemainingIn(period, hojeISO);
+  const diasUteis = businessDaysRemainingIn(mesDeTrabalho, hojeISO);
   return monitores
     .map((monitor) => {
       const progresso = getCarteiraProgress(ctx.goals, ctx.monitorings, monitor.id, period);

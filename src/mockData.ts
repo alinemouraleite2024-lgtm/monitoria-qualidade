@@ -18,6 +18,9 @@ export const DEFAULT_BRAND_CONFIG: BrandConfig = {
 // System configurations for validation workflow
 export const INITIAL_SYSTEM_SETTINGS: SystemSettings = {
   requireGestorValidation: true, // Se true, monitorias criadas por monitores precisam ser validadas pelo gestor
+  // A monitoria de agosto é realizada em setembro: a agenda do mês corrente aponta para o
+  // anterior. Ver SystemSettings.defasagemCompetencia.
+  defasagemCompetencia: 1,
 };
 
 // A área nasce sem gestor e sem monitores: são vínculos de pessoas, e pessoa não se declara em
