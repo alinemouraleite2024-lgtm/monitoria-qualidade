@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.24.1] - 2026-10-07 — A pesquisa de satisfação sai do crit-24
+
+> A operação descontinuou o incentivo à pesquisa de satisfação. Manter a sub-pergunta
+> penalizava o atendente por não executar uma ação que deixou de existir — no primeiro piloto
+> de agosto, 2,4 pontos percentuais.
+
+### Changed
+
+- **O crit-24 passa a ter duas sub-perguntas.** Saiu *"Realizou incentivo à pesquisa de
+  satisfação?"*. O peso segue 1,5 e a soma da régua segue 27,0; o critério passa a valer 0, 1
+  ou 2, sem os intermediários de 0,67 e 1,33.
+- **Definição registrada: TRANSFERÊNCIA DE TITULARIDADE × TRANSFERÊNCIA DE LOTE.** A primeira é
+  mudança de **quem** detém os direitos do contrato, com o lote inalterado — é onde entra a
+  **cessão de direitos**. A segunda é mudança de **qual** lote, com o mesmo titular. O catálogo
+  era uma lista de rótulos sem definição, e a escolha dependia de interpretação pelo nome.
+- O prompt operacional da IA foi atualizado. Sem isso ele continuaria avaliando a pesquisa:
+  a régua está embutida nele e ele não lê o sistema.
+
+### Migration
+
+- `pm2_criteria_sub24_version` 0 → 1. **Marcador próprio, e não um incremento de
+  `criteriaVersion`** — este é o ponto da versão. Incrementar `criteriaVersion` reprocessaria o
+  bloco inteiro das 0.16.0 e 0.18.0, que força `active` nos critérios de classificação e
+  sobrescreve a `orientacao` dos critérios 14 e 27. Numa base onde a operação já administra a
+  régua pela tela, isso apagaria edição feita por ela.
+- A migração localiza o `crit-24`, confirma a presença de `sub-24-3`, remove **apenas** essa
+  sub-pergunta e preserva todo o resto do critério. Se a sub-pergunta já não existir, nada é
+  alterado.
+- **Grava uma cópia do critério antes de alterá-lo**, em `pm2_criteria_sub24_backup`, com a
+  data. `pm2_criteria` é o dado mais caro da base e não tem cópia automática.
+- **Monitorias não são tocadas.** Nenhuma nota é recalculada: `finalScore` é gravado no
+  registro, não derivado na leitura. As respostas gravadas mantêm `sub-24-3` dentro de
+  `subRespostas` como chave órfã, que o formulário ignora por ler apenas as sub-perguntas
+  cadastradas.
+
+### Notas de operação
+
+- **Reabrir e salvar uma monitoria validada recalcula o crit-24** sobre as duas sub-perguntas
+  vigentes, e a nota dela muda. A régua não é versionada por monitoria — monitoria já validada
+  não deve ser reaberta.
+- Verificado em quatro cenários: base com a sub-pergunta presente e com customizações (um
+  critério reativado e uma orientação editada) — a sub-pergunta sai e as duas customizações
+  sobrevivem; segunda carga sem efeito; base sem a sub-pergunta, sem alteração e sem
+  sobrescrever o backup; e nenhuma monitoria tocada.
+
 ## [0.24.0] - 2026-09-11 — Agenda operacional
 
 > O plano anual passou a dizer quantas monitorias existem, mas a tela não dizia quais. E a

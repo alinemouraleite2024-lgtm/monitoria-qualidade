@@ -163,7 +163,7 @@ const CLASSIFICACAO_0_16: Record<string, { opcoes: string[]; active?: boolean }>
 /** Critério nascido na 0.18.0. Inserido se ainda não existir na base gravada. */
 const CRITERIO_29 = INITIAL_CRITERIA.find((c) => c.id === 'crit-29');
 
-const migrateCriterios: Loader<Criterion[]> = (stored, persist) => {
+const migrarReguaValidada: Loader<Criterion[]> = (stored, persist) => {
   const versaoAtual = read<number>(KEYS.criteriaVersion, 0);
   if (versaoAtual >= CRITERIA_VERSION) return stored;
   if (!Array.isArray(stored)) return stored;
@@ -224,6 +224,69 @@ const migrateCriterios: Loader<Criterion[]> = (stored, persist) => {
   write(KEYS.criteriaVersion, CRITERIA_VERSION);
   return next;
 };
+
+const SUB24_VERSION = 1;
+const SUB_PESQUISA_SATISFACAO = 'sub-24-3';
+
+/**
+ * Remove do crit-24 a sub-pergunta "Realizou incentivo à pesquisa de satisfação?" (0.24.1).
+ *
+ * A operação descontinuou o procedimento, e manter a pergunta penalizava o atendente por não
+ * executar uma ação que deixou de existir. O peso do critério não muda: ele passa a valer
+ * 0, 1 ou 2, sem os intermediários de 0,67 e 1,33.
+ *
+ * **Marcador próprio, deliberadamente.** O caminho óbvio seria incrementar `CRITERIA_VERSION`,
+ * mas aquele guarda o bloco inteiro das 0.16.0 e 0.18.0 — e reprocessá-lo força `active` nos
+ * critérios de classificação e sobrescreve a `orientacao` dos critérios 14 e 27. Numa base
+ * onde a operação já administra a régua, isso apagaria edição feita na tela. A regra desta
+ * fase é a mesma de sempre: alcançar o que precisa ser alcançado, e nada além.
+ *
+ * Grava uma cópia do critério antes de alterá-lo. Não é paranoia: `pm2_criteria` é o dado
+ * mais caro da base e não tem cópia automática.
+ *
+ * Idempotente nos dois sentidos — se a sub-pergunta já não existir (base nova, ou removida à
+ * mão pelo Admin), nada é alterado; e o marcador impede que a verificação se repita a cada
+ * carregamento.
+ *
+ * Não toca monitorias. As respostas gravadas mantêm `sub-24-3` dentro de `subRespostas` como
+ * chave órfã, que o formulário ignora por ler apenas as sub-perguntas cadastradas, e nenhuma
+ * nota é recalculada: `finalScore` é gravado no registro, não derivado na leitura.
+ */
+const removerPesquisaSatisfacao: Loader<Criterion[]> = (stored, persist) => {
+  if (read<number>(KEYS.criteriaSub24Version, 0) >= SUB24_VERSION) return stored;
+  if (!Array.isArray(stored)) return stored;
+
+  const alvo = stored.find((c) => c.id === 'crit-24');
+  const presente = alvo?.subPerguntas?.some((sp) => sp.id === SUB_PESQUISA_SATISFACAO);
+
+  if (!alvo || !presente) {
+    // Nada a remover. O marcador é gravado mesmo assim, para que a verificação não se repita.
+    write(KEYS.criteriaSub24Version, SUB24_VERSION);
+    return stored;
+  }
+
+  write(KEYS.criteriaSub24Backup, { em: new Date().toISOString(), criterio: alvo });
+
+  const next = stored.map((c) => (
+    c.id === 'crit-24'
+      ? { ...c, subPerguntas: (c.subPerguntas || []).filter((sp) => sp.id !== SUB_PESQUISA_SATISFACAO) }
+      : c
+  ));
+
+  persist(next);
+  write(KEYS.criteriaSub24Version, SUB24_VERSION);
+  return next;
+};
+
+/**
+ * As duas migrações de critérios, em sequência e com marcadores independentes.
+ *
+ * Independentes porque têm alcances diferentes: uma completa a régua validada, a outra retira
+ * uma sub-pergunta. Uma base que já passou pela primeira não deve reprocessá-la para receber
+ * a segunda.
+ */
+const migrateCriterios: Loader<Criterion[]> = (stored, persist) =>
+  removerPesquisaSatisfacao(migrarReguaValidada(stored, persist), persist);
 
 // 0.20.0 — de um papel para vários.
 //
