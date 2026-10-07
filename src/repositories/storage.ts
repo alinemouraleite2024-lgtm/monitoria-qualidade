@@ -35,6 +35,13 @@ export const KEYS = {
   usersPerfisVersion: 'pm2_users_perfis_version',
   // 0.22.0: a competência deixou de ser deduzida de `date` e passou a ser campo próprio.
   monitoringsCompetenciaVersion: 'pm2_monitorings_competencia_version',
+  // 0.24.1 — remoção cirúrgica de uma sub-pergunta do crit-24. Marcador próprio, e não um
+  // incremento de `criteriaVersion`: aquele guarda o bloco inteiro das 0.16.0 e 0.18.0, cujo
+  // reprocessamento forçaria `active` e sobrescreveria a orientação dos critérios 14 e 27 —
+  // apagando edição feita pela operação no Admin.
+  criteriaSub24Version: 'pm2_criteria_sub24_version',
+  /** Cópia do crit-24 como estava antes da remoção. Existe para permitir desfazer. */
+  criteriaSub24Backup: 'pm2_criteria_sub24_backup',
   authSession: 'pm2_auth_session',
 } as const;
 

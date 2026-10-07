@@ -431,11 +431,13 @@ Início / fim:     28/08 14:12 → 28/08 14:31
 | Sub-pergunta | Resposta |
 |---|---|
 | Perguntou se o cliente possui mais alguma dúvida? | SIM |
-| Despediu-se de forma correta? | SIM |
-| Realizou incentivo à pesquisa de satisfação? | NÃO |
+| Despediu-se de forma correta? | NÃO |
 
-→ o sistema calcula `(2 ÷ 3) × 2 = 1.33`. Justificativa obrigatória, por estar abaixo do máximo:
-"Encerrou com o script do canal e checou dúvidas, mas não convidou à pesquisa de satisfação."
+→ o sistema calcula `(1 ÷ 2) × 2 = 1`. Justificativa obrigatória, por estar abaixo do máximo:
+"Encerrou de forma improvisada, sem o script do canal, embora tenha checado se restavam dúvidas."
+
+> O critério 24 tinha uma terceira sub-pergunta — incentivo à pesquisa de satisfação — até
+> 07/10/2026. A operação descontinuou o procedimento e ela saiu da régua. São **duas**.
 
 ### Evidências
 
@@ -446,7 +448,7 @@ Início / fim:     28/08 14:12 → 28/08 14:31
        necessidade, é só nos chamar. Seguimos à disposição!"
 ```
 
-Ausência registrada: em nenhum momento da conversa há convite à pesquisa de satisfação.
+Ausência registrada: o encerramento não reproduziu o script do canal — despedida improvisada.
 
 ### Blocos narrativos
 
@@ -464,7 +466,7 @@ Ausência registrada: em nenhum momento da conversa há convite à pesquisa de s
 **Pontos de Atenção**
 > Ao receber um relato de espera, reconhecer a espera antes de informar o prazo — uma frase
 > como "entendo, três dias sem retorno é bastante tempo" muda a recepção do que vem depois.
-> Incluir o convite à pesquisa de satisfação no encerramento, que faz parte do script.
+> Encerrar com o script do canal, que é o padrão institucional de despedida.
 
 **Leitura Técnica**
 > O atendimento é tecnicamente sólido e emocionalmente raso, e as duas coisas aparecem juntas:

@@ -260,9 +260,8 @@ export const REGUA_VALIDADA: Record<string, ReguaCriterio> = {
       { id: 'sub-24-2',
         criterioSim: 'Enviou o script do canal, com sentido preservado',
         criterioNao: 'Despedida improvisada, ou script de outro canal' },
-      { id: 'sub-24-3',
-        criterioSim: 'Convidou explicitamente a responder a pesquisa',
-        criterioNao: 'Não mencionou' },
+      // sub-24-3 (incentivo à pesquisa de satisfação) retirada em 07/10/2026 — procedimento
+      // descontinuado pela operação. Ver docs/METODOLOGIA-MONITORIA.md §4, critério 24.
     ],
     quandoNA: 'N/A quando o atendimento foi interrompido pelo cliente antes do fechamento. Nesse caso, verificar se cabe o eliminatório 27.',
   },
