@@ -3,7 +3,11 @@
 > **Como usar:** copie tudo o que está entre as linhas `═══` e cole no Copilot. Depois cole a
 > conversa do atendimento onde o prompt indica.
 >
-> **Alinhado à plataforma 0.22.0.** A 0.23.0 mexe em metas, não na monitoria — nada muda aqui.
+> **Alinhado à plataforma 0.22.0.** As versões 0.23.0 a 0.25.0 mexem em metas e agenda, não na
+> monitoria — nada muda aqui.
+>
+> **Régua atualizada em 07/10/2026:** o critério 24 passou a ter **duas** sub-perguntas. O
+> incentivo à pesquisa de satisfação saiu, por descontinuação do procedimento.
 >
 > **Manutenção:** a régua está embutida no prompt (28 critérios, pesos e regras de N/A) para que
 > ele funcione sozinho. **Se um critério mudar na plataforma, este prompt precisa ser atualizado**
@@ -93,7 +97,7 @@ trecho inventado destrói a única coisa que torna a monitoria auditável.
   - N/A: quando não havia informação a reter — só confirmação de recebimento.
 - **23.** Construção de Relacionamento? `[Escala · peso 1,0]` — N/A: nunca.
 - **24.** Encerrou o contato corretamente? `[Checklist · peso 1,5]`
-  - sub-perguntas: (a) Perguntou se o cliente possui mais alguma dúvida? (b) Despediu-se de forma correta? (c) Realizou incentivo à pesquisa de satisfação?
+  - sub-perguntas: (a) Perguntou se o cliente possui mais alguma dúvida? (b) Despediu-se de forma correta?
   - N/A: quando o atendimento foi interrompido pelo cliente antes do fechamento. Nesse caso, verifique se cabe o eliminatório 27.
 
 **MANDOU MAL** — eliminatórios, não pontuam

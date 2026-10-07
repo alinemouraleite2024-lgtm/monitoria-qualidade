@@ -41,6 +41,13 @@ export const OFFICIAL_CATEGORIAS_V1 = [
  *
  * Nota de operação: `EMPREENDIMENTO` aqui é *assunto do atendimento* — não confundir com o
  * campo Empreendimento, que saiu da tela nesta mesma versão. São conceitos diferentes.
+ *
+ * TRANSFERÊNCIA DE TITULARIDADE × TRANSFERÊNCIA DE LOTE (definido em 07/10/2026): a primeira é
+ * mudança de **quem** detém os direitos do contrato, com o lote inalterado — é onde entra a
+ * **cessão de direitos**. A segunda é mudança de **qual** lote, com o mesmo titular. "CESSÃO DE
+ * DIREITOS" não é categoria: é o instrumento jurídico pelo qual a titularidade muda. Sem esta
+ * nota o catálogo é só uma lista de rótulos, e a escolha passa a depender de interpretação.
+ * Ver docs/METODOLOGIA-MONITORIA.md §6.3.
  */
 export const OFFICIAL_CATEGORIAS = [
   'ANTECIPAÇÃO PAGAMENTOS',

@@ -92,7 +92,9 @@ export const INITIAL_CRITERIA: Criterion[] = [
     subPerguntas: [
       { id: 'sub-24-1', texto: 'Perguntou se o cliente possui mais alguma dúvida?' },
       { id: 'sub-24-2', texto: 'Despediu-se de forma correta?' },
-      { id: 'sub-24-3', texto: 'Realizou incentivo à pesquisa de satisfação?' },
+      // A terceira sub-pergunta — "Realizou incentivo à pesquisa de satisfação?" — saiu em
+      // 07/10/2026: a operação descontinuou o procedimento, e manter a pergunta penalizava
+      // o atendente por não fazer algo que deixou de existir. O peso do critério não muda.
     ] },
 
   // MANDOU MAL (eliminatórios — zeram a monitoria)

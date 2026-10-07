@@ -89,7 +89,7 @@ O CYF documenta uma escala de 4 níveis (Ótimo / Bom / Regular / Ruim). O siste
 
 **Exceção 2 — `CHECKLIST_SIM_NAO`** (critérios 4 e 24): o valor é proporcional às
 sub-perguntas respondidas com SIM — `(SIM ÷ total) × 2`. O critério 4 tem 4 sub-perguntas
-(0 · 0,5 · 1 · 1,5 · 2); o 24 tem 3 (0 · 0,67 · 1,33 · 2). **Nestes dois, a âncora é por
+(0 · 0,5 · 1 · 1,5 · 2); o 24 tem 2 (0 · 1 · 2). **Nestes dois, a âncora é por
 sub-pergunta**, não por nível.
 
 **Exceção 3 — `MULTIPLA_ESCOLHA`** *(a partir da 0.16.0)*: **não tem nota.** Os critérios de
@@ -799,7 +799,7 @@ o 2 exige personalização visível.
 ---
 
 #### 24. Encerrou o contato corretamente?
-`crit-24` · CHECKLIST_SIM_NAO · peso 1,5 · **3 sub-perguntas**
+`crit-24` · CHECKLIST_SIM_NAO · peso 1,5 · **2 sub-perguntas**
 
 **O que mede.** Se o fechamento cumpriu o padrão institucional, incluindo o script obrigatório
 do canal.
@@ -827,7 +827,16 @@ oportunidade de ajudar.
 |---|---|---|
 | Perguntou se o cliente possui mais alguma dúvida? | Perguntou **e** aguardou resposta | Não perguntou, ou perguntou e encerrou sem esperar |
 | Despediu-se de forma correta? | Enviou o script do canal, com sentido preservado | Despedida improvisada, ou script de outro canal |
-| Realizou incentivo à pesquisa de satisfação? | Convidou explicitamente a responder a pesquisa | Não mencionou |
+
+**Alteração de 07/10/2026 — a terceira sub-pergunta saiu.** *"Realizou incentivo à pesquisa de
+satisfação?"* foi retirada porque a operação descontinuou o procedimento: manter a pergunta
+penalizava o atendente por não executar uma ação que deixou de fazer parte do processo. O peso
+do critério permanece 1,5 e a soma da régua permanece 27,0 — o que muda é que o critério passa
+a valer 0, 1 ou 2, sem os intermediários de 0,67 e 1,33.
+
+Monitorias validadas antes desta data **não foram recalculadas**: a nota é gravada no registro,
+não recalculada na leitura. Reabrir e salvar uma delas, porém, recalcula o critério sobre as
+duas sub-perguntas vigentes — por isso monitoria já validada não deve ser reaberta.
 
 **Sobre "sentido preservado".** O script é padrão de conteúdo, não de decoreba. A própria
 orientação de tipo de atendimento afirma que a monitoria **não mede frase exata nem texto
@@ -1059,6 +1068,20 @@ As 27 categorias do catálogo não precisam todas de orientação: só têm sent
 **sequência de processo a cumprir**. Categorias que são só assunto — `RECADO`, `UNIDADE` — se
 resolvem com os 28 critérios gerais.
 
+### 6.3 Transferência de titularidade × transferência de lote
+
+Definido em 07/10/2026, porque os dois nomes se confundem e o catálogo é só uma lista de
+rótulos — nada no sistema os distinguia.
+
+| Categoria | Quando usar |
+|---|---|
+| **TRANSFERÊNCIA DE TITULARIDADE** | Muda **quem** detém os direitos do contrato; o lote permanece o mesmo. É aqui que entra a **cessão de direitos** |
+| **TRANSFERÊNCIA DE LOTE** | Muda **qual** lote, permanecendo o mesmo titular |
+
+**Cessão de direitos classifica-se como TRANSFERÊNCIA DE TITULARIDADE** e nunca como
+transferência de lote. "CESSÃO DE DIREITOS" não é categoria do catálogo: é o instrumento
+jurídico pelo qual a titularidade muda.
+
 ---
 
 ## 7. Estrutura do relatório
@@ -1190,9 +1213,11 @@ O PDF documenta Ótimo / Bom / Regular / Ruim; o formulário implementa 2 / 1 / 
 metodologia adota a do sistema. Se a escala de 4 for a oficial, é mudança de código e de base
 de comparação histórica — não de documento.
 
-**3. O critério 24 tem 3 sub-perguntas no PDF e 2 no `Padrão Relatório`.**
-O `Padrão Relatório` omite *"Realizou incentivo à pesquisa de satisfação?"*. O sistema segue o
-PDF, com 3. Mantido: o PDF é a fonte estrutural.
+**3. O critério 24 tinha 3 sub-perguntas no PDF e 2 no `Padrão Relatório`. — RESOLVIDA.**
+O `Padrão Relatório` omitia *"Realizou incentivo à pesquisa de satisfação?"*, e até 07/10/2026
+o sistema seguia o PDF, com 3. A operação informou que o procedimento foi descontinuado e a
+sub-pergunta foi retirada da régua. **O sistema passa a ter 2**, coincidindo com o `Padrão
+Relatório`. A divergência deixou de existir.
 
 **4. O `Padrão Relatório` traz a orientação de LGPD duas vezes** — solta ao final do bloco
 ENCERRAMENTO e de novo no critério 25. Tratada uma vez só, no 25.
