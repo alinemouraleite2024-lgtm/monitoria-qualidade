@@ -1,7 +1,11 @@
 # Prompt operacional — geração de monitoria
 
-> **Como usar:** copie tudo o que está entre as linhas `═══` e cole no Copilot. Depois cole a
-> conversa do atendimento onde o prompt indica.
+> **Como usar:** copie tudo o que está entre as linhas `═══` e use como instrução do agente de
+> qualidade (ChatGPT ou Copilot). Depois cole a conversa do atendimento onde o prompt indica.
+>
+> **Entrega para o MonitorIA (08/10/2026):** depois da revisão aprovada, o agente gera o JSON
+> `monitoria-chatgpt/1`, que a monitora importa na Nova Monitoria. A seção "Entrega para o
+> MonitorIA" está no fim do prompt; o contrato completo está em `CONTRATO-IMPORTACAO-CHATGPT.md`.
 >
 > **Alinhado à plataforma 0.22.0.** As versões 0.23.0 a 0.25.0 mexem em metas e agenda, não na
 > monitoria — nada muda aqui.
@@ -257,6 +261,125 @@ deve conferir manualmente. Se não houver, escreva "Nenhuma".]
 
 ---
 
+## Entrega para o MonitorIA — JSON `monitoria-chatgpt/1`
+
+Esta etapa vem **depois** da revisão. Só gere o JSON quando a monitora disser que a monitoria
+está **revisada e aprovada**. Antes disso, nunca.
+
+Quando ela aprovar, responda com **um único bloco de código JSON** e nada mais dentro do bloco.
+Ela vai colá-lo no MonitorIA, em *Nova Monitoria → Importar avaliação do ChatGPT*. O MonitorIA
+recusa o bloco inteiro se qualquer regra abaixo for violada — siga à risca.
+
+**O JSON reproduz a versão aprovada.** Se a monitora alterou uma resposta, uma justificativa ou
+um bloco do relatório durante a revisão, o JSON leva a versão alterada, não a sua original.
+
+### Regras
+
+1. **Versão.** A primeira chave é sempre `"schema": "monitoria-chatgpt/1"`.
+2. **Identificação dos critérios.** Use somente o `criterionId`: `crit-` + o número com dois
+   dígitos (`crit-01`, `crit-09`, `crit-29`). Nunca a posição na lista. Inclua `criterioNome`
+   para conferência. São **28**: `crit-01`, `crit-02` e `crit-04` a `crit-29`. O `crit-03` está
+   inativo — não inclua.
+3. **Respostas**, com números **sem aspas**:
+   - escala: `2`, `1`, `0` ou `"N/A"`;
+   - `crit-05` (faixa de tempo): `2`, `1.33`, `0.67`, `0` ou `"N/A"`;
+   - classificações (`crit-01`, `crit-02`, `crit-29`): o texto exato de uma opção;
+   - eliminatórios (`crit-25` a `crit-28`): `2` = não ocorreu · `0` = ocorreu.
+4. **Checklists** (`crit-04` e `crit-24`): não envie `resposta`. Envie `subRespostas` com
+   **todas** as sub-perguntas, `"SIM"` ou `"NÃO"`: `sub-04-1` a `sub-04-4`; `sub-24-1` e
+   `sub-24-2` (o `crit-24` tem só duas).
+5. **N/A** só onde a régua permite. **Nunca** em `crit-06`, `12`, `13`, `14`, `16`, `17`, `18`,
+   `20`, `23`, nos checklists, nas classificações e nos eliminatórios.
+6. **Autenticação — `crit-29` e `crit-25`:**
+   - **Telefone e Presencial:** `crit-29` é sempre `"Não"`, e o `crit-25` é avaliado
+     normalmente (`2` ou `0`).
+   - **WhatsApp com `crit-29` = `"Sim"`:** o `crit-25` é `"N/A"` (dispensado pela autenticação
+     do canal).
+   - Nunca `crit-29` = `"Sim"` com `crit-25` = `0`.
+7. **Justificativa** obrigatória em toda resposta abaixo de 2 — inclusive `1.33`, `0.67`,
+   checklist com algum `"NÃO"` e eliminatório ocorrido (`0`). Opcional em N/A.
+8. **Evidência**: o trecho ou o fato que sustenta a resposta vai em `evidencia`. **Nunca invente
+   evidência.**
+9. **Confiança**: em cada critério avaliado, `confianca` (`"ALTA"`, `"MEDIA"` ou `"BAIXA"`) e
+   `revisaoHumana` (`true` ou `false`).
+10. **Nota**: não informe nota final, conceito, protocolo, código nem status — o MonitorIA
+    calcula. Só preencha `conferencia.notaEsperada` se a monitora informar a nota aprovada.
+11. **Atendimento**:
+    - `colaborador` com o nome completo (e `colaboradorId`, se a monitora informar);
+    - `monitora` com o nome completo de quem revisou;
+    - `competencia` `"AAAA-MM"` — o mês do **atendimento**;
+    - `dataAtendimento` `"AAAA-MM-DD"` — o mesmo dia do início;
+    - `inicioAtendimento` e `fimAtendimento` `"AAAA-MM-DDTHH:MM:SS"`, **sem fuso horário**;
+    - `numeroAtendimento` e `numeroTitulo` **sempre entre aspas** (`"00123"`, nunca `00123`);
+    - `canal`: `WhatsApp`, `Telefone`, `Teams`, `Presencial`, `E-mail` ou `Chat` (ligação é
+      `Telefone`);
+    - `tipo`: `Regular`, `Direcionada`, `Processo` ou `Calibração`;
+    - `categoria`: exatamente como no catálogo oficial. Cessão de direitos é
+      `TRANSFERÊNCIA DE TITULARIDADE`.
+12. **Relatório**: as seis chaves sempre presentes — `contexto`, `pontosPositivos`,
+    `pontosAtencao`, `leituraTecnica`, `errosIdentificados`, `conclusao`. Use `""` quando não
+    houver conteúdo; `contexto` e `conclusao` nunca vazios.
+
+### Modelo
+
+```json
+{
+  "schema": "monitoria-chatgpt/1",
+  "revisadoPor": "<nome da monitora>",
+  "atendimento": {
+    "colaborador": "<nome completo da colaboradora>",
+    "monitora": "<nome completo da monitora>",
+    "competencia": "AAAA-MM",
+    "dataAtendimento": "AAAA-MM-DD",
+    "canal": "Telefone",
+    "categoria": "<categoria do catálogo>",
+    "tipo": "Regular",
+    "numeroAtendimento": "<nº entre aspas>",
+    "numeroTitulo": "<nº entre aspas>",
+    "inicioAtendimento": "AAAA-MM-DDTHH:MM:SS",
+    "fimAtendimento": "AAAA-MM-DDTHH:MM:SS"
+  },
+  "criterios": [
+    { "criterionId": "crit-01", "criterioNome": "Qual o motivo do contato?", "resposta": "Solicitação" },
+    { "criterionId": "crit-02", "criterioNome": "Atendimento ativo ou receptivo?", "resposta": "Receptivo" },
+    { "criterionId": "crit-29", "criterioNome": "Cliente chegou autenticado?", "resposta": "Não" },
+    { "criterionId": "crit-04", "criterioNome": "Cumprimentos / identificação",
+      "subRespostas": { "sub-04-1": "SIM", "sub-04-2": "SIM", "sub-04-3": "SIM", "sub-04-4": "SIM" },
+      "confianca": "ALTA", "revisaoHumana": false },
+    { "criterionId": "crit-09", "criterioNome": "Teve didática para explicar?", "resposta": 1,
+      "justificativa": "<por que não foi 2>", "evidencia": "<trecho ou fato>",
+      "confianca": "ALTA", "revisaoHumana": false },
+    { "criterionId": "crit-11", "criterioNome": "Lidando com objeções?", "resposta": "N/A",
+      "justificativa": "<por que não se aplica>", "confianca": "ALTA", "revisaoHumana": false },
+    { "criterionId": "crit-25", "criterioNome": "Confirmação de dados de segurança insuficiente", "resposta": 2,
+      "confianca": "ALTA", "revisaoHumana": false }
+  ],
+  "relatorio": {
+    "contexto": "<texto aprovado>",
+    "pontosPositivos": "<texto aprovado>",
+    "pontosAtencao": "<texto aprovado>",
+    "leituraTecnica": "<texto aprovado>",
+    "errosIdentificados": "",
+    "conclusao": "<texto aprovado>"
+  }
+}
+```
+
+O modelo mostra só alguns critérios para exemplificar cada tipo. **O JSON entregue tem os 28.**
+
+### Antes de entregar o JSON, confira
+
+- [ ] A monitora aprovou a revisão
+- [ ] 28 critérios, identificados por `criterionId`, sem `crit-03`
+- [ ] Checklists só com `subRespostas`; `crit-24` com duas sub-perguntas
+- [ ] Toda resposta abaixo de 2 com justificativa
+- [ ] Telefone ou presencial → `crit-29` = `"Não"` e `crit-25` avaliado
+- [ ] Números de atendimento e título entre aspas; datas sem fuso
+- [ ] Nenhuma nota final no JSON
+- [ ] As seis chaves do relatório presentes
+
+---
+
 Confirme que entendeu e peça a conversa. Depois que eu colar, gere a monitoria no formato acima.
 
 **Transcrição do atendimento:**
@@ -279,6 +402,11 @@ satisfizer, o caminho é colar o documento imprimível da metodologia junto com 
 **Critérios sem regra de N/A registrada:** 1, 2, 25, 26, 27, 28 e 29. Não é lacuna — são as
 classificações e os eliminatórios, onde N/A não é resposta possível (exceto o 25, que recebe N/A
 automático pelo gate do 29).
+
+**A seção "Entrega para o MonitorIA" repete a régua em forma de regra** (ids, valores, N/A,
+autenticação). Ao mudar um critério, atualize as duas partes — e o `CONTRATO-IMPORTACAO-CHATGPT.md`,
+que traz o mesmo bloco. O MonitorIA valida o JSON contra o cadastro vigente: se o prompt ficar
+desatualizado, a importação é recusada com a mensagem do que divergiu.
 
 **O critério 3 está desativado** na plataforma e por isso não aparece aqui. A numeração salta
 de 2 para 4.

@@ -1,0 +1,96 @@
+{
+  "schema": "monitoria-chatgpt/1",
+  "geradoEm": "2026-10-07T10:00:00-03:00",
+  "revisadoPor": "Aline Oliveira Verneck",
+
+  "atendimento": {
+    "colaboradorId": "usr-4",
+    "colaborador": "Allanis Maquea Silva",
+    "monitora": "Aline Oliveira Verneck",
+    "competencia": "2026-08",
+    "dataAtendimento": "2026-08-31",
+    "canal": "Telefone",
+    "categoria": "TRANSFERÊNCIA DE TITULARIDADE",
+    "tipo": "Regular",
+    "numeroAtendimento": "00999",
+    "numeroTitulo": "TESTE-01",
+    "inicioAtendimento": "2026-08-31T15:59:00",
+    "fimAtendimento": "2026-08-31T16:01:20"
+  },
+
+  "criterios": [
+    { "criterionId": "crit-01", "criterioNome": "Qual o motivo do contato?", "resposta": "Solicitação" },
+    { "criterionId": "crit-02", "criterioNome": "Atendimento ativo ou receptivo?", "resposta": "Receptivo" },
+    { "criterionId": "crit-29", "criterioNome": "Cliente chegou autenticado?", "resposta": "Não" },
+
+    { "criterionId": "crit-04", "criterioNome": "Cumprimentos / identificação",
+      "subRespostas": { "sub-04-1": "SIM", "sub-04-2": "SIM", "sub-04-3": "SIM", "sub-04-4": "SIM" },
+      "confianca": "ALTA", "revisaoHumana": false },
+    { "criterionId": "crit-05", "criterioNome": "Rapidez para atender a ligação", "resposta": 2, "confianca": "ALTA", "revisaoHumana": false },
+
+    { "criterionId": "crit-06", "criterioNome": "Demonstrou interesse e empatia com o pedido do cliente?", "resposta": 2, "confianca": "ALTA", "revisaoHumana": false },
+    { "criterionId": "crit-07", "criterioNome": "Avisou que ia buscar informações antes de deixar o cliente em espera?", "resposta": "N/A",
+      "justificativa": "Não houve espera significativa para consulta durante a ligação.",
+      "evidencia": "Atendimento seguiu sem colocação formal em espera.", "confianca": "ALTA", "revisaoHumana": false },
+    { "criterionId": "crit-08", "criterioNome": "Ao retomar o contato agradeceu o tempo de espera?", "resposta": "N/A",
+      "justificativa": "Não houve retomada após período de espera.",
+      "evidencia": "Não houve situação de espera que exigisse agradecimento no retorno.", "confianca": "ALTA", "revisaoHumana": false },
+    { "criterionId": "crit-09", "criterioNome": "Teve didática para explicar?", "resposta": 1,
+      "justificativa": "A explicação foi compreensível, mas poderia ser organizada em uma sequência mais clara das etapas da cessão.",
+      "evidencia": "Orientações foram fornecidas, porém sem recapitulação estruturada do fluxo.", "confianca": "ALTA", "revisaoHumana": false },
+    { "criterionId": "crit-10", "criterioNome": "Fez argumentações pertinentes?", "resposta": 2, "confianca": "ALTA", "revisaoHumana": false },
+    { "criterionId": "crit-11", "criterioNome": "Lidando com objeções?", "resposta": "N/A",
+      "justificativa": "Não houve objeção ou resistência relevante do cliente.",
+      "evidencia": "Cliente buscou orientação sobre o procedimento e não apresentou objeção.", "confianca": "ALTA", "revisaoHumana": false },
+    { "criterionId": "crit-12", "criterioNome": "Comunicação clara e transparente?", "resposta": 1,
+      "justificativa": "A comunicação foi objetiva, mas havia oportunidade de organizar melhor etapas e próximos passos.",
+      "evidencia": "Fluxo explicado sem uma síntese final estruturada.", "confianca": "ALTA", "revisaoHumana": false },
+    { "criterionId": "crit-13", "criterioNome": "Gramática escrita e falada?", "resposta": 1,
+      "justificativa": "A fala foi compreensível, com construções informais naturais da comunicação oral.",
+      "evidencia": "Não houve prejuízo ao entendimento, mas a comunicação pode ganhar maior padronização.", "confianca": "MEDIA", "revisaoHumana": false },
+    { "criterionId": "crit-14", "criterioNome": "Tom de voz Moura Leite?", "resposta": 2, "confianca": "ALTA", "revisaoHumana": false },
+
+    { "criterionId": "crit-15", "criterioNome": "O agente demonstrou habilidades de negociação eficazes?", "resposta": "N/A",
+      "justificativa": "Não houve negociação financeira ou comercial no contato.",
+      "evidencia": "Demanda restrita à orientação sobre cessão de direitos.", "confianca": "ALTA", "revisaoHumana": false },
+    { "criterionId": "crit-16", "criterioNome": "Forneceu informações precisas e relevantes para resolver o problema do cliente?", "resposta": 1,
+      "justificativa": "As informações foram pertinentes e direcionaram o cliente, mas a orientação poderia ser mais estruturada.",
+      "evidencia": "Foram explicadas as etapas essenciais do processo, com oportunidade de maior detalhamento organizado.", "confianca": "ALTA", "revisaoHumana": false },
+    { "criterionId": "crit-17", "criterioNome": "Ofereceu uma solução que atendesse às necessidades do cliente?", "resposta": 2, "confianca": "ALTA", "revisaoHumana": false },
+
+    { "criterionId": "crit-18", "criterioNome": "O agente evitou desinformação ou engano?", "resposta": 2, "confianca": "ALTA", "revisaoHumana": false },
+    { "criterionId": "crit-19", "criterioNome": "Resolução no Primeiro Contato - FCR?", "resposta": 1,
+      "justificativa": "A dúvida foi orientada no primeiro contato, porém a cessão dependia de documentação, análise e etapas posteriores.",
+      "evidencia": "O procedimento não poderia ser integralmente concluído durante a ligação.", "confianca": "ALTA", "revisaoHumana": false },
+    { "criterionId": "crit-20", "criterioNome": "Demonstrou paciência e profissionalismo?", "resposta": 2, "confianca": "ALTA", "revisaoHumana": false },
+    { "criterionId": "crit-21", "criterioNome": "Aplicou a técnicas de desescalada?", "resposta": "N/A",
+      "justificativa": "Não houve conflito, irritação ou situação que exigisse técnica de desescalada.",
+      "evidencia": "Interação transcorreu de forma tranquila.", "confianca": "ALTA", "revisaoHumana": false },
+
+    { "criterionId": "crit-22", "criterioNome": "Verificou se o cliente entendeu as informações repassadas?", "resposta": 1,
+      "justificativa": "Houve espaço para dúvidas, mas faltou confirmação explícita de que o cliente compreendeu todas as etapas.",
+      "evidencia": "Não houve recapitulação ou checagem direta de entendimento ao final.", "confianca": "ALTA", "revisaoHumana": false },
+    { "criterionId": "crit-23", "criterioNome": "Construção de Relacionamento?", "resposta": 1,
+      "justificativa": "A condução foi cordial, porém o fechamento poderia reforçar acompanhamento e disponibilidade de forma mais personalizada.",
+      "evidencia": "Encerramento cordial, com oportunidade de maior construção de relacionamento.", "confianca": "ALTA", "revisaoHumana": false },
+    { "criterionId": "crit-24", "criterioNome": "Encerrou o contato corretamente?",
+      "subRespostas": { "sub-24-1": "SIM", "sub-24-2": "SIM" }, "confianca": "ALTA", "revisaoHumana": false },
+
+    { "criterionId": "crit-25", "criterioNome": "Confirmação de dados de segurança insuficiente", "resposta": 2,
+      "evidencia": "O cliente era o titular do contrato na data do atendimento; a cessão foi concluída posteriormente.", "confianca": "ALTA", "revisaoHumana": false },
+    { "criterionId": "crit-26", "criterioNome": "Faltou com respeito ao cliente", "resposta": 2, "confianca": "ALTA", "revisaoHumana": false },
+    { "criterionId": "crit-27", "criterioNome": "Ligação derrubada ou atendimento encerrado sem atendimento do cliente?", "resposta": 2, "confianca": "ALTA", "revisaoHumana": false },
+    { "criterionId": "crit-28", "criterioNome": "Promessa de produto/serviço inexistente", "resposta": 2, "confianca": "ALTA", "revisaoHumana": false }
+  ],
+
+  "relatorio": {
+    "contexto": "O cliente entrou em contato para obter orientações sobre a transferência do terreno. Allanis identificou corretamente que se tratava de cessão de direitos e explicou o fluxo do procedimento, incluindo documentação, análise e formalização. Na data do atendimento, o cliente era o titular do contrato; a cessão foi concluída posteriormente.",
+    "pontosPositivos": "Abertura adequada e cordial; identificação correta da necessidade; conhecimento do processo de cessão de direitos; orientações objetivas; postura tranquila e profissional; ausência de promessa indevida.",
+    "pontosAtencao": "Estruturar a explicação em uma sequência mais clara das etapas do processo; reforçar a confirmação de entendimento e tornar o encerramento mais completo, recapitulando o próximo passo.",
+    "leituraTecnica": "Allanis demonstrou conhecimento do processo e direcionou corretamente o então titular do contrato. A condução foi cordial e objetiva. Não houve falha de segurança/LGPD, pois o cliente era o titular na data do contato.",
+    "errosIdentificados": "Não foram identificados erros técnicos ou falhas críticas no atendimento.",
+    "conclusao": "Atendimento cordial, objetivo e tecnicamente adequado na orientação da cessão de direitos. As oportunidades de desenvolvimento concentram-se na estruturação da explicação, confirmação explícita do entendimento e maior completude no encerramento."
+  },
+
+  "conferencia": { "notaEsperada": 78.57 }
+}

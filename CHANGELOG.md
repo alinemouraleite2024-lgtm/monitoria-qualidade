@@ -5,6 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Não versionado] — Importar avaliação do ChatGPT
+
+> Em homologação, em branch própria a partir da 0.24.1 (`feat/importar-chatgpt`). Independente
+> da 0.25.0. A numeração será definida junto com a sequência de publicação.
+>
+> A monitoria continua sendo feita no ChatGPT, com o agente de qualidade. O que faltava era o
+> caminho de volta: hoje a avaliação aprovada é redigitada critério a critério no MonitorIA.
+
+### Added
+
+- **Importar avaliação do ChatGPT**, na etapa 1 da Nova Monitoria. A monitora cola o JSON do
+  agente (`monitoria-chatgpt/1`), vê uma prévia e aplica ao formulário. **Nada é gravado ao
+  colar**: o registro nasce pelo salvamento de sempre e segue para a validação da gestão.
+- Validação contra a régua cadastrada: critério inexistente, inativo ou fora do canal; opções;
+  sub-perguntas (o `sub-24-3` da régua antiga é recusado com mensagem própria); N/A onde a
+  metodologia proíbe; justificativa abaixo da máxima; contradição 29 × 25; colaborador com id e
+  nome divergentes; monitora diferente da usuária logada; categoria fora do catálogo; datas
+  incoerentes; `crit-29 = "Sim"` em telefone ou presencial, que não têm pré-autenticação e
+  dispensariam o eliminatório 25 sem avaliação. Qualquer erro bloqueia a importação inteira.
+- A nota é recalculada pelo MonitorIA. Se o JSON trouxer `conferencia.notaEsperada` e ela
+  divergir, a importação é bloqueada.
+- Confirmação individual obrigatória de cada eliminatório e de cada resposta com confiança
+  `BAIXA` ou revisão pedida pelo agente; confirmação explícita para atendimento já monitorado e
+  para substituir conteúdo já preenchido.
+- `docs/CONTRATO-IMPORTACAO-CHATGPT.md`, com o formato e a instrução pronta para o agente. O
+  mesmo bloco entrou no fim de `docs/PROMPT-IA-MONITORIA.md` (seção "Entrega para o MonitorIA").
+- Depois de importar, trocar o canal é sinalizado: a faixa da importação diz de que canal a
+  avaliação veio, quais critérios importados deixaram de se aplicar (guardados, não apagados —
+  voltam se o canal voltar), quais passaram a exigir resposta e se o `crit-29` ficou incoerente
+  com o canal.
+- **Primeiros testes automatizados do projeto** (`tests/`, 48 casos), com o Node puro e sem
+  dependência nova.
+
+### Fixed
+
+- Trocar o canal depois de importar não apaga mais as respostas. O efeito que reinicializa os
+  scores ao mudar de canal passou a saber para qual conjunto de critérios eles já foram
+  montados. Sem importação, o comportamento é o de antes.
+
+### Limitações conhecidas
+
+- A proibição de N/A é lida do texto de `quandoNA` ("Nunca é N/A…"). O correto seria um campo
+  estruturado no critério.
+- Evidência e confiança não são guardadas como dado próprio: a evidência vai para o fim da
+  justificativa e a confiança aparece só na prévia.
+- A régua admite N/A no `crit-24` (atendimento interrompido pelo cliente), mas o formulário não
+  oferece N/A em checklist — divergência anterior a esta versão. A importação segue o
+  formulário e recusa N/A em checklist, porque a tela não teria como exibir nem editar o valor.
+
 ## [0.24.1] - 2026-10-07 — A pesquisa de satisfação sai do crit-24
 
 > A operação descontinuou o incentivo à pesquisa de satisfação. Manter a sub-pergunta
