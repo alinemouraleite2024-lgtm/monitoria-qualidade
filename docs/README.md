@@ -24,7 +24,8 @@ Esta pasta contém a documentação técnica, manuais e guias do projeto.
 |---|---|
 | Sistema | em produção — https://monitoria-qualidade.vercel.app |
 | Versão em produção | 0.24.1 · commit `e9cb8a6` · tag `v0.24.1` |
-| Em branch | **0.25.0** — plano do ADMIN e ajustes da gestão, aguardando validação |
+| A publicar | **0.25.0** — importar avaliação do ChatGPT, homologada na prévia |
+| Em branch | **0.26.0** (era 0.25.0) — plano do ADMIN e ajustes da gestão, aguardando validação |
 | Frente aberta | **Monitorias de agosto** — consolidação em planilha, com importação controlada a definir |
 | Fatia em curso | 3A.0 concluída (régua validada 32/32 e em produção) |
 | Próximo marco | documento conceitual do módulo de Desenvolvimento, após a operação rodar |

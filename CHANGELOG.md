@@ -5,10 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Não versionado] — Importar avaliação do ChatGPT
+## [0.25.0] - a publicar — Importar avaliação do ChatGPT
 
-> Em homologação, em branch própria a partir da 0.24.1 (`feat/importar-chatgpt`). Independente
-> da 0.25.0. A numeração será definida junto com a sequência de publicação.
+> Homologada na prévia da Vercel em 08/10/2026, a partir da 0.24.1 (`feat/importar-chatgpt`).
+> Não inclui nada do plano do ADMIN e dos ajustes da gestão, que estavam em branch como 0.25.0 e
+> passam a ser a **0.26.0**.
+>
+> **Não altera dado gravado:** nenhuma migração, nenhum seed, `DATABASE_VERSION` segue 11.
 >
 > A monitoria continua sendo feita no ChatGPT, com o agente de qualidade. O que faltava era o
 > caminho de volta: hoje a avaliação aprovada é redigitada critério a critério no MonitorIA.
