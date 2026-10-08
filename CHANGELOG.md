@@ -43,6 +43,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Trocar o canal depois de importar não apaga mais as respostas. O efeito que reinicializa os
   scores ao mudar de canal passou a saber para qual conjunto de critérios eles já foram
   montados. Sem importação, o comportamento é o de antes.
+- **Eliminatório 25 podia ser concluído sem avaliação** (defeito da 0.18.0, vale para toda
+  monitoria). Com o `crit-29` em "Sim", o portão grava N/A no `crit-25`; ao voltar o 29 para
+  "Não", o N/A ficava gravado, a tela não mostrava opção marcada e a etapa 3 deixava avançar.
+  Agora, quando o portão deixa de valer, o N/A que ele gravou é limpo e o critério volta a
+  exigir resposta. Monitoria reaberta não é tocada.
 
 ### Limitações conhecidas
 

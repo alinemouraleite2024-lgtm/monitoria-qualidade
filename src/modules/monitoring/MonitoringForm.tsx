@@ -440,6 +440,25 @@ export const MonitoringForm = ({
     });
   }, [bloqueados, scores]);
 
+  // O caminho inverso: quando o portão deixa de valer (crit-29 volta de "Sim" para "Não"), o
+  // N/A que ele gravou não é resposta de ninguém. Sem esta limpeza o crit-25 ficava sem opção
+  // marcada na tela, mas gravado como N/A — e a etapa 3 deixava avançar com um eliminatório
+  // jamais avaliado. Só age na transição dentro da sessão: monitoria reaberta não é tocada.
+  const bloqueadosAnterioresRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const anteriores = bloqueadosAnterioresRef.current;
+    bloqueadosAnterioresRef.current = new Set(Object.keys(bloqueados));
+    const liberados = [...anteriores].filter((id) => !bloqueados[id] && scores[id]?.score === 'N/A');
+    if (liberados.length === 0) return;
+    setScores((atual) => {
+      const proximo = { ...atual };
+      liberados.forEach((id) => {
+        proximo[id] = { ...proximo[id], score: '', lowScoreReason: '' };
+      });
+      return proximo;
+    });
+  }, [bloqueados, scores]);
+
   // Duração derivada do par de datas. Nunca vem do estado do formulário: não existe caminho
   // pelo qual a monitora digite este número.
   const duracaoMinutos = useMemo(
