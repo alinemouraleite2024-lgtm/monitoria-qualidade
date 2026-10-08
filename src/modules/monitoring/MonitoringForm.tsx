@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import type { FormEvent } from 'react';
 import { 
   X, CheckCircle2, ChevronRight, ChevronLeft, UploadCloud, File, Image, 
   FileText, Video, Link as LinkIcon, Trash2, AlertTriangle, Save, Download,
-  Lightbulb, Target, BookOpen, ChevronDown, ChevronUp, HelpCircle 
+  Lightbulb, Target, BookOpen, ChevronDown, ChevronUp, HelpCircle, ClipboardPaste
 } from 'lucide-react';
 import { SearchableSelect } from '../../components/SearchableSelect';
 import { CANAIS, canalLabel } from '../../constants/canais';
@@ -15,6 +15,8 @@ import { getCriteriosBloqueados, temConflitoDeAutenticacao } from '../../domain/
 import { temPerfil } from '../../domain/perfis';
 import { resolverStatusInicial, temGestorConfigurado } from '../../domain/validacaoService';
 import type { Area, Collaborator, Criterion, Monitoring, SystemSettings, User } from '../../types/domain';
+import { BLOCOS_IMPORTACAO, violaRegraDeAutenticacao, type ResultadoImportacao } from '../../domain/importacaoChatGPT';
+import { ImportarAvaliacaoModal } from './ImportarAvaliacaoModal';
 
 /**
  * Contrato do formulário de monitoria.
@@ -186,6 +188,9 @@ const getScaleOptions = (tipoResposta: string) => {
   ];
 };
 
+/** Identifica o conjunto de critérios para o qual os scores foram montados. */
+const chaveDosScores = (canal: string, aplicaveis: Criterion[]) => `${canal}|${aplicaveis.map(c => c.id).join(',')}`;
+
 export const MonitoringForm = ({
   initialData = null,
   users = [],
@@ -311,9 +316,37 @@ export const MonitoringForm = ({
     }, {});
   }, [applicableCriteria]);
 
+  /**
+   * Para qual conjunto de critérios os scores já foram montados (canal + ids aplicáveis).
+   *
+   * Existe por causa da importação do ChatGPT: ela define o canal e as respostas no mesmo
+   * instante, e o efeito abaixo — que roda depois da renderização — veria o canal mudar e zeraria
+   * tudo o que acabou de ser importado, sem erro na tela. A importação carimba a chave antes de
+   * aplicar, e o efeito reconhece que não há o que reinicializar.
+   */
+  const chaveScoresRef = useRef<string | null>(null);
+  /** Depois de uma importação, trocar o canal preserva as respostas que continuam aplicáveis. */
+  const importacaoAplicadaRef = useRef(false);
+
   // Initialize scores when canal changes and not editing existing
   useEffect(() => {
     if (!initialData) {
+      const chave = chaveDosScores(formData.canal, applicableCriteria);
+      if (chaveScoresRef.current === chave) return;
+      chaveScoresRef.current = chave;
+      if (importacaoAplicadaRef.current) {
+        // Nada é descartado: a resposta de um critério que deixou de se aplicar fica guardada
+        // e volta se o canal voltar. Ela não entra na nota nem no registro — os dois só leem os
+        // critérios aplicáveis — e a faixa da importação avisa quais são.
+        setScores(atual => {
+          const proximo: Record<string, ScoreEmEdicao> = { ...atual };
+          applicableCriteria.forEach(c => {
+            proximo[c.id] = atual[c.id] ?? { score: '', lowScoreReason: '', subRespostas: {} };
+          });
+          return proximo;
+        });
+        return;
+      }
       const initialScores: Record<string, ScoreEmEdicao> = {};
       applicableCriteria.forEach(c => {
         initialScores[c.id] = { score: '', lowScoreReason: '', subRespostas: {} };
@@ -407,6 +440,25 @@ export const MonitoringForm = ({
     });
   }, [bloqueados, scores]);
 
+  // O caminho inverso: quando o portão deixa de valer (crit-29 volta de "Sim" para "Não"), o
+  // N/A que ele gravou não é resposta de ninguém. Sem esta limpeza o crit-25 ficava sem opção
+  // marcada na tela, mas gravado como N/A — e a etapa 3 deixava avançar com um eliminatório
+  // jamais avaliado. Só age na transição dentro da sessão: monitoria reaberta não é tocada.
+  const bloqueadosAnterioresRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const anteriores = bloqueadosAnterioresRef.current;
+    bloqueadosAnterioresRef.current = new Set(Object.keys(bloqueados));
+    const liberados = [...anteriores].filter((id) => !bloqueados[id] && scores[id]?.score === 'N/A');
+    if (liberados.length === 0) return;
+    setScores((atual) => {
+      const proximo = { ...atual };
+      liberados.forEach((id) => {
+        proximo[id] = { ...proximo[id], score: '', lowScoreReason: '' };
+      });
+      return proximo;
+    });
+  }, [bloqueados, scores]);
+
   // Duração derivada do par de datas. Nunca vem do estado do formulário: não existe caminho
   // pelo qual a monitora digite este número.
   const duracaoMinutos = useMemo(
@@ -436,6 +488,122 @@ export const MonitoringForm = ({
       setFormData((prev) => ({ ...prev, competencia: doAtendimento }));
     }
   }, [formData.inicioAtendimento, formData.competencia, competenciaTocada]);
+
+  // ---------------------------------------------------------------------------------------
+  // Importação de avaliação do ChatGPT
+  //
+  // Só existe na Nova Monitoria. Na edição o registro já tem dono e histórico — importar por
+  // cima seria reescrever monitoria cadastrada. No lançamento retroativo, a monitoria nasce
+  // Validada e não passaria pela gestão.
+  //
+  // Aplicar escreve apenas no estado desta tela, pelos mesmos setters que os botões usam. Nota,
+  // validação das etapas, portão 29→25, sinalização de eliminatório e salvamento continuam
+  // exatamente como são — e não sabem que a importação existe.
+  // ---------------------------------------------------------------------------------------
+  const podeImportar = !initialData && !modoRetroativo;
+  const [mostrarImportacao, setMostrarImportacao] = useState(false);
+  const [importacao, setImportacao] = useState<{
+    notaEsperada?: number;
+    avisos: number;
+    /** Canal com que a avaliação foi feita no ChatGPT. */
+    canal: string;
+    /** Critérios que vieram respondidos na importação. */
+    criterios: string[];
+  } | null>(null);
+
+  /**
+   * O que mudou desde a importação. Existe para que trocar o canal nunca altere a avaliação em
+   * silêncio: a monitora vê quais respostas importadas saíram da nota, quais critérios passaram
+   * a exigir resposta e se a regra de autenticação do crit-29 deixou de valer.
+   */
+  const sinaisImportacao = useMemo(() => {
+    if (!importacao) return null;
+    const aplicaveis = new Set(applicableCriteria.map(c => c.id));
+    const nome = (id: string) => {
+      const c = criteria.find(x => x.id === id);
+      return c ? `${id} (${c.name})` : id;
+    };
+    return {
+      canalAlterado: formData.canal !== importacao.canal,
+      foraDoCanal: importacao.criterios.filter(id => !aplicaveis.has(id)).map(nome),
+      semResposta: formData.canal !== importacao.canal
+        ? applicableCriteria.filter(c => scores[c.id]?.score === '' && !importacao.criterios.includes(c.id)).map(c => nome(c.id))
+        : [],
+      autenticacao: violaRegraDeAutenticacao(formData.canal, scores['crit-29']?.score),
+    };
+  }, [importacao, applicableCriteria, criteria, formData.canal, scores]);
+
+  /** Campos com conteúdo que a importação trocaria por outro valor. */
+  const camposASubstituir = (r: ResultadoImportacao): string[] => {
+    if (!r.dados || !r.relatorio) return [];
+    const d = r.dados;
+    const lista: string[] = [];
+    const difere = (atual: string | undefined, novo: string | undefined) => !!(atual && atual.trim()) && atual !== (novo || '');
+    if (difere(formData.colaboradorId, d.colaboradorId)) lista.push('Colaborador');
+    if (difere(formData.canal, d.canal)) lista.push('Canal');
+    if (difere(formData.categoriaAtendimento, d.categoriaAtendimento)) lista.push('Categoria');
+    if (difere(formData.numeroAtendimento, d.numeroAtendimento)) lista.push('Nº do Atendimento');
+    if (difere(formData.numeroTitulo, d.numeroTitulo)) lista.push('Nº do Título');
+    if (difere(formData.inicioAtendimento, d.inicioAtendimento)) lista.push('Início do atendimento');
+    if (difere(formData.fimAtendimento, d.fimAtendimento)) lista.push('Encerramento');
+    if (d.link && difere(formData.links[0], d.link)) lista.push('Link do Atendimento');
+    BLOCOS_IMPORTACAO.forEach(b => {
+      if (difere(formData[b.campo], r.relatorio![b.campo])) lista.push(b.titulo);
+    });
+    const respondidos = Object.values(scores).filter(s => s.score !== '' || s.lowScoreReason.trim()).length;
+    if (respondidos > 0) lista.push(`${respondidos} resposta(s) de critério já marcada(s)`);
+    return lista;
+  };
+
+  const aplicarImportacao = (r: ResultadoImportacao) => {
+    if (!r.dados || !r.respostas || !r.relatorio || r.erros.length) return;
+    const d = r.dados;
+    const aplicaveis = criteria.filter(c => c.active && (c.channels as string[]).includes(d.canal));
+
+    // Antes de qualquer setState: o efeito de inicialização precisa encontrar a chave já
+    // carimbada quando rodar com o canal novo.
+    chaveScoresRef.current = chaveDosScores(d.canal, aplicaveis);
+    importacaoAplicadaRef.current = true;
+
+    setFormData(prev => ({
+      ...prev,
+      colaboradorId: d.colaboradorId,
+      monitorId: d.monitorId,
+      competencia: d.competencia,
+      date: d.date,
+      canal: d.canal,
+      categoriaAtendimento: d.categoriaAtendimento,
+      tipo: d.tipo,
+      numeroAtendimento: d.numeroAtendimento,
+      numeroTitulo: d.numeroTitulo,
+      inicioAtendimento: d.inicioAtendimento,
+      fimAtendimento: d.fimAtendimento,
+      links: d.link ? [d.link] : prev.links,
+      ...r.relatorio,
+    }));
+    // A competência veio declarada: o ajuste automático pelo início do atendimento não a desfaz.
+    setCompetenciaTocada(true);
+
+    const novos: Record<string, ScoreEmEdicao> = {};
+    aplicaveis.forEach(c => {
+      const imp = r.respostas![c.id];
+      novos[c.id] = imp
+        ? { score: imp.score, lowScoreReason: imp.lowScoreReason, subRespostas: { ...imp.subRespostas } }
+        : { score: '', lowScoreReason: '', subRespostas: {} };
+    });
+    setScores(novos);
+    if (r.relatorio.errosIdentificados) setExpandirErros(true);
+
+    setImportacao({
+      notaEsperada: r.notaEsperada,
+      avisos: r.avisos.length,
+      canal: d.canal,
+      criterios: Object.keys(r.respostas),
+    });
+    setHasAttemptedNext(false);
+    setStep(1);
+    setMostrarImportacao(false);
+  };
 
   // Registra a resposta de uma sub-pergunta de um critério do tipo CHECKLIST_SIM_NAO.
   // O score agregado (0-2) só é calculado quando todas as sub-perguntas estiverem respondidas;
@@ -735,10 +903,75 @@ export const MonitoringForm = ({
       <div style={{ flex: 1, padding: '2rem', display: 'flex', justifyContent: 'center' }}>
         <div style={{ width: '100%', maxWidth: '1000px' }}>
           <form id="monitoring-form" onSubmit={handleSaveFinal} style={{ display: 'flex', flexDirection: 'column', gap: '2rem', paddingBottom: '6rem' }}>
-              
+
+              {/* Faixa de estado da importação — visível em todas as etapas, porque a revisão
+                  atravessa as cinco. A nota exibida é a do formulário, a mesma que será gravada. */}
+              {importacao && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', padding: '0.85rem 1.1rem', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '10px', fontSize: '0.85rem', color: '#1e3a8a' }}>
+                  <ClipboardPaste size={18} style={{ color: '#2563eb', flexShrink: 0 }} />
+                  <span style={{ flex: 1 }}>
+                    <b>Avaliação importada do ChatGPT — ainda não salva.</b> Revise e ajuste as cinco etapas antes de concluir.
+                    {importacao.avisos > 0 && <> A importação gerou {importacao.avisos} aviso(s).</>}
+                  </span>
+                  <span style={{ fontWeight: 700 }}>
+                    Nota MonitorIA: {finalScore.toFixed(2).replace('.', ',')}
+                    {importacao.notaEsperada != null && (
+                      Math.abs(importacao.notaEsperada - finalScore) <= 0.01
+                        ? <span style={{ color: '#166534' }}> · confere com o ChatGPT</span>
+                        : <span style={{ color: '#b91c1c' }}> · ChatGPT informou {importacao.notaEsperada.toFixed(2).replace('.', ',')}</span>
+                    )}
+                  </span>
+                </div>
+              )}
+
+              {sinaisImportacao && (sinaisImportacao.canalAlterado || sinaisImportacao.autenticacao) && (
+                <div role="alert" style={{ display: 'flex', gap: '0.75rem', padding: '0.85rem 1.1rem', backgroundColor: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '10px', fontSize: '0.84rem', color: '#78350f' }}>
+                  <AlertTriangle size={18} style={{ color: '#b45309', flexShrink: 0, marginTop: '1px' }} />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                    {sinaisImportacao.canalAlterado && (
+                      <div>
+                        <b>Canal alterado após a importação:</b> a avaliação veio do ChatGPT como{' '}
+                        <b>{canalLabel(importacao!.canal)}</b>; agora está <b>{canalLabel(formData.canal) || 'sem canal'}</b>.
+                        {sinaisImportacao.foraDoCanal.length === 0 && sinaisImportacao.semResposta.length === 0 &&
+                          ' Todos os critérios importados continuam aplicáveis.'}
+                      </div>
+                    )}
+                    {sinaisImportacao.foraDoCanal.length > 0 && (
+                      <div>
+                        <b>Não se aplicam ao canal atual ({sinaisImportacao.foraDoCanal.length}):</b> {sinaisImportacao.foraDoCanal.join(' · ')}.
+                        {' '}As respostas importadas foram <b>guardadas, não apagadas</b>, mas ficam fora da nota e do registro.
+                        Voltando ao canal {canalLabel(importacao!.canal)}, elas reaparecem.
+                      </div>
+                    )}
+                    {sinaisImportacao.semResposta.length > 0 && (
+                      <div>
+                        <b>Passaram a se aplicar e precisam de resposta ({sinaisImportacao.semResposta.length}):</b> {sinaisImportacao.semResposta.join(' · ')}.
+                      </div>
+                    )}
+                    {sinaisImportacao.autenticacao && (
+                      <div>
+                        <b>Critério 29 incoerente com o canal:</b> está "Sim" (cliente autenticado), mas telefone e presencial não têm
+                        pré-autenticação — a régua manda "Não". Com "Sim", o critério 25 fica dispensado. Revise os dois na etapa 3.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+
               {/* ETAPA 1: Informações Gerais */}
               {step === 1 && (
                 <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  {podeImportar && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', padding: '1rem 1.25rem', backgroundColor: '#f0fdf4', border: '1px dashed #86efac', borderRadius: '12px' }}>
+                      <div style={{ fontSize: '0.85rem', color: '#14532d' }}>
+                        <b>Avaliou no ChatGPT?</b> Cole o JSON do agente de qualidade para preencher o formulário. Nada é salvo antes da sua revisão.
+                      </div>
+                      <button type="button" className="btn btn-secondary" onClick={() => setMostrarImportacao(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <ClipboardPaste size={16} /> Importar avaliação do ChatGPT
+                      </button>
+                    </div>
+                  )}
                   <div style={{ backgroundColor: '#fff', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
                     <h3 style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '1.5rem', borderBottom: '1px solid #f3f4f6', paddingBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                       INFORMAÇÕES DO ATENDIMENTO
@@ -1544,6 +1777,15 @@ export const MonitoringForm = ({
           )}
         </div>
       </div>
+
+      {mostrarImportacao && podeImportar && (
+        <ImportarAvaliacaoModal
+          contexto={{ criteria, collaborators, currentUser, catalogCategorias, monitorings }}
+          camposASubstituir={camposASubstituir}
+          onAplicar={aplicarImportacao}
+          onClose={() => setMostrarImportacao(false)}
+        />
+      )}
     </div>
   );
 };

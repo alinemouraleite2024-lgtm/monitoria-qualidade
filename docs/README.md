@@ -12,6 +12,7 @@ Esta pasta contém a documentação técnica, manuais e guias do projeto.
 | [`OPERACAO.md`](OPERACAO.md) | **Contexto oficial.** Estado atual, modelo de operação, regras diárias, travas conhecidas, pendências, estratégia dos pilotos e decisões de produto |
 | [`BACKUP-RESTAURACAO.md`](BACKUP-RESTAURACAO.md) | **Procedimento obrigatório antes de qualquer publicação que mexa em modelo, catálogo ou migração.** Como exportar e restaurar a base — a persistência é `localStorage`, então não existe cópia em servidor |
 | [`METODOLOGIA-MONITORIA.md`](METODOLOGIA-MONITORIA.md) | **Régua oficial de avaliação (Fatia 3A.0).** Os 28 critérios com orientação completa, âncoras 2/1/0, eliminatórios, regras por tipo de atendimento e estrutura do relatório. Base única do MonitorIA, do `instructionBuilder`, do assistente e do treinamento. **Aguardando validação** |
+| [`CONTRATO-IMPORTACAO-CHATGPT.md`](CONTRATO-IMPORTACAO-CHATGPT.md) | Formato `monitoria-chatgpt/1`: o JSON que o agente do ChatGPT entrega e o MonitorIA importa na Nova Monitoria, com a instrução pronta para o agente. **Em homologação** |
 | [`VISAO-PRODUTO.md`](VISAO-PRODUTO.md) | Direção de produto: o cliente como entidade central e o NPS como processo operacional. Nada implementado |
 | [`RELATORIO-SPRINT-0.md`](RELATORIO-SPRINT-0.md) | Relatório final da Sprint 0: versão, entregas, métricas, checklist de homologação, pendências e riscos. **Publicada em 19/08/2026** |
 | [`STATUS-SPRINT-0.md`](STATUS-SPRINT-0.md) | Estado técnico do código: histórias, bugs, componentes, métricas, débitos e arquitetura. Inclui as publicações posteriores ao fechamento |
@@ -23,7 +24,8 @@ Esta pasta contém a documentação técnica, manuais e guias do projeto.
 |---|---|
 | Sistema | em produção — https://monitoria-qualidade.vercel.app |
 | Versão em produção | 0.24.1 · commit `e9cb8a6` · tag `v0.24.1` |
-| Em branch | **0.25.0** — plano do ADMIN e ajustes da gestão, aguardando validação |
+| A publicar | **0.25.0** — importar avaliação do ChatGPT, homologada na prévia |
+| Em branch | **0.26.0** (era 0.25.0) — plano do ADMIN e ajustes da gestão, aguardando validação |
 | Frente aberta | **Monitorias de agosto** — consolidação em planilha, com importação controlada a definir |
 | Fatia em curso | 3A.0 concluída (régua validada 32/32 e em produção) |
 | Próximo marco | documento conceitual do módulo de Desenvolvimento, após a operação rodar |
