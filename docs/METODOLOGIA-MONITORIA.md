@@ -1,5 +1,13 @@
 # Metodologia de Monitoria — Base Única
 
+> **RÉGUA 2.0 — vigente para avaliações registradas a partir de 12/10/2026.** Calibração
+> aprovada em 10/10/2026 (§9, "Decisões de calibração"): princípio de cumprimento, regra de
+> não duplicidade, evidência insuficiente e justificativa obrigatória no `N/A` (§2); âncoras
+> revisadas dos critérios 4 (sub-pergunta 4), 6, 9, 12, 13, 16, 19, 22 e 23, e fronteiras
+> 5 × 7 e 16 × 18 (§4); relatório com oportunidades e não conformidades separadas (§7).
+> **Pesos, escala 2 / 1 / 0 e eliminatórios não mudaram.** Avaliações registradas antes de
+> 12/10/2026 seguem a régua 1 e não são reavaliadas.
+
 > **Fatia 3A.0. RÉGUA VALIDADA em 25/08/2026** — 32 itens revisados, 32 aprovados, nenhum
 > ajuste; as 7 decisões da pauta estão encerradas (§9). Este documento deixa de ser proposta e
 > passa a ser **a régua oficial**: é dele que sai o cadastro no sistema e o corpo da instrução
@@ -66,7 +74,8 @@ nota (%) = Σ (valor × peso) ÷ Σ (2 × peso) × 100
   4 eliminatórios (25–28). Eles são respondidos, contam na barra de progresso, mas não
   movem a nota.
 - **`N/A` sai do denominador.** Marcar `N/A` não penaliza nem premia — apenas retira o
-  critério do cálculo. Por isso `N/A` precisa ser justificado (ver §9, decisão 4).
+  critério do cálculo. Por isso `N/A` precisa ser justificado, com o motivo da não
+  aplicabilidade (régua 2.0 — ver "Justificativa no N/A", abaixo).
 - **Eliminatório não zera automaticamente.** Marcar "Sim, ocorreu" sinaliza a monitoria como
   `eliminatoryPending`. Quem zera é Gestor ou Admin, por confirmação explícita (F0-08).
 
@@ -104,6 +113,76 @@ do contato fosse desempenho. Por isso a régua deles, no Bloco 1, é uma **régu
 > `''` (não respondido) e texto (classificação). Quem for escrever regra sobre ele precisa
 > comparar de forma estrita — `''` e texto se comportam como zero em coerção numérica, e zero
 > tem significado próprio nos eliminatórios.
+
+### Cumprido, parcialmente cumprido e não cumprido *(régua 2.0)*
+
+A monitoria serve ao desenvolvimento profissional: reconhece o que foi cumprido, desconta o que
+de fato faltou e registra o que pode melhorar. **Uma oportunidade de melhoria não gera desconto
+quando o requisito foi cumprido.** Isso não flexibiliza requisito obrigatório nem autoriza nota
+alta sem evidência.
+
+Toda resposta abaixo de 2 responde a uma pergunta: **qual parte da âncora não foi cumprida, e
+onde isso aparece no atendimento?**
+
+| Situação | O que é | Nota |
+|---|---|---|
+| **A — Requisito cumprido** | O comportamento esperado aconteceu | Integral. Se havia como fazer melhor, a sugestão vai para o relatório, em "Oportunidades sem desconto" (§7) |
+| **B — Parcialmente cumprido** | Uma parte identificável do comportamento obrigatório faltou ou ficou incompleta | Conforme a âncora |
+| **C — Não cumprido** | O comportamento esperado não aconteceu, sendo aplicável | Conforme a âncora |
+
+Justificativa que não aponta o requisito faltante é sinal de A. Expressões como *"poderia ser
+mais…"*, *"havia oportunidade de…"* ou *"seria melhor se…"*, sozinhas, descrevem melhoria — não
+descumprimento.
+
+### Uma causa raiz, um desconto *(régua 2.0)*
+
+1. Identificar o comportamento que faltou, com o trecho ou o momento do atendimento.
+2. Descontar no critério que tem esse comportamento como objeto principal (o "O que mede" de
+   cada critério, §4).
+3. Outro critério só desconta com **evidência própria**: outro comportamento, outro momento ou
+   outro efeito no cliente, que descumpra um requisito que só ele tem. Se a única evidência for
+   o mesmo trecho, o segundo critério registra orientação, não desconto.
+
+**Exceção:** clareza (12) e veracidade (18) são requisitos distintos por definição — meia-verdade
+desconta nos dois (ver "Não confundir com o 18", critério 12).
+
+| Situação | Desconto | Desconto separado só quando… |
+|---|---|---|
+| Não recapitulou ao final | crit-22 | o 9 tem evidência própria (ex.: etapas explicadas fora de ordem) |
+| Informou prazo errado | crit-18 | também faltou outro dado de que o cliente precisava (16) |
+| Pediu "um momento" logo ao atender | crit-5 | houve outra espera, mais tarde, sem aviso (7) |
+| Gíria na saudação | sub-pergunta 2 do crit-4 | a informalidade se repetiu ao longo do atendimento (14) |
+| Omitiu a taxa e não checou o entendimento | crit-12 **e** crit-22 | — são dois comportamentos, em dois momentos |
+
+### Evidência insuficiente *(régua 2.0)*
+
+Quando a evidência não permite confirmar nem o cumprimento nem o descumprimento, o critério vai
+para **revisão humana**: não se atribui nota máxima por falta de prova, nem nota baixa por
+cautela. A monitora decide com a gravação ou a conversa.
+
+No fluxo com o assistente, as revisões humanas são **resolvidas antes de gerar o JSON** de
+importação: o JSON leva a versão aprovada pela monitora. Se ainda assim um critério chegar com
+`revisaoHumana: true`, o MonitorIA exige a confirmação individual dele antes de aplicar.
+
+> **Limitação conhecida (0.25.0).** A confirmação individual na importação é uma marcação: ela
+> impede aplicar sem um clique em cada item, mas não comprova a revisão. Depois de aplicada, a
+> monitoria não guarda quais critérios estavam em revisão, e numa resposta de nota máxima o
+> motivo da revisão nem chega ao formulário. **Medida de segurança até a evolução técnica:**
+> (1) só marcar a confirmação depois de conferir o trecho na gravação ou na conversa; (2) o
+> assistente não entrega o JSON com revisão humana pendente; (3) a evolução técnica prevê o
+> critério chegar **sem resposta** ao formulário quando a evidência for insuficiente, e o
+> registro da revisão na própria monitoria.
+
+### Justificativa no `N/A` *(régua 2.0)*
+
+Todo `N/A` leva justificativa com o **motivo da não aplicabilidade** — por que o atendimento não
+ofereceu a situação que o critério avalia (ex.: *"Não houve espera durante a ligação"*). A
+exceção é o `N/A` aplicado automaticamente pelo sistema (critério 25 com o 29 em "Sim"), cujo
+motivo o próprio sistema registra na tela.
+
+> **Pendência técnica.** O formulário e o importador ainda aceitam `N/A` sem justificativa. A
+> regra vale desde já como orientação de preenchimento e é exigida do assistente, mas **não
+> bloqueia** a conclusão da monitoria até a evolução técnica.
 
 ---
 
@@ -259,7 +338,10 @@ postura e disposição para ouvir.
 | Realizou o cumprimento e identificação? | Há saudação **e** o atendente diz o próprio nome | Falta a saudação ou falta o nome |
 | Cumprimentou de forma adequada e profissional? | Linguagem formal, sem gíria nem tratamento íntimo | Usou gíria, apelido ou tratamento íntimo |
 | Demonstrou postura profissional e cortês? | Manteve respeito e não interrompeu | Interrompeu, respondeu com aspereza ou ironia |
-| Apresentou escuta ativa, empatia e profissionalismo? | Reagiu ao que o cliente disse antes de responder | Respondeu por script, ignorando o que foi dito |
+| Reagiu ao que o cliente disse na abertura? *(régua 2.0; antes: "Apresentou escuta ativa, empatia e profissionalismo?")* | Na abertura, reagiu ao que o cliente disse antes de seguir o roteiro | Seguiu o roteiro ignorando o que o cliente disse na abertura |
+
+**Sub-pergunta 4 — só a abertura** *(régua 2.0)*. A empatia ao longo do atendimento é avaliada
+no critério 6; avaliá-la também aqui descontaria duas vezes a mesma conduta.
 
 **N/A.** Não se aplica — a abertura existe em todo atendimento. Em contato ativo, a
 identificação é ainda mais exigível.
@@ -295,6 +377,9 @@ o expediente, conversas paralelas, contatos pessoais sem toque diferenciado.
 
 **N/A.** Contato ativo — quem ligou foi a empresa.
 
+**Fronteira com o 7** *(régua 2.0)*. Pedido de espera logo ao atender desconta só aqui
+(nível 0). O critério 7 avalia as esperas posteriores.
+
 **Evidência.** Carimbo de hora da primeira mensagem do cliente e da primeira resposta; ou o
 campo de tempo registrado na monitoria.
 
@@ -318,13 +403,18 @@ chamado a despachar.
 
 | | |
 |---|---|
-| **2** | Perguntou para entender antes de responder **e** reconheceu explicitamente a situação do cliente. A resposta seguinte mostra que ele escutou. |
-| **1** | Foi cordial, mas respondeu direto ao pedido sem investigar; ou reconheceu a situação com fórmula pronta, sem conexão com o que o cliente disse. |
+| **2** | A resposta mostra que o pedido foi compreendido **e** reconhece a situação do cliente de forma contextual. Quando a demanda já estava clara, a própria resposta adequada demonstra a compreensão; quando não estava, o atendente buscou entender antes de responder. |
+| **1** | Respondeu sem buscar entender o que não estava claro, e a resposta não corresponde inteiramente ao pedido; ou reconheceu a situação com fórmula pronta, sem conexão com o que o cliente disse. |
 | **0** | Ignorou o conteúdo emocional ou factual do pedido; respondeu outra coisa; tratou o cliente como interrupção. |
 
 **N/A.** Nunca. Todo contato tem um pedido.
 
 **Evidência.** A primeira resposta do atendente depois de o cliente expor a demanda.
+
+**Nota de calibração** *(régua 2.0)*. Não se exige pergunta, confirmação explícita ou frase de
+empatia pronta quando a demanda já está clara. O que se avalia é escuta e reconhecimento
+contextual: a resposta conversa com o que **este** cliente disse. Fórmula de empatia sem relação
+com o caso não é 2; ausência de frase pronta não é 1 quando a resposta mostra escuta.
 
 ---
 
@@ -346,7 +436,9 @@ de profissionalismo.
 | **1** | Avisou de forma genérica ("um momento") sem dizer o motivo; ou avisou depois de já ter sumido. |
 | **0** | Sumiu sem avisar. |
 
-**N/A.** Não houve espera. **No WhatsApp**, considera-se espera um intervalo relevante entre
+**N/A.** Não houve espera. **No telefone** *(régua 2.0)*, considera-se espera o silêncio ou a
+música de espera acima de **60 segundos** — parâmetro inicial, revisável com o uso; pedido de
+espera logo ao atender é avaliado no critério 5. **No WhatsApp**, considera-se espera um intervalo relevante entre
 a última mensagem do cliente e a resposta seguinte, dentro de uma conversa em andamento.
 
 **Evidência.** A mensagem imediatamente anterior ao intervalo.
@@ -397,8 +489,8 @@ corretamente.
 
 | | |
 |---|---|
-| **2** | Explicação em passos, em linguagem simples, **e** houve checagem de entendimento durante ou ao final. |
-| **1** | Explicação correta mas em bloco único, com jargão, ou sem nenhuma checagem. O cliente entendeu apesar da explicação, não por causa dela. |
+| **2** | Explicou as etapas necessárias em ordem lógica e linguagem simples, e o cliente entendeu sem precisar repetir a pergunta. Checagem durante a explicação conta a favor. |
+| **1** | Explicação correta, mas desorganizada (etapas fora de ordem, bloco único) ou com jargão não explicado; ou o cliente precisou perguntar de novo o mesmo ponto. |
 | **0** | Explicação confusa, incompleta ou que deixou o cliente perguntando a mesma coisa de novo. |
 
 **N/A.** Atendimento sem nada a explicar (ex.: só confirmar recebimento).
@@ -406,7 +498,8 @@ corretamente.
 **Evidência.** O trecho da explicação. Sinal forte de nota 1 ou 0: o cliente repete a pergunta.
 
 **Não confundir com o 22.** O 9 avalia a explicação; o 22 avalia a checagem final antes de
-encerrar. A checagem *durante* a explicação pertence ao 9.
+encerrar. A checagem *durante* a explicação pertence ao 9. **A falta de resumo final não
+desconta aqui** — é objeto do 22 *(régua 2.0)*.
 
 ---
 
@@ -478,14 +571,16 @@ encerrar. A checagem *durante* a explicação pertence ao 9.
 
 | | |
 |---|---|
-| **2** | Disse o que podia e o que não podia ser feito, com os próximos passos explícitos, em linguagem simples. |
-| **1** | Foi claro no que era favorável, mas contornou ou omitiu a parte desfavorável (prazo, limitação, condição). |
+| **2** | Disse o que pode e o que não pode ser feito, incluindo a condição desfavorável relevante (prazo, custo, limitação), e deixou claro o próximo passo do cliente, em linguagem simples. |
+| **1** | Omitiu ou suavizou informação desfavorável relevante; **ou** não informou o próximo passo que o cliente precisava dar. |
 | **0** | Deixou ambiguidade que gera nova ligação, ou deu resposta sem base para encerrar rápido. |
 
 **N/A.** Nunca.
 
 **Não confundir com o 18.** O 12 é *clareza e completude*; o 18 é *veracidade*. Meia-verdade
 dita com clareza é 12 baixo e 18 baixo; verdade dita de forma confusa é 12 baixo e 18 alto.
+
+**Não desconta aqui** *(régua 2.0)*: a síntese final (é do 22) e a ordem da explicação (é do 9).
 
 ---
 
@@ -502,12 +597,20 @@ informação recebida.
 
 | | |
 |---|---|
-| **2** | Sem erro relevante. Pontuação e concordância adequadas ao canal. |
-| **1** | Erros pontuais que não comprometem o entendimento (digitação, acento, concordância isolada). |
-| **0** | Erros frequentes ou que comprometem o entendimento; escrita sem pontuação; abreviação de mensagem pessoal ("vc", "blz", "pq") em canal institucional. |
+| **2** | Sem erro que comprometa a correção ou a imagem da comunicação. Na fala, a informalidade natural — contrações como "tá" e "pra", hesitações, retomadas — não é erro. |
+| **1** | Erro concreto que não compromete o entendimento: desvio de concordância, regência, digitação ou acento; ou vício de linguagem que, pela repetição ou pela natureza, chama atenção na conversa. |
+| **0** | Erros que comprometem o entendimento ou a credibilidade da informação, pela frequência ou pela gravidade; escrita sem pontuação; abreviação de mensagem pessoal ("vc", "blz", "pq") em canal institucional. |
 
 **Leitura por canal.** No **WhatsApp** avalia-se o texto escrito; no **telefone**, a fala —
 concordância, vício de linguagem, clareza de dicção.
+
+**Como decidir** *(régua 2.0)*. Não há número mínimo de ocorrências. A decisão pesa quatro
+fatores:
+
+- **Recorrência** — desvio isolado ou padrão que se repete;
+- **Natureza** — informalidade própria da fala ou erro gramatical de fato;
+- **Impacto** — atrapalhou o entendimento ou afetou a credibilidade da informação;
+- **Evidência** — o trecho do erro ou do vício. **Sem trecho citado, não há desconto.**
 
 **N/A.** Nunca.
 
@@ -598,12 +701,16 @@ individual do atendente.
 | | |
 |---|---|
 | **2** | Entendeu o pedido, entregou informação correta e completa, e só o que era necessário. |
-| **1** | Informação correta mas incompleta (faltou dado que o cliente precisaria), ou correta com excesso que confundiu. |
-| **0** | Informação errada, desatualizada, ou que não respondia ao que foi perguntado. |
+| **1** | Informação correta, mas faltou um **dado identificável** de que o cliente precisaria (nomear qual), ou houve excesso que confundiu. |
+| **0** | Não respondeu ao que foi perguntado, ou faltou o essencial para o cliente seguir. |
 
 **N/A.** Nunca — sempre há informação em jogo.
 
 **Evidência.** O dado entregue, textual: valor, data, prazo, procedimento.
+
+**Fronteira com o 18** *(régua 2.0)*. Informação errada ou desatualizada desconta no 18. O 16 só
+desconta junto se, além do erro, faltou dado de que o cliente precisava. A organização da
+explicação não desconta aqui (é do 9).
 
 ---
 
@@ -660,13 +767,17 @@ de repassar; na dúvida, consultar fonte confiável, colega ou supervisor.
 produto, condição ou serviço que **não existe** é **eliminatório 28** — e aciona `28`, não
 apenas nota baixa no 18.
 
+**Fronteira com o 16** *(régua 2.0)*. O erro de informação é avaliado aqui; o 16 só desconta junto
+se, além do erro, faltou dado de que o cliente precisava.
+
 ---
 
 #### 19. Resolução no Primeiro Contato — FCR
 `crit-19` · ESCALA_4 · peso 1,5
 
-**O que mede.** Se a questão foi resolvida neste contato, sem necessidade de retorno ou
-transferência.
+**O que mede.** Se **a demanda apresentada pelo cliente** foi resolvida neste contato, sem
+retorno, transferência ou novo contato *(régua 2.0)*. A conclusão de um processo que tem etapas
+posteriores não é o objeto deste critério.
 
 **Orientação completa.** FCR é resolver na primeira vez, sem follow-up e sem transferência.
 Depende de: preparação adequada (conhecer produtos, serviços e políticas, com acesso rápido à
@@ -674,16 +785,29 @@ informação); escuta ativa; proatividade na busca da solução, inclusive consu
 quando necessário; e confirmação com o cliente de que todas as dúvidas foram resolvidas antes
 de encerrar.
 
+**Primeiro, identificar a demanda** *(régua 2.0)*:
+
+| Situação | Leitura |
+|---|---|
+| **Orientação concluída** — o cliente quer saber como fazer ou como funciona | **2** quando a orientação entregue permite ao cliente dar o próximo passo sem novo contato, ainda que o processo siga depois. Se faltou parte da orientação, 1 ou 0 |
+| **Solicitação que a própria atendente executa** — 2ª via, atualização cadastral, envio | **2** se executada neste contato; **1** se prometida para depois |
+| **Solicitação registrada para outra área** — análise, cálculo, aprovação | O registro correto **não é resolução**. Se a resolução dependia, por natureza, da outra área e o registro foi correto: **N/A**, com o motivo |
+| **Encaminhamento evitável** — estava no escopo da atendente, ou a informação estava disponível | **1** se a demanda foi resolvida no retorno; **0** se o cliente ficou dependendo de novo contato |
+| **Encaminhamento incorreto ou incompleto** — área errada, dado faltando | **0** |
+
+Encaminhar nunca equivale, por si só, a resolver. Informar o cliente sobre o próximo passo é
+avaliado no critério 12, não aqui.
+
 **Âncoras.**
 
 | | |
 |---|---|
-| **2** | Resolvido neste contato, sem transferência e sem promessa de retorno. |
-| **1** | Resolvido, mas com transferência, consulta demorada ou retorno em segundo momento — resolvido, porém não *no primeiro contato*. |
-| **0** | Não resolvido; ficou dependendo de nova ação do cliente. |
+| **2** | A demanda foi resolvida neste contato, sem transferência nem retorno: a orientação foi completa ou a solicitação foi executada. Etapas posteriores do processo não impedem o 2 quando a demanda era a orientação. |
+| **1** | Resolvida, mas não no primeiro contato: transferência, consulta demorada, retorno prometido, ou encaminhamento que a própria atendente poderia ter evitado. |
+| **0** | Não resolvida: o cliente vai precisar de novo contato pelo mesmo motivo; ou o encaminhamento foi incorreto ou incompleto. |
 
-**N/A.** Contato que, por natureza, não se encerra em si (ex.: protocolo aberto que depende de
-área externa e foi corretamente encaminhado). Registrar o motivo.
+**N/A.** A resolução dependia, por natureza, de outra área, e a demanda foi registrada e
+encaminhada corretamente (ex.: protocolo aberto que depende de área externa). Registrar o motivo.
 
 ---
 
@@ -763,11 +887,15 @@ confusão, insatisfação e novo contato. Como fazer:
 
 | | |
 |---|---|
-| **2** | Resumiu os pontos **e** obteve confirmação do cliente. |
-| **1** | Perguntou "tem mais alguma dúvida?" sem resumir; ou resumiu e encerrou sem esperar resposta. |
+| **2** | Antes de encerrar, resumiu o essencial — o que foi informado e o próximo passo — **e** obteve a confirmação do cliente. Em atendimento com uma única informação ou orientação simples, confirmar diretamente o ponto principal também vale ("ficou claro que o próximo passo é X?"). |
+| **1** | Só perguntou "tem mais alguma dúvida?", sem resumir nem confirmar o ponto principal; ou resumiu e encerrou sem esperar resposta. |
 | **0** | Encerrou sem qualquer verificação. |
 
 **N/A.** Atendimento sem informação a reter (ex.: só confirmação de recebimento).
+
+**É o lugar da recapitulação** *(régua 2.0)*: a falta dela desconta aqui, uma vez. Perguntar
+"mais alguma dúvida?" cumpre a sub-pergunta 1 do critério 24 (encerramento), mas não basta como
+verificação de entendimento.
 
 ---
 
@@ -787,14 +915,15 @@ O objetivo declarado é construir confiança e fidelização, evitando reclamaç
 
 | | |
 |---|---|
-| **2** | O atendimento é personalizado do início ao fim: usa o nome, retoma o contexto, agradece e deixa a porta aberta. |
-| **1** | Correto e cordial, mas impessoal — qualquer cliente receberia exatamente as mesmas frases. |
+| **2** | A condução partiu da situação deste cliente: retoma o que ele disse, adapta a orientação ao caso dele e reconhece o momento que ele vive, encerrando de forma que ele saiba que pode voltar. Não exige frase pronta nem combinação fixa de comportamentos — usar o nome é um sinal, não um requisito. |
+| **1** | Correto e cordial, mas impessoal: a condução serviria a qualquer cliente, sem sinal de que considerou o caso dele. Indicar onde a condução foi genérica. |
 | **0** | Transacional ou frio; o cliente foi tratado como chamado. |
 
 **N/A.** Nunca.
 
 **Nota de calibração.** Este critério é o mais fácil de inflar. Cordialidade isolada não é 2 —
-o 2 exige personalização visível.
+o 2 exige personalização visível. *(Régua 2.0)* Frase de relacionamento sem condução
+personalizada não é 2; ausência de frase pronta não é 1 quando a condução foi personalizada.
 
 ---
 
@@ -1143,9 +1272,20 @@ Pontos fortes objetivos: postura, técnica, clareza, resolução, cordialidade.
 
 Oportunidades de melhoria e ajustes de processo, comunicação ou condução.
 
+*(Régua 2.0)* Duas partes, com título, nesta ordem:
+
+- **Oportunidades sem desconto** — sugestões para um comportamento que foi cumprido. Cada item
+  indica o critério e que não descontou.
+- **Não conformidades com impacto na nota** — critério, nota, o que faltou da âncora e a
+  evidência.
+
+Nas duas partes:
+
 - Lista, um item por linha.
 - Cada item aponta **o que fazer diferente**, não só o que faltou.
 - Distinguir de Erros Identificados: aqui está o que pode melhorar; lá, o que falhou.
+
+O formulário guarda as duas partes no mesmo campo (`opportunities`), separadas pelos títulos.
 
 ### 5. Leitura Técnica
 
@@ -1156,6 +1296,8 @@ expectativa, segurança na comunicação.
   condução.
 - Deve conectar critérios, não repeti-los. Se lê como lista de notas, está errado.
 - Extensão de referência: 1 a 2 parágrafos.
+- *(Régua 2.0)* Fecha com a **orientação prática**: o que a colaboradora pode fazer nos próximos
+  atendimentos, em ações concretas.
 
 ### 6. Erros Identificados
 
@@ -1170,6 +1312,7 @@ experiência.
 Conclusão final, destacando nível do atendimento, impacto na experiência e direcionamento de
 melhoria quando necessário.
 
+- *(Régua 2.0)* Reconhece os acertos antes de indicar a prioridade de desenvolvimento.
 - Fecha com direcionamento acionável quando houver o que corrigir.
 - Não repete a nota: a nota é do sistema e aparece no formulário.
 - Extensão de referência: 1 parágrafo.
@@ -1182,11 +1325,15 @@ Valem para a monitora e, a partir da 3A.2, para o assistente.
 
 1. **Toda afirmação avaliativa se apoia em evidência.** Justificativa sem trecho da conversa
    que a sustente não é justificativa — é opinião. Vale especialmente para
-   `lowScoreReason`, hoje obrigatório sempre que a nota for menor que 2.
+   `lowScoreReason`, hoje obrigatório sempre que a nota for menor que 2. *(Régua 2.0)* A
+   justificativa de nota abaixo de 2 tem **três partes**: o que faltou, qual trecho da âncora
+   não foi cumprido e onde isso aparece (horário aproximado na ligação, ou a mensagem no
+   WhatsApp). No `N/A`, a justificativa diz o motivo da não aplicabilidade (§2).
 2. **Descrever conduta, não pessoa.** "Não informou a validade do cálculo", não "foi
    desatenta".
 3. **Uma justificativa, um critério.** Não usar a mesma frase em critérios diferentes; se
-   serve para dois, provavelmente está genérica demais.
+   serve para dois, provavelmente está genérica demais. *(Régua 2.0)* Se a mesma evidência
+   parece justificar dois descontos, aplicar a regra "uma causa raiz, um desconto" (§2).
 4. **Não inflar nem compensar.** Nota alta em um bloco não justifica nota baixa em outro, e
    vice-versa. Cada critério é independente.
 5. **`N/A` é resposta legítima e frequente** nos critérios 7, 8, 11, 15 e 21. Forçar nota onde
@@ -1233,7 +1380,7 @@ aprovações individuais.
 | 1 | Âncoras 2/1/0 dos critérios ponderáveis | ✅ **Aprovadas** sem ajuste |
 | 2 | Régua nova dos critérios 14 e 27 | ✅ **Aprovadas.** A definição do Tom Moura Leite veio da área e está no critério 14; o corte do 27 é **pelo desfecho**, não pela causa |
 | 3 | Ordem de escrita das orientações por tipo | ✅ **Definida** — 10 tipos, §6.2 |
-| 4 | Exigir justificativa no `N/A`? | ✅ **Não.** Mantido como está |
+| 4 | Exigir justificativa no `N/A`? | ✅ **Não.** Mantido como está — **substituída em 10/10/2026**: a régua 2.0 exige a justificativa (ver "Decisões de calibração") |
 | 5 | Os 4 campos narrativos do relatório | ✅ **Criar junto com as âncoras**, como opcionais |
 | 6 | Diferenciar `channels` por critério? | ⏸️ **Adiada** — revisão com base em uso real |
 | 7 | `REGISTRO (I)` existe ou consolida? | ⏸️ **Adiada** — sem definição operacional ainda |
@@ -1243,6 +1390,9 @@ da metodologia, não erro; os critérios 7, 8, 11, 15 e 21 o recebem com frequê
 aumentaria o tempo de preenchimento sem ganho proporcional; e a evidência da aplicação do
 critério já é registrada na análise. *Se um dia houver necessidade de auditoria mais fina, a
 justificativa no `N/A` pode ser **opcional** — nunca obrigatória.*
+
+> **Substituída em 10/10/2026.** A calibração da régua 2.0 decidiu exigir justificativa no `N/A`,
+> com o motivo da não aplicabilidade. O registro acima fica como histórico da decisão de 25/08.
 
 **Decisão 5 — por que os campos narrativos entram agora.** São parte da estrutura oficial do
 relatório, serão usados pelo assistente da 3A.3, e criá-los junto com `ancoras` evita alterar o
@@ -1257,6 +1407,53 @@ os `N/A` já previstos em cada critério. **Revisar depois, com evidência real.
 distinga de `REGISTRO`. Fica fora do catálogo até a análise de atendimentos reais dizer se são
 processos distintos, o mesmo processo, ou se um substitui o outro. Não impacta a régua nem a
 3A.1.
+
+### Decisões de calibração — 10/10/2026 (régua 2.0)
+
+Calibração feita a partir da auditoria da AGO-001 (monitoria de teste, fora dos indicadores).
+Referência técnica: artefatos *Calibração da Régua MonitorIA* e *Régua MonitorIA 2.0*.
+**Vigência: avaliações registradas a partir de 12/10/2026.** As anteriores seguem a régua 1, e
+o texto dela fica preservado no histórico do repositório (tag `v0.25.0`).
+
+| # | Decisão | Resultado |
+|---|---|---|
+| D1 | Princípio A / B / C e justificativa em três partes | ✅ Aprovada (§2, §8) |
+| D2 | Uma causa raiz, um desconto, com a exceção 12 × 18 | ✅ Aprovada (§2) |
+| D3 | Evidência insuficiente → revisão humana, nunca nota automática | ✅ Aprovada (§2), com limitação técnica registrada |
+| D4 | Espera no telefone: 60 s | ✅ Aprovada como parâmetro inicial (critério 7) |
+| D5 | Fronteira 16 × 18: erro de informação desconta no 18 | ✅ Aprovada (critérios 16 e 18) |
+| D6 | Fronteira 5 × 7: espera logo ao atender desconta no 5 | ✅ Aprovada (critérios 5 e 7) |
+| D7 | Pontos de Atenção em duas partes | ✅ Aprovada (§7) |
+| D8 | Vigência a partir de 12/10/2026, sem reavaliar o passado | ✅ Aprovada |
+| D9 | Critério 6: a compreensão pode ser demonstrada pela própria resposta | ✅ Aprovada com ajuste — sem exigir pergunta ou confirmação quando a demanda já está clara |
+| D10 | Critério 9: checagem final sai da âncora 2 | ✅ Aprovada |
+| D11 | Critério 12: próximo passo não informado é nível 1 | ✅ Aprovada |
+| D12 | Critério 13: sem limite numérico; recorrência, natureza, impacto e evidência | ✅ Aprovada com ajuste |
+| D13 | Critério 16: dado faltante nomeado | ✅ Aprovada |
+| D14 | Critério 19: demanda × processo; encaminhamento não é resolução | ✅ Aprovada com ajuste |
+| D15 | Critério 22: resumo + confirmação; forma curta em atendimento simples | ✅ Aprovada |
+| D16 | Critério 23: personalização contextual, sem frase pronta | ✅ Aprovada com ajuste |
+| D17 | Critério 4, sub-pergunta 4: só a abertura | ✅ Aprovada |
+| — | Justificativa obrigatória no `N/A` | ✅ Aprovada (§2) — substitui a decisão 4 de 25/08 |
+
+**O que não mudou:** pesos, escala 2 / 1 / 0, eliminatórios e a confirmação deles pela gestão,
+regras de `N/A` dos demais critérios, fórmula da nota.
+
+### Pendências técnicas da régua 2.0 — planejadas para a evolução do sistema
+
+A régua vale desde a vigência; estes itens tornam o sistema capaz de aplicá-la sozinho. Nenhum
+deles altera nota já registrada.
+
+| Item | O quê | Até lá |
+|---|---|---|
+| **T1** | N/A no critério 24 (o formulário não oferece N/A em checklist) | Não escolher para monitoria regular atendimento interrompido pelo cliente |
+| **T2** | Importador exigir `evidencia` em nota abaixo de 2 | O assistente é instruído a sempre enviar |
+| **T3** | Formulário e importador exigirem justificativa no `N/A` | Regra de preenchimento; não bloqueia a conclusão |
+| **T4** | Critério com evidência insuficiente chegar **sem resposta** ao formulário, e a revisão ficar registrada na monitoria | Medida de segurança do §2, "Evidência insuficiente" |
+| **T5** | Exibir as âncoras na etapa 3 do formulário | A monitora aplica as âncoras por este documento |
+| **T6** | Registrar a versão da régua em cada monitoria nova | A data de registro separa régua 1 e régua 2.0 |
+| **T7** | Âncoras novas no cadastro de critérios, por troca pontual com cópia de segurança | As âncoras não entram no cálculo; nenhuma nota muda |
+| **T8** | MON-2026-0001 revista pela régua 1, com o peso corrigido do critério 6 | Devolução já decidida, a executar |
 
 ### Pendências da régua — aprovadas, aguardando implementação
 

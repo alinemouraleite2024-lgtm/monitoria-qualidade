@@ -7,8 +7,11 @@
 > `monitoria-chatgpt/1`, que a monitora importa na Nova Monitoria. A seção "Entrega para o
 > MonitorIA" está no fim do prompt; o contrato completo está em `CONTRATO-IMPORTACAO-CHATGPT.md`.
 >
-> **Alinhado à plataforma 0.22.0.** As versões 0.23.0 a 0.25.0 mexem em metas e agenda, não na
-> monitoria — nada muda aqui.
+> **Régua 2.0 — vigente para avaliações a partir de 12/10/2026.** Calibração aprovada em
+> 10/10/2026: cumprimento × oportunidade, uma causa raiz por desconto, evidência insuficiente vai
+> para revisão humana, justificativa obrigatória também no N/A, e leitura revisada dos critérios
+> 4, 5, 6, 7, 9, 12, 13, 16, 18, 19, 22 e 23. Pesos, escala e eliminatórios não mudaram. Fonte:
+> `METODOLOGIA-MONITORIA.md`. **Alinhado à plataforma 0.25.0**; o formato do JSON não mudou.
 >
 > **Régua atualizada em 07/10/2026:** o critério 24 passou a ter **duas** sub-perguntas. O
 > incentivo à pesquisa de satisfação saiu, por descontinuação do procedimento.
@@ -59,15 +62,17 @@ trecho inventado destrói a única coisa que torna a monitoria auditável.
 
 **ABERTURA** — peso 2,0
 - **4.** Cumprimentos / identificação `[Checklist · peso 1,0]`
+  - sub-perguntas: (a) Realizou o cumprimento e identificação? (b) Cumprimentou de forma adequada e profissional? (c) Demonstrou postura profissional e cortês? (d) Reagiu ao que o cliente disse **na abertura**? — a (d) avalia só a abertura; empatia ao longo do atendimento é o 6.
   - N/A: nunca. A abertura existe em todo atendimento — e em contato ativo a identificação é ainda mais exigível.
 - **5.** Rapidez para atender a ligação `[Faixa de tempo · peso 1,0]`
   - N/A: quando o contato é ativo — quem ligou foi a empresa.
+  - Pedido de espera logo ao atender é `0` **aqui**, e não desconta no 7.
 
 **COMUNICAÇÃO** — peso 11,0
 - **6.** Demonstrou interesse e empatia com o pedido do cliente? `[Escala · peso 2,0]`
   - N/A: nunca. Todo contato tem um pedido.
 - **7.** Avisou que ia buscar informações antes de deixar o cliente em espera? `[Escala · peso 1,0]`
-  - N/A: quando não houve espera. No WhatsApp, espera é um intervalo relevante entre a última mensagem do cliente e a resposta seguinte, dentro de uma conversa em andamento.
+  - N/A: quando não houve espera. No telefone, espera é silêncio ou música de espera acima de 60 segundos. No WhatsApp, espera é um intervalo relevante entre a última mensagem do cliente e a resposta seguinte, dentro de uma conversa em andamento.
 - **8.** Ao retomar o contato agradeceu o tempo de espera? `[Escala · peso 1,0]`
   - N/A: quando não houve espera — mesma leitura do 7.
 - **9.** Teve didática para explicar? `[Escala · peso 1,0]`
@@ -91,7 +96,7 @@ trecho inventado destrói a única coisa que torna a monitoria auditável.
 **PRECISÃO DAS INFORMAÇÕES** — peso 5,5
 - **18.** O agente evitou desinformação ou engano? `[Escala · peso 2,0]` — N/A: nunca.
 - **19.** Resolução no Primeiro Contato — FCR? `[Escala · peso 1,5]`
-  - N/A: quando o contato, por natureza, não se encerra em si — protocolo que depende de área externa e foi corretamente encaminhado. Registre o motivo.
+  - N/A: quando a resolução dependia, por natureza, de outra área e a demanda foi registrada e encaminhada corretamente. Registre o motivo. Leitura completa na regra 8.
 - **20.** Demonstrou paciência e profissionalismo? `[Escala · peso 1,0]` — N/A: nunca.
 - **21.** Aplicou técnicas de desescalada? `[Escala · peso 1,0]`
   - N/A: quando não houve tensão. É a marcação esperada na maioria dos casos.
@@ -119,21 +124,37 @@ trecho inventado destrói a única coisa que torna a monitoria auditável.
 Procure no atendimento o comportamento que caracteriza `2`. Se encontrar, é `2`. Se encontrar
 parcialmente, é `1`. Se o comportamento não aconteceu, é `0`.
 
+A monitoria serve ao desenvolvimento: **uma oportunidade de melhoria não gera desconto quando o
+requisito foi cumprido.** Antes de dar nota abaixo de 2, responda: *qual parte da âncora não foi
+cumprida, e onde isso aparece?*
+
+- **A — cumprido:** `2`. Se dava para fazer melhor, a sugestão vai para "Oportunidades sem desconto".
+- **B — parcialmente cumprido:** uma parte identificável do comportamento faltou → nota parcial.
+- **C — não cumprido:** o comportamento não aconteceu, sendo aplicável → `0`.
+
+Se a sua justificativa só diz *"poderia ser mais…"*, *"havia oportunidade de…"* ou *"seria melhor
+se…"*, sem apontar o requisito que faltou, a resposta é `2` e o ponto vai para o relatório.
+
 ### 2. N/A é "não se aplica" — nunca "não consegui verificar"
 
-N/A remove o critério do cálculo inteiro. Usá-lo por dúvida **infla a nota em silêncio**.
+N/A remove o critério do cálculo inteiro. Usá-lo por dúvida **infla a nota em silêncio**. Um
+critério cuja regra diz "nunca é N/A" não pode receber N/A em hipótese alguma.
 
-Quando a evidência não permitir decidir: escolha a nota que a evidência disponível sustenta e
-**declare a limitação na justificativa**. Um critério cuja regra diz "nunca é N/A" não pode
-receber N/A em hipótese alguma.
+**Evidência insuficiente.** Quando a transcrição não permite confirmar nem o cumprimento nem o
+descumprimento, **não decida sozinho**: não dê nota máxima por falta de prova, nem nota baixa por
+cautela. Proponha a nota que a evidência disponível sugere, marque o critério como **revisão
+humana** e diga, em "Observações da análise", o que a monitora precisa conferir. Essas revisões
+são resolvidas com ela **antes** do JSON de entrega.
 
-### 3. Justificativa é obrigatória em toda resposta abaixo do máximo
+### 3. Justificativa é obrigatória abaixo do máximo e em todo N/A
 
-Vale para qualquer valor menor que `2`, inclusive `1.33` e `0.67`. Não é exigida para `2`, para
-`N/A` nem para classificações.
+Vale para qualquer valor menor que `2`, inclusive `1.33` e `0.67`, e para **todo N/A**. Não é
+exigida para `2` nem para classificações.
 
-Cada justificativa precisa de: **o que aconteceu** · **por que corresponde àquele nível** ·
-**onde no atendimento isso está**.
+Abaixo de 2, a justificativa tem três partes: **o que faltou** · **qual trecho da âncora não foi
+cumprido** · **onde no atendimento isso está** (horário aproximado na ligação, ou a mensagem no
+WhatsApp). No N/A, ela diz **o motivo da não aplicabilidade** ("não houve espera durante a
+ligação").
 
 Duas a quatro linhas. Terceira pessoa, sobre o atendimento — nunca sobre a pessoa. Sem adjetivo
 sem fato ao lado: "foi seco" não é justificativa; "respondeu apenas 'não temos', sem alternativa"
@@ -169,6 +190,51 @@ Serve: trecho **citado** entre aspas com falante e horário; descrição factual
 Não serve: resumo do que você entendeu; inferência sobre intenção ("parecia impaciente");
 afirmação sem localização na conversa.
 
+### 7. Uma causa raiz, um desconto
+
+1. Identifique o comportamento que faltou, com o trecho.
+2. Desconte no critério que tem esse comportamento como objeto principal.
+3. Outro critério só desconta com **evidência própria** — outro comportamento, outro momento ou
+   outro efeito no cliente. Se a única evidência for o mesmo trecho, o segundo critério recebe a
+   nota cheia e o ponto vai para o relatório.
+
+**Exceção:** clareza (12) e veracidade (18) são requisitos distintos — meia-verdade desconta nos
+dois.
+
+Exemplos: falta de recapitulação final desconta só no 22. Prazo informado errado desconta no 18
+(o 16 só se também faltou outro dado). Gíria na saudação desconta na sub-pergunta (b) do 4 (o 14
+só se a informalidade se repetir no atendimento). Omitir a taxa (12) e não checar o entendimento
+(22) são dois descontos: dois comportamentos, dois momentos.
+
+### 8. Leitura específica de alguns critérios
+
+- **6 — Empatia.** Quando a demanda já está clara, a própria resposta adequada demonstra que o
+  pedido foi entendido; não se exige pergunta, confirmação ou frase pronta. Quando não está clara,
+  o atendente precisa buscar entender antes de responder. O que conta é escuta e reconhecimento
+  contextual: a resposta conversa com o que **este** cliente disse.
+- **9 — Didática.** Avalia a organização e a compreensão da explicação. A falta de resumo final
+  **não** desconta aqui (é do 22).
+- **12 — Clareza.** Nível 1 quando omitiu ou suavizou informação desfavorável relevante, **ou**
+  não informou o próximo passo que o cliente precisava dar. Síntese final e ordem da explicação
+  não descontam aqui.
+- **13 — Gramática.** Não há número mínimo de ocorrências. Pese recorrência, natureza (fala
+  informal × erro de fato), impacto e evidência. Na fala, "tá", "pra", hesitações e retomadas não
+  são erro. **Sem trecho citado, não desconte.**
+- **16 × 18 — Informação.** Informação errada ou desatualizada desconta no 18. O 16 desconta
+  quando faltou um **dado identificável** de que o cliente precisava (nomeie qual), ou quando a
+  resposta não atendeu ao que foi perguntado. A organização da explicação não desconta no 16.
+- **19 — FCR.** Avalia a **demanda apresentada**, não a conclusão do processo. Orientação
+  completa entregue = `2`, mesmo que o processo siga depois. Solicitação executada pela atendente
+  neste contato = `2`; prometida para depois = `1`. Solicitação que depende de outra área,
+  registrada corretamente = N/A, com o motivo — **o registro não é resolução**. Encaminhamento
+  evitável = `1` ou `0`; encaminhamento incorreto ou incompleto = `0`.
+- **22 — Entendimento.** É o lugar da recapitulação. `2` = resumiu o essencial (o que foi
+  informado e o próximo passo) e obteve confirmação; em atendimento com uma única informação
+  simples, confirmar o ponto principal basta. Só "mais alguma dúvida?" = `1`.
+- **23 — Relacionamento.** Avalie a personalização contextual: a condução partiu da situação
+  deste cliente? Não exija frase pronta nem combinação fixa de comportamentos; usar o nome é um
+  sinal, não um requisito. Frase de relacionamento sem condução personalizada não é `2`.
+
 ---
 
 ## Formato exato da saída
@@ -196,12 +262,13 @@ Cliente chegou autenticado: [Sim | Não | Não identificável]
 **4. Cumprimentos / identificação** — Checklist
   (a) [pergunta]: SIM/NÃO
   (b) [pergunta]: SIM/NÃO
-  Justificativa: [obrigatória se algum NÃO]
+  Justificativa: [obrigatória se algum NÃO — o que faltou · trecho da âncora · onde]
   Evidência: "[trecho]"
 
 **5. Rapidez para atender a ligação** — [2 | 1.33 | 0.67 | 0 | N/A]
-  Justificativa: [obrigatória abaixo de 2]
+  Justificativa: [obrigatória abaixo de 2 e em N/A]
   Evidência: "[trecho]"
+  Revisão humana: [só se a evidência for insuficiente — o que conferir]
 
 [... repita para TODOS os critérios aplicáveis, na ordem dos blocos ...]
 
@@ -223,26 +290,35 @@ SEM juízo de valor — a avaliação vem nos blocos seguintes.]
 [Ancorados no que aconteceu, não na ausência de erro. Vazio é resposta legítima — não invente.]
 
 ### Pontos de Atenção
-[O QUE FAZER DIFERENTE, não apenas o que faltou.
+Oportunidades sem desconto:
+[Sugestões para comportamentos que foram cumpridos. Cada item indica o critério e que não
+descontou. Vazio é legítimo.]
+
+Não conformidades com impacto na nota:
+[Critério · nota · o que faltou da âncora · evidência. Uma linha por desconto.]
+
+[Nas duas partes: O QUE FAZER DIFERENTE, não apenas o que faltou.
 Fraco: "faltou empatia". Bom: "ao receber um relato de espera, reconhecer a espera antes de
 informar o prazo".]
 
 ### Leitura Técnica
 [CONECTA os critérios, não os repete. O que o conjunto revela: um padrão de condução, uma
 lacuna de processo, uma força consistente. Se puder ser lido como lista de notas em prosa,
-está errado.]
+está errado. Termina com a ORIENTAÇÃO PRÁTICA: o que fazer nos próximos atendimentos, em
+ações concretas.]
 
 ### Erros Identificados
 [SOMENTE quando houver erro técnico, falha de processo ou risco de experiência. Não é repetição
 dos Pontos de Atenção. Vazio quando não houver.]
 
 ### Conclusão
-[Nível do atendimento, impacto na experiência do cliente, direcionamento.
-NÃO repete a nota.]
+[Reconhece os acertos, depois indica nível do atendimento, impacto na experiência do cliente e
+a prioridade de desenvolvimento. NÃO repete a nota.]
 
 ## Observações da análise
-[Limitações da transcrição, critérios em que a evidência foi insuficiente, pontos que a monitora
-deve conferir manualmente. Se não houver, escreva "Nenhuma".]
+[Limitações da transcrição e pontos que a monitora deve conferir manualmente.
+REVISÃO HUMANA: liste cada critério com evidência insuficiente e o que conferir na gravação.
+Se não houver, escreva "Nenhuma".]
 ```
 
 ---
@@ -251,7 +327,10 @@ deve conferir manualmente. Se não houver, escreva "Nenhuma".]
 
 - [ ] Todos os 28 critérios ativos foram respondidos
 - [ ] Nenhum N/A usado por falta de evidência — só por regra do critério
-- [ ] Toda resposta abaixo do máximo tem justificativa
+- [ ] Toda resposta abaixo do máximo tem justificativa em três partes; todo N/A tem o motivo
+- [ ] Nenhum desconto apoiado só em "poderia ser mais…" — oportunidade vai para o relatório
+- [ ] Cada causa raiz descontou uma vez só, salvo evidência própria (ou a exceção 12 × 18)
+- [ ] Critérios com evidência insuficiente listados em "Revisão humana"
 - [ ] Nenhum trecho citado foi inventado
 - [ ] Eliminatórios marcados só com evidência direta e citada
 - [ ] Critério 29 respondido, e o 25 coerente com ele
@@ -297,11 +376,16 @@ um bloco do relatório durante a revisão, o JSON leva a versão alterada, não 
      do canal).
    - Nunca `crit-29` = `"Sim"` com `crit-25` = `0`.
 7. **Justificativa** obrigatória em toda resposta abaixo de 2 — inclusive `1.33`, `0.67`,
-   checklist com algum `"NÃO"` e eliminatório ocorrido (`0`). Opcional em N/A.
-8. **Evidência**: o trecho ou o fato que sustenta a resposta vai em `evidencia`. **Nunca invente
-   evidência.**
-9. **Confiança**: em cada critério avaliado, `confianca` (`"ALTA"`, `"MEDIA"` ou `"BAIXA"`) e
-   `revisaoHumana` (`true` ou `false`).
+   checklist com algum `"NÃO"` e eliminatório ocorrido (`0`) — com as três partes: o que
+   faltou, qual trecho da âncora não foi cumprido e onde. **Obrigatória também em todo `"N/A"`**,
+   com o motivo da não aplicabilidade. A exceção é o `crit-25` dispensado pelo `crit-29` = `"Sim"`.
+8. **Evidência**: o trecho ou o fato que sustenta a resposta vai em `evidencia` — **obrigatória
+   em toda resposta abaixo de 2**. **Nunca invente evidência.**
+9. **Confiança e revisão humana**: em cada critério avaliado, `confianca` (`"ALTA"`, `"MEDIA"` ou
+   `"BAIXA"`) e `revisaoHumana` (`true` ou `false`). As revisões humanas são resolvidas com a
+   monitora **antes** deste JSON, então o normal é `revisaoHumana: false` em todos. Só marque
+   `true` se a monitora pedir expressamente para decidir aquele critério no MonitorIA — e então
+   use `confianca: "BAIXA"`.
 10. **Nota**: não informe nota final, conceito, protocolo, código nem status — o MonitorIA
     calcula. Só preencha `conferencia.notaEsperada` se a monitora informar a nota aprovada.
 11. **Atendimento**:
@@ -372,7 +456,9 @@ O modelo mostra só alguns critérios para exemplificar cada tipo. **O JSON entr
 - [ ] A monitora aprovou a revisão
 - [ ] 28 critérios, identificados por `criterionId`, sem `crit-03`
 - [ ] Checklists só com `subRespostas`; `crit-24` com duas sub-perguntas
-- [ ] Toda resposta abaixo de 2 com justificativa
+- [ ] Toda resposta abaixo de 2 com justificativa (três partes) e `evidencia`
+- [ ] Todo `"N/A"` com justificativa do motivo
+- [ ] Nenhuma revisão humana pendente (todas resolvidas com a monitora)
 - [ ] Telefone ou presencial → `crit-29` = `"Não"` e `crit-25` avaliado
 - [ ] Números de atendimento e título entre aspas; datas sem fuso
 - [ ] Nenhuma nota final no JSON
@@ -394,7 +480,8 @@ Confirme que entendeu e peça a conversa. Depois que eu colar, gere a monitoria 
 custo é que ele **não acompanha mudanças na plataforma**. Ao alterar peso, tipo, opções ou regra
 de N/A de um critério, atualize a seção "Critérios" deste arquivo.
 
-**As âncoras não estão no prompt** — só as regras de N/A. Os textos completos de âncora somam
+**As âncoras não estão no prompt** — só as regras de N/A e, desde a régua 2.0, a leitura
+específica dos critérios revisados (regra de decisão 8). Os textos completos de âncora somam
 milhares de caracteres e tornariam o prompt impraticável para colar. A consequência: a IA decide
 com menos precisão do que decidiria com a régua completa ao lado. Se a qualidade das notas não
 satisfizer, o caminho é colar o documento imprimível da metodologia junto com este prompt.

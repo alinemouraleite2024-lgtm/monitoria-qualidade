@@ -70,10 +70,10 @@ pode faltar é o `crit-25` quando o `crit-29` for `"Sim"`.
 | `criterioNome` | não | Nome do critério. Se divergir do cadastro, gera aviso; vale o id |
 | `resposta` | sim, exceto checklist | Ver tabela |
 | `subRespostas` | só checklist | Objeto com **todas** as sub-perguntas: `"SIM"` ou `"NÃO"` |
-| `justificativa` | quando a resposta é abaixo de 2 | **Obrigatória** para `1`, `0`, `1.33`, `0.67` e checklist abaixo de 2 — inclusive eliminatório ocorrido (`0`). Opcional em N/A |
-| `evidencia` | não | Trecho ou fato que sustenta a resposta. **É anexado ao final da justificativa** como `Evidência: …` |
+| `justificativa` | abaixo de 2 **e em N/A** | **Obrigatória** para `1`, `0`, `1.33`, `0.67` e checklist abaixo de 2 — inclusive eliminatório ocorrido (`0`) — com o que faltou, o trecho da âncora e onde. **Régua 2.0: obrigatória também em N/A**, com o motivo da não aplicabilidade (exceto o `crit-25` dispensado pelo `crit-29`). *O importador exige a justificativa abaixo de 2; no N/A ainda não exige (pendência técnica T3) — a regra vale para o agente.* |
+| `evidencia` | abaixo de 2 | Trecho ou fato que sustenta a resposta. **É anexado ao final da justificativa** como `Evidência: …`. *Régua 2.0: obrigatória abaixo de 2 para o agente; o importador ainda não a exige (pendência técnica T2).* |
 | `confianca` | não | `ALTA` · `MEDIA` · `BAIXA`. Aparece na prévia; `BAIXA` exige confirmação individual |
-| `revisaoHumana` | não | `true` exige confirmação individual na prévia |
+| `revisaoHumana` | não | `true` exige confirmação individual na prévia. *Régua 2.0: as revisões são resolvidas com a monitora antes do JSON; o normal é `false`. Ver “Revisão humana: o que a importação garante”.* |
 | `sinalizacao` | não | Texto livre, exibido na prévia |
 
 Justificativa e evidência em resposta máxima (`2`) ou em classificação **não são aplicadas** —
@@ -168,6 +168,36 @@ tabela de respostas com confiança e justificativa. O botão **Aplicar** só hab
 A importação só existe na **Nova Monitoria**. Não aparece na edição (não reescreve monitoria
 cadastrada) nem no lançamento retroativo (que nasce validado e não passaria pela gestão).
 
+## Revisão humana: o que a importação garante *(verificado na 0.25.0)*
+
+| Garante | Não garante |
+|---|---|
+| Nenhum critério com `revisaoHumana: true` ou confiança `BAIXA`, e nenhum eliminatório, entra no formulário sem uma marcação individual na prévia | Que a marcação corresponda a uma revisão de fato — é um clique |
+| O botão "Aplicar" fica desabilitado enquanto faltar alguma marcação | Que o formulário lembre, depois de aplicado, quais critérios estavam em revisão — a conclusão segue normal |
+| — | Que a monitoria salva registre quais critérios foram revisados |
+| — | Que o motivo da revisão chegue ao formulário numa resposta de nota `2` — a justificativa de nota máxima é descartada (só um aviso na prévia) |
+
+**Medida de segurança até a evolução técnica (T4 da metodologia):**
+
+1. As revisões humanas são resolvidas na conversa com o agente, **antes** do JSON. O agente não
+   entrega JSON com revisão pendente; o normal é `revisaoHumana: false` em todos os critérios.
+2. Se ainda assim um critério vier com `revisaoHumana: true`, só marcar a confirmação na prévia
+   **depois de conferir o trecho** na gravação ou na conversa, e ajustar a resposta na etapa 3
+   se for o caso.
+3. A evolução técnica prevê o critério chegar **sem resposta** ao formulário quando a evidência
+   for insuficiente, e o registro da revisão na própria monitoria.
+
+## Regras da régua 2.0 que o importador ainda não verifica
+
+| Regra | Hoje | Pendência técnica |
+|---|---|---|
+| Justificativa em todo `N/A` | Aceito sem justificativa; o formulário também não exige | T3 — sem bloqueio até lá |
+| `evidencia` em toda nota abaixo de 2 | Aceito sem evidência (a justificativa continua obrigatória) | T2 |
+| Justificativa em três partes | Não há como verificar automaticamente | — conferência da monitora |
+
+O agente é instruído a cumprir as três desde já. **Nenhuma delas muda o formato do JSON**: os JSONs
+da régua 2.0 continuam válidos no importador publicado.
+
 ---
 
 ## Instrução para o agente do ChatGPT
@@ -213,11 +243,16 @@ um bloco do relatório durante a revisão, o JSON leva a versão alterada, não 
      do canal).
    - Nunca `crit-29` = `"Sim"` com `crit-25` = `0`.
 7. **Justificativa** obrigatória em toda resposta abaixo de 2 — inclusive `1.33`, `0.67`,
-   checklist com algum `"NÃO"` e eliminatório ocorrido (`0`). Opcional em N/A.
-8. **Evidência**: o trecho ou o fato que sustenta a resposta vai em `evidencia`. **Nunca invente
-   evidência.**
-9. **Confiança**: em cada critério avaliado, `confianca` (`"ALTA"`, `"MEDIA"` ou `"BAIXA"`) e
-   `revisaoHumana` (`true` ou `false`).
+   checklist com algum `"NÃO"` e eliminatório ocorrido (`0`) — com as três partes: o que
+   faltou, qual trecho da âncora não foi cumprido e onde. **Obrigatória também em todo `"N/A"`**,
+   com o motivo da não aplicabilidade. A exceção é o `crit-25` dispensado pelo `crit-29` = `"Sim"`.
+8. **Evidência**: o trecho ou o fato que sustenta a resposta vai em `evidencia` — **obrigatória
+   em toda resposta abaixo de 2**. **Nunca invente evidência.**
+9. **Confiança e revisão humana**: em cada critério avaliado, `confianca` (`"ALTA"`, `"MEDIA"` ou
+   `"BAIXA"`) e `revisaoHumana` (`true` ou `false`). As revisões humanas são resolvidas com a
+   monitora **antes** deste JSON, então o normal é `revisaoHumana: false` em todos. Só marque
+   `true` se a monitora pedir expressamente para decidir aquele critério no MonitorIA — e então
+   use `confianca: "BAIXA"`.
 10. **Nota**: não informe nota final, conceito, protocolo, código nem status — o MonitorIA
     calcula. Só preencha `conferencia.notaEsperada` se a monitora informar a nota aprovada.
 11. **Atendimento**:
@@ -288,7 +323,9 @@ O modelo mostra só alguns critérios para exemplificar cada tipo. **O JSON entr
 - [ ] A monitora aprovou a revisão
 - [ ] 28 critérios, identificados por `criterionId`, sem `crit-03`
 - [ ] Checklists só com `subRespostas`; `crit-24` com duas sub-perguntas
-- [ ] Toda resposta abaixo de 2 com justificativa
+- [ ] Toda resposta abaixo de 2 com justificativa (três partes) e `evidencia`
+- [ ] Todo `"N/A"` com justificativa do motivo
+- [ ] Nenhuma revisão humana pendente (todas resolvidas com a monitora)
 - [ ] Telefone ou presencial → `crit-29` = `"Não"` e `crit-25` avaliado
 - [ ] Números de atendimento e título entre aspas; datas sem fuso
 - [ ] Nenhuma nota final no JSON
