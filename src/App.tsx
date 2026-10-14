@@ -54,8 +54,20 @@ import {
 
 import { USER_STATUS } from './constants/auth';
 import { DATABASE_VERSION } from './config';
+import { modoCompartilhado } from './shared/compartilhado/modo';
+import { transporteSupabase, entrarComSenha, loginRestaurado, sairDoSupabase } from './shared/compartilhado/supabase';
+import {
+  carregarDados, perfilDoLogin, salvarMonitoria, validarMonitoria, reprovarMonitoria, devolverMonitoria,
+  confirmarZeramento, cancelarMonitoria, registrarAcesso, type ResultadoMonitoria, type DadosCompartilhados,
+} from './shared/compartilhado/dados';
+import { mensagemDoErro, ErroBanco } from './shared/compartilhado/transporte';
+
+// Avaliado uma vez: o modo é definido pelas variáveis do build, não muda com a página aberta.
+const COMPARTILHADO = modoCompartilhado();
 
 const initializeDatabase = () => {
+  // Modo compartilhado: NUNCA limpa o localStorage do portal antigo — ele é a origem da migração.
+  if (modoCompartilhado()) return false;
   const currentVersion = localStorage.getItem('pm2_database_version');
   if (currentVersion !== String(DATABASE_VERSION)) {
     for (let i = localStorage.length - 1; i >= 0; i--) {
@@ -146,7 +158,7 @@ import { CHANNELS } from './constants/criteria';
 import { exibirDuracao } from './domain/duracao';
 import { getCarteiraProgress } from './domain/goalService';
 import { perfilAtivoValido, temPerfil } from './domain/perfis';
-import { podeValidar, resolverStatusInicial } from './domain/validacaoService';
+import { podeValidar, resolverStatusInicial, exigeReenvio, MOTIVO_REENVIO_MIGRADA } from './domain/validacaoService';
 
 // 2A.1: a data corrente deixou de ser simulada.
 //
@@ -269,7 +281,6 @@ function AppContent() {
   // As migrações de dados legados (escala 0-10 -> 0-100 e Fluxo -> Processo) foram
   // transferidas para monitoringsRepository na F0-12, sem alteração de regra.
   const [monitorings, setMonitorings] = useState(() => monitoringsRepository.load());
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [holidays, setHolidays] = useState(() => holidaysRepository.load());
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [demands, setDemands] = useState(() => demandsRepository.load());
@@ -283,6 +294,7 @@ function AppContent() {
   );
 
   const handleAddCategoria = (nova: string) => {
+    if (recusarNoCompartilhado()) return;
     const next = [...catalogCategorias, nova];
     setCatalogCategorias(next);
     catalogCategoriasRepository.save(next);
@@ -308,6 +320,8 @@ function AppContent() {
   // próximo login — possivelmente de outra pessoa — cair nela.
   const [captureIntent, setCaptureIntent] = useState(true);
   const [showDevTools, setShowDevTools] = useState(false);
+  // Modo compartilhado: enquanto a sessão do Supabase é restaurada, não há login nem tela.
+  const [carregandoBanco, setCarregandoBanco] = useState(COMPARTILHADO);
 
   // F0-13: a URL é a fonte da verdade da navegação. `activeTab` deixou de ser estado e passou
   // a ser derivado do path — continua alimentando o destaque do menu (igualdade exata) e o
@@ -552,9 +566,119 @@ function AppContent() {
   // diferentes, e por isso o bloqueio precisava ser lido à parte — ele é gravado em pm2_users
   // e nunca chegava ao array estático. Com uma fonte só, `status` vem do mesmo registro que
   // autenticou, e quem é cadastrado pela Administração passa a existir para o login.
+  // ---- Modo compartilhado (banco Supabase) -----------------------------------------------
+  //
+  // Os dados vêm do banco, filtrados pela RLS do usuário logado, e toda gravação de monitoria
+  // passa pelas operações do schema `api` (08) — que decidem quem pode, em que situação, com qual
+  // régua e com qual nota. O portal não tem atalho: se o banco recusa, a tela mostra o motivo.
+  const padroesDoCodigo = () => ({ settings: settingsRepository.load(), brand: brandRepository.load() });
+
+  const aplicarDadosDoBanco = (d: DadosCompartilhados) => {
+    setUsers(d.usuarios);
+    setCollaborators(d.colaboradores);
+    setAreas(d.areas);
+    setAllocations(d.alocacoes);
+    setCriteria(d.criterios);
+    setMonitorings(d.monitorias);
+    setCatalogCategorias(d.categorias);
+    setColaboradorGoals(d.metasColaborador as typeof colaboradorGoals);
+    setPlanosMetas(d.planosMetas);
+    setHolidays(d.feriados as typeof holidays);
+    setSettings(d.settings);
+    setBrand(d.brand);
+  };
+
+  const recarregarDoBanco = async (): Promise<DadosCompartilhados> => {
+    const d = await carregarDados(transporteSupabase(), padroesDoCodigo());
+    aplicarDadosDoBanco(d);
+    return d;
+  };
+
+  const abrirSessaoCompartilhada = async (login: { authUserId: string; nivel: string | null }) => {
+    const d = await recarregarDoBanco();
+    const user = perfilDoLogin(d, login.authUserId);
+    // Sem perfil liberado a RLS não devolve nada — inclusive conta ADMIN sem MFA (07, R4).
+    const perfilInicial = user ? perfilAtivoValido(user, null) : null;
+    if (!user || !perfilInicial) {
+      aplicarDadosDoBanco({ ...d, usuarios: [], colaboradores: [], areas: [], alocacoes: [], criterios: [], monitorias: [], categorias: [], metasColaborador: [], planosMetas: [], feriados: [] });
+      await sairDoSupabase();
+      throw new ErroBanco('SEM_PERFIL', 'Seu login ainda não está liberado no MonitorIA. Procure a administração do sistema.');
+    }
+    setCurrentUser(user);
+    setPerfilAtivo(perfilInicial);
+    setCaptureIntent(true);
+    void registrarAcesso(transporteSupabase(), 'LOGIN', user, perfilInicial);
+  };
+
+  const entrarCompartilhado = async () => {
+    try {
+      await abrirSessaoCompartilhada(await entrarComSenha(loginEmail, loginPassword));
+    } catch (e) {
+      setLoginError(mensagemDoErro(e));
+    }
+  };
+
+  // Restaura a sessão do Supabase ao abrir o portal.
+  useEffect(() => {
+    if (!COMPARTILHADO) return;
+    let vivo = true;
+    (async () => {
+      try {
+        const login = await loginRestaurado();
+        if (login && vivo) await abrirSessaoCompartilhada(login);
+      } catch (e) {
+        if (vivo) setLoginError(mensagemDoErro(e));
+      } finally {
+        if (vivo) setCarregandoBanco(false);
+      }
+    })();
+    return () => { vivo = false; };
+  }, []); // a restauração roda uma vez, na montagem
+
+  /** Cadastros e metas ainda não gravam no banco: no modo compartilhado a alteração é recusada. */
+  const recusarNoCompartilhado = (): boolean => {
+    if (!COMPARTILHADO) return false;
+    alert('No ambiente compartilhado, esta alteração ainda não está disponível pelo portal.\n\nNada foi alterado.');
+    return true;
+  };
+
+  const salvarNoBanco = async (m: Monitoring): Promise<ResultadoMonitoria | null> => {
+    const jaNoBanco = monitorings.some((x) => x.id === m.id);
+    try {
+      const r = await salvarMonitoria(transporteSupabase(), m, criteria, jaNoBanco, m.status !== 'Rascunho');
+      await recarregarDoBanco();
+      navigate('/monitorings');
+      return r;
+    } catch (e) {
+      alert(mensagemDoErro(e));
+      if (e instanceof ErroBanco && e.codigo === 'MI409') await recarregarDoBanco().catch(() => undefined);
+      return null;
+    }
+  };
+
+  const acaoNoBanco = async (monId: string, executar: (m: Monitoring) => Promise<unknown>) => {
+    const alvo = monitorings.find((m) => m.id === monId);
+    if (!alvo) return;
+    try {
+      await executar(alvo);
+    } catch (e) {
+      alert(mensagemDoErro(e));
+    }
+    try {
+      const d = await recarregarDoBanco();
+      setSelectedMonitoringDetail((prev) => (prev && prev.id === monId ? (d.monitorias.find((x) => x.id === monId) ?? null) : prev));
+    } catch (e) {
+      alert(mensagemDoErro(e));
+    }
+  };
+
   const handleLogin = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoginError('');
+    if (COMPARTILHADO) {
+      void entrarCompartilhado();
+      return;
+    }
     // 0.20.0 — a autenticação passou a olhar o repositório, e não mais o array estático do
     // código. Enquanto a busca era feita em HOMOLOG_USERS, um gestor ou monitor cadastrado
     // pela Administração era gravado mas nunca conseguia entrar: o login não sabia que ele
@@ -619,6 +743,18 @@ function AppContent() {
   };
 
   const handleLogout = () => {
+    if (COMPARTILHADO) {
+      // Registra a saída enquanto a sessão ainda vale, depois encerra o login do Supabase.
+      const quem = currentUser, perfil = perfilAtivo;
+      void (quem ? registrarAcesso(transporteSupabase(), 'LOGOUT', quem, perfil) : Promise.resolve())
+        .finally(() => { void sairDoSupabase(); });
+      setMonitorings([]);
+      setUsers([]);
+      setCollaborators([]);
+      setAreas([]);
+      setCriteria([]);
+      setAllocations([]);
+    }
     if (currentUser) {
       logAuthEvent('LOGOUT', currentUser, '', perfilAtivo);
     }
@@ -640,6 +776,8 @@ function AppContent() {
   // Responsabilidades desta função: resolver o monitor responsável pela alocação vigente,
   // aplicar a regra de validação por gestor, persistir e navegar.
   const handleSaveFormMonitoring = (monitoringData: Monitoring) => {
+    // Modo compartilhado: o banco decide monitor (quem está logado, D3), situação, régua e nota.
+    if (COMPARTILHADO) return salvarNoBanco(monitoringData);
     const isEdit = Boolean(monitoringData.id && monitorings.some(m => m.id === monitoringData.id));
     const { monitor } = getActiveMonitorForColab(monitoringData.colaboradorId, monitoringData.date);
 
@@ -672,6 +810,7 @@ function AppContent() {
   // Handle allocations adjustments (Vigência V2)
   const handleCreateAllocation = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (recusarNoCompartilhado()) return;
     if (!newAllocColaboradorId) {
       alert('Selecione um colaborador.');
       return;
@@ -728,6 +867,7 @@ function AppContent() {
   };
 
   const handleTerminateAllocation = (allocId: string) => {
+    if (recusarNoCompartilhado()) return;
     if (confirm('Deseja realmente encerrar a vigência desta alocação?')) {
       const updated = allocations.map(a => {
         if (a.id === allocId) {
@@ -757,6 +897,7 @@ function AppContent() {
   // Dynamic Criteria Admin settings management
   const handleSaveCriterion = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (recusarNoCompartilhado()) return;
     if (!newCriterion.name) {
       alert('Nome do critério é obrigatório.');
       return;
@@ -785,6 +926,7 @@ function AppContent() {
 
   const handleSaveArea = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (recusarNoCompartilhado()) return;
     if (!newArea.name) return alert('Nome da área obrigatório.');
     if (newArea.id) {
       setAreas(areas.map(a => a.id === newArea.id ? newArea : a));
@@ -797,6 +939,7 @@ function AppContent() {
 
   const handleSaveCollaborator = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (recusarNoCompartilhado()) return;
     if (!newCollaborator.name || !newCollaborator.areaId) return alert('Nome e Área são obrigatórios.');
     if (newCollaborator.id) {
       setCollaborators(collaborators.map(c => c.id === newCollaborator.id ? newCollaborator : c));
@@ -818,6 +961,7 @@ function AppContent() {
   // mês não tem denominador. Reconstruir o histórico desde janeiro depende disto.
   const handleUpdateColabGoal = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (recusarNoCompartilhado()) return;
     const { year, month } = planningPeriod;
     const canal = newCGoalVal.canal ? (newCGoalVal.canal as Canal) : undefined;
 
@@ -891,6 +1035,7 @@ function AppContent() {
   // colaboradora de meta geral para meta por canal era impossível pela tela — ela ficaria com
   // as duas, que é justamente o estado proibido.
   const handleRemoveColabGoal = (goalId: string) => {
+    if (recusarNoCompartilhado()) return;
     const alvo = colaboradorGoals.find(g => g.id === goalId);
     if (!alvo) return;
     const nome = collaborators.find(c => c.id === alvo.colaboradorId)?.name
@@ -913,6 +1058,7 @@ function AppContent() {
    * gravado, e sim o plano sendo lido. Apagar a exceção devolve a leitura ao plano.
    */
   const handleVoltarAoPlano = (monitorId: string, colaboradorId: string) => {
+    if (recusarNoCompartilhado()) return;
     const { year, month } = planningPeriod;
     setColaboradorGoals(colaboradorGoals.filter(
       g => !(g.monitorId === monitorId && g.colaboradorId === colaboradorId
@@ -930,6 +1076,7 @@ function AppContent() {
    * meta por canal do plano sobreviveria ao lado do afastamento.
    */
   const handleSemMeta = (monitorId: string, colaboradorId: string) => {
+    if (recusarNoCompartilhado()) return;
     const motivo = prompt(
       `Por que ${nomeDaColaboradora(colaboradorId)} fica sem meta em ${periodLabel(planningPeriod)}?`,
       'Férias',
@@ -960,6 +1107,7 @@ function AppContent() {
    * exceção está sujeita às mesmas regras que a meta sempre esteve.
    */
   const handleAjustarMeta = (monitorId: string, colaboradorId: string, alvoAtual: number, canal?: Canal) => {
+    if (recusarNoCompartilhado()) return;
     setNewCGoalVal({
       monitorId,
       colaboradorId,
@@ -976,6 +1124,7 @@ function AppContent() {
    * foi feito.
    */
   const handleSalvarPlano = (plano: PlanoMetas): boolean => {
+    if (recusarNoCompartilhado()) return false;
     const existente = planosMetas.find(p => p.id === plano.id);
 
     if (vigenciaColide(planosMetas, plano.vigenciaInicio, plano.vigenciaFim, plano.id)) {
@@ -1025,8 +1174,16 @@ function AppContent() {
     return podeValidar(currentUser, perfilAtivo, alvo).pode;
   };
 
+  /** Decisão final (validar, reprovar, zerar) numa migrada sem régua: só devolver (M1). */
+  const recusarDecisaoFinal = (monId: string): boolean => {
+    if (!exigeReenvio(monitorings.find(m => m.id === monId))) return false;
+    alert(MOTIVO_REENVIO_MIGRADA);
+    return true;
+  };
+
   const handleApproveMonitoring = (monId: string) => {
-    if (!gateValidacao(monId)) return;
+    if (!gateValidacao(monId) || recusarDecisaoFinal(monId)) return;
+    if (COMPARTILHADO) { void acaoNoBanco(monId, (m) => validarMonitoria(transporteSupabase(), m)); return; }
     updateMonitoringById(monId, m => ({
       ...m,
       status: 'Validada',
@@ -1036,7 +1193,14 @@ function AppContent() {
   };
 
   const handleRejectMonitoring = (monId: string) => {
-    if (!gateValidacao(monId)) return;
+    if (!gateValidacao(monId) || recusarDecisaoFinal(monId)) return;
+    if (COMPARTILHADO) {
+      // Reprovação é final e exige motivo (D5); o banco também recusa sem motivo.
+      const motivo = window.prompt('Motivo da reprovação (obrigatório). A reprovação é final:')?.trim();
+      if (!motivo) return;
+      void acaoNoBanco(monId, (m) => reprovarMonitoria(transporteSupabase(), m, motivo));
+      return;
+    }
     updateMonitoringById(monId, m => ({
       ...m,
       status: 'Reprovada',
@@ -1050,6 +1214,11 @@ function AppContent() {
   // um novo, evitando alterar filtros e badges da listagem nesta correção.
   const handleRequestAdjustments = (monId: string, reason: string) => {
     if (!gateValidacao(monId)) return;
+    if (COMPARTILHADO) {
+      void acaoNoBanco(monId, (m) => devolverMonitoria(transporteSupabase(), m, reason));
+      setShowDetailModal(false);
+      return;
+    }
     updateMonitoringById(monId, m => ({
       ...m,
       status: 'Rascunho',
@@ -1065,7 +1234,8 @@ function AppContent() {
   // aqui a checagem é repetida como segunda barreira, já que não há backend ainda
   // para impor isso de fato — limitação conhecida da arquitetura da Fase 0.
   const handleConfirmZerada = (monId: string) => {
-    if (!gateValidacao(monId)) return;
+    if (!gateValidacao(monId) || recusarDecisaoFinal(monId)) return;
+    if (COMPARTILHADO) { void acaoNoBanco(monId, (m) => confirmarZeramento(transporteSupabase(), m)); return; }
     updateMonitoringById(monId, m => ({
       ...m,
       finalScore: 0,
@@ -1079,6 +1249,13 @@ function AppContent() {
   // 2B.2: a ação aparecia para os três papéis, mas DELETE_MONITORING é ['ADMIN']. O botão
   // nunca foi barrado. Ao migrar para Relatórios, ganhou o gate que já deveria ter.
   const handleCancelMonitoring = (monId: string) => {
+    if (COMPARTILHADO) {
+      // Só ADMIN com MFA cancela (D7); o banco recusa os demais.
+      const motivo = window.prompt('Motivo do cancelamento (obrigatório):')?.trim();
+      if (!motivo) return;
+      void acaoNoBanco(monId, (m) => cancelarMonitoria(transporteSupabase(), m, motivo));
+      return;
+    }
     if (confirm('Deseja realmente cancelar esta monitoria?')) {
       const updated = monitorings.map(m => {
         if (m.id === monId) return { ...m, status: 'Cancelada' as Monitoring['status'] };
@@ -1253,6 +1430,15 @@ function AppContent() {
   // (Dashboard, Planning, Allocations, Admin, Topbar) — a marcação vive em UserAvatar.
   const renderUserAvatar = (name: string) => <UserAvatar name={name} />;
 
+  // Modo compartilhado: aguarda a restauração da sessão antes de decidir entre login e portal.
+  if (carregandoBanco) {
+    return (
+      <div style={{ display: 'flex', minHeight: '100vh', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: '0.95rem' }}>
+        Conectando ao MonitorIA…
+      </div>
+    );
+  }
+
   return (
     <div className="animate-fade-in" style={{ display: 'flex', minHeight: '100vh', width: '100vw' }}>
       
@@ -1271,6 +1457,7 @@ function AppContent() {
               showDevTools={showDevTools}
               setShowDevTools={setShowDevTools}
               onSubmit={handleLogin}
+              ambienteCompartilhado={COMPARTILHADO}
             />
           } />
           <Route path="*" element={<Navigate to={PATH_LOGIN} state={captureIntent ? { from: location.pathname } : null} replace />} />
@@ -1425,6 +1612,12 @@ function AppContent() {
                 registra o mês corrente; reabrir um mês fechado é decisão de gestão. */}
             <Route path="/monitorings/retroativa" element={
               <Screen tab="monitoring-retroativa" perfil={perfilAtivo}>
+                  {COMPARTILHADO ? (
+                    <NotImplementedScreen
+                      title="Lançamento retroativo indisponível"
+                      description="No ambiente compartilhado o lançamento retroativo está desativado (decisão D8). Monitorias de competências anteriores são registradas normalmente e seguem para validação na fila do supervisor."
+                    />
+                  ) : (
                   <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
                     <MonitoringForm
                       modoRetroativo
@@ -1441,6 +1634,7 @@ function AppContent() {
                       onSave={handleSaveFormMonitoring}
                     />
                   </div>
+                  )}
               </Screen>
             } />
 
@@ -1533,6 +1727,12 @@ function AppContent() {
               // Administração e faria um erro de digitação parecer uma tela legítima.
               activeTab && activeTab in ADMIN_SECOES ? (
               <Screen tab={activeTab} perfil={perfilAtivo}>
+                  {COMPARTILHADO ? (
+                    <NotImplementedScreen
+                      title="Administração no ambiente compartilhado"
+                      description="As telas de Administração ainda gravam só neste navegador e por isso estão desativadas no ambiente compartilhado. Cadastros e régua seguem pelo procedimento controlado (SQL Editor, com responsável declarado e auditoria) até a Administração com MFA ficar pronta."
+                    />
+                  ) : (
                   <AdminScreen
                     monitorings={monitorings}
                     brand={brand}
@@ -1553,6 +1753,7 @@ function AppContent() {
                     setShowAreaModal={setShowAreaModal}
                     setShowCollaboratorModal={setShowCollaboratorModal}
                   />
+                  )}
               </Screen>
               ) : <NotFoundScreen />
             } />

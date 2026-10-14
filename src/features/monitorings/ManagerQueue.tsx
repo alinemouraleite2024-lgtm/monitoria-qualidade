@@ -11,6 +11,7 @@ import type { NaFilaDeValidacao, RitmoDoMonitor, RiscoDoMes } from '../../domain
 import { canalLabel } from '../../constants/canais';
 import { competenciaLabel } from '../../domain/period';
 import { getScoreConcept } from '../../scoreUtils';
+import { exigeReenvio, MOTIVO_REENVIO_MIGRADA } from '../../domain/validacaoService';
 
 interface ManagerQueueProps {
   fila: NaFilaDeValidacao[];
@@ -117,9 +118,16 @@ export const ManagerQueue = ({
                 </button>
               ) : (
                 <>
-                  <button className="btn btn-primary btn-sm" onClick={() => onValidar(m.id)}>
-                    <Check size={14} /> Validar
-                  </button>
+                  {exigeReenvio(m) ? (
+                    // Migrada sem régua (M1): a fila não oferece decisão final, só devolver.
+                    <span title={MOTIVO_REENVIO_MIGRADA} style={{ fontSize: '0.74rem', color: 'var(--warning)', alignSelf: 'center', maxWidth: '220px' }}>
+                      {MOTIVO_REENVIO_MIGRADA}
+                    </span>
+                  ) : (
+                    <button className="btn btn-primary btn-sm" onClick={() => onValidar(m.id)}>
+                      <Check size={14} /> Validar
+                    </button>
+                  )}
                   {/* Devolver abre o detalhe, onde já existe o campo de motivo. Duplicar essa
                       entrada aqui criaria uma segunda forma de escrever a mesma coisa. */}
                   <button

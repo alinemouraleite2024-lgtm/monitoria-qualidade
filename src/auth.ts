@@ -2,6 +2,7 @@
 
 import { ROLES, USER_STATUS, PERMISSIONS } from './constants/auth';
 import type { AuthLogEntry, Permission, Role, User } from './types/domain';
+import { modoCompartilhado } from './shared/compartilhado/modo';
 
 export { ROLES, USER_STATUS, PERMISSIONS };
 
@@ -40,6 +41,9 @@ export const logAuthEvent = (
     timestamp: new Date().toISOString(),
   };
   
+  // Modo compartilhado: o acesso é registrado no banco (acessos_log), nunca no localStorage.
+  if (modoCompartilhado()) return;
+
   const existingLogs: AuthLogEntry[] = JSON.parse(localStorage.getItem('pm2_auth_logs') || '[]');
   existingLogs.unshift(logEntry); // add at start
   localStorage.setItem('pm2_auth_logs', JSON.stringify(existingLogs));
@@ -48,5 +52,6 @@ export const logAuthEvent = (
 };
 
 export const getAuditLogs = (): AuthLogEntry[] => {
+  if (modoCompartilhado()) return [];
   return JSON.parse(localStorage.getItem('pm2_auth_logs') || '[]');
 };

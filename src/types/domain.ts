@@ -287,6 +287,20 @@ export interface Monitoring {
    * não passou por validação real não pode ser indistinguível de uma que passou.
    */
   lancamentoRetroativo?: { por: string; em: string };
+
+  // Modo compartilhado (banco Supabase). Presentes só nas monitorias lidas do banco.
+  /** Versão do registro no banco: toda gravação informa a versão lida (concorrência, 00). */
+  versao?: number;
+  /** 'portal' (registrada no banco) ou 'migracao' (veio do portal antigo). */
+  origem?: 'portal' | 'migracao';
+  /** Versão da régua fixada no primeiro envio (E2/E3). Nula em rascunho e em migrada não reenviada. */
+  reguaVersaoId?: string | null;
+  /** Migrada: nota gravada no portal antigo, preservada (E4b). */
+  notaHistorica?: number;
+  /** Conta das respostas feita pelo banco; o zeramento muda só `finalScore` (E5). */
+  notaCalculada?: number;
+  /** Motivo da reprovação (D5). */
+  motivoReprovacao?: string;
 }
 
 /**

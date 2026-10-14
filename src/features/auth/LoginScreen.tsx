@@ -56,6 +56,11 @@ interface LoginScreenProps {
   showDevTools: boolean;
   setShowDevTools: (v: boolean) => void;
   onSubmit: (e: FormEvent<HTMLFormElement>) => void;
+  /**
+   * Ambiente compartilhado (banco Supabase): login individual pelo Supabase Auth. Some o atalho
+   * de "Ferramentas Dev", que preenche contas de homologação — não existe conta de teste aqui.
+   */
+  ambienteCompartilhado?: boolean;
 }
 
 export const LoginScreen = ({
@@ -66,7 +71,8 @@ export const LoginScreen = ({
   loginError,
   showDevTools,
   setShowDevTools,
-  onSubmit
+  onSubmit,
+  ambienteCompartilhado = false,
 }: LoginScreenProps) => (
   <div className="login-container" style={fundoInstitucional}>
 
@@ -116,7 +122,7 @@ export const LoginScreen = ({
                 v2.0.0
               </span>
               <span style={{ fontSize: '0.68rem', fontWeight: 600, padding: '0.2rem 0.55rem', backgroundColor: 'rgba(242,140,28,0.12)', color: '#b26a12', borderRadius: '999px' }}>
-                Ambiente de Homologação
+                {ambienteCompartilhado ? 'Ambiente compartilhado' : 'Ambiente de Homologação'}
               </span>
             </div>
           </div>
@@ -198,7 +204,8 @@ export const LoginScreen = ({
               <span>Acesso restrito a colaboradores Moura Leite</span>
             </div>
 
-            {/* Dev Tools Toggle */}
+            {/* Dev Tools Toggle — só no modo local */}
+            {!ambienteCompartilhado && (<>
             <div style={{ marginTop: '0.75rem' }}>
               <button
                 className="ml-login-ghost"
@@ -217,6 +224,7 @@ export const LoginScreen = ({
                 <button className="btn btn-outline btn-sm" onClick={() => { setLoginEmail('aline@mouraleite.com.br'); setLoginPassword('Admin@123'); }}>Preencher Administrador da Qualidade</button>
               </div>
             )}
+            </>)}
           </div>
         </div>
       </div>

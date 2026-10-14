@@ -1,0 +1,797 @@
+{
+ "revisao": "v0.25.0",
+ "commit": "5b960d3c854180df056b20cb0eb5844e4ec77003",
+ "data_commit": "2026-10-08T12:26:29-03:00",
+ "sha256": "ed1ee1e5dc89bcaff2bb30b9a5b695533531c4e9941fb5e44f3546ac50dc5aba",
+ "criterios": [
+  {
+   "id": "crit-01",
+   "numero": 1,
+   "category": "FORMAS DO CONTATO",
+   "name": "Qual o motivo do contato?",
+   "description": "Identifica o motivo que originou o contato do cliente.",
+   "orientacao": "Classificar o contato entre Informação, Solicitação, Reclamação ou Sugestão. Campo de classificação, não avalia desempenho do atendente.",
+   "tipoResposta": "MULTIPLA_ESCOLHA",
+   "eliminatorio": false,
+   "weight": 0,
+   "active": true,
+   "channels": [
+    "Chat",
+    "WhatsApp",
+    "E-mail",
+    "Telefone",
+    "Presencial",
+    "Teams"
+   ],
+   "opcoes": [
+    "Informação",
+    "Solicitação",
+    "Reclamação",
+    "Sugestão"
+   ],
+   "ancoras": {
+    "Informação": "O cliente quer saber algo; nada precisa ser feito depois",
+    "Solicitação": "O cliente pede uma ação — 2ª via, cálculo, envio, alteração cadastral",
+    "Reclamação": "Há insatisfação declarada com atendimento, produto ou cobrança anterior",
+    "Sugestão": "O cliente propõe melhoria, sem pedido nem queixa"
+   }
+  },
+  {
+   "id": "crit-02",
+   "numero": 2,
+   "category": "FORMAS DO CONTATO",
+   "name": "Atendimento ativo ou receptivo?",
+   "description": "Identifica se o contato foi originado pela empresa (ativo) ou pelo cliente (receptivo).",
+   "orientacao": "Classificar a origem do contato. Campo de classificação, não avalia desempenho do atendente.",
+   "tipoResposta": "MULTIPLA_ESCOLHA",
+   "eliminatorio": false,
+   "weight": 0,
+   "active": true,
+   "channels": [
+    "Chat",
+    "WhatsApp",
+    "E-mail",
+    "Telefone",
+    "Presencial",
+    "Teams"
+   ],
+   "opcoes": [
+    "Ativo",
+    "Receptivo"
+   ],
+   "ancoras": {
+    "Ativo": "A empresa iniciou o contato. Retorno de um contato anterior do cliente também é ativo: a empresa discou",
+    "Receptivo": "O cliente iniciou o contato"
+   }
+  },
+  {
+   "id": "crit-03",
+   "numero": 3,
+   "category": "FORMAS DO CONTATO",
+   "name": "Atendimento realizado por qual canal?",
+   "description": "Identifica o canal utilizado no atendimento.",
+   "orientacao": "Registrar o canal do atendimento (WhatsApp, Telefone, Presencial ou E-mail). Campo de classificação, não avalia desempenho.",
+   "tipoResposta": "MULTIPLA_ESCOLHA",
+   "eliminatorio": false,
+   "weight": 0,
+   "active": false,
+   "channels": [
+    "Chat",
+    "WhatsApp",
+    "E-mail",
+    "Telefone",
+    "Presencial",
+    "Teams"
+   ],
+   "opcoes": [
+    "WhatsApp",
+    "Telefone",
+    "Presencial",
+    "E-mail"
+   ]
+  },
+  {
+   "id": "crit-04",
+   "numero": 4,
+   "category": "ABERTURA",
+   "name": "Cumprimentos / identificação",
+   "description": "Verifica se o agente realizou cumprimento e identificação adequados.",
+   "orientacao": "Checklist: realizou o cumprimento e identificação? Cumprimentou de forma adequada e profissional? Demonstrou postura profissional e cortês? Apresentou escuta ativa, empatia e profissionalismo? Inicie com saudação adequada, apresente-se pelo nome e pergunte como pode ajudar, evitando gírias.",
+   "tipoResposta": "CHECKLIST_SIM_NAO",
+   "eliminatorio": false,
+   "weight": 1,
+   "active": true,
+   "channels": [
+    "Chat",
+    "WhatsApp",
+    "E-mail",
+    "Telefone",
+    "Presencial",
+    "Teams"
+   ],
+   "subPerguntas": [
+    {
+     "id": "sub-04-1",
+     "texto": "O agente realizou o cumprimento e identificação?",
+     "criterioSim": "Há saudação e o atendente diz o próprio nome",
+     "criterioNao": "Falta a saudação ou falta o nome"
+    },
+    {
+     "id": "sub-04-2",
+     "texto": "Cumprimentou o cliente de forma adequada e profissional?",
+     "criterioSim": "Linguagem formal, sem gíria nem tratamento íntimo",
+     "criterioNao": "Usou gíria, apelido ou tratamento íntimo"
+    },
+    {
+     "id": "sub-04-3",
+     "texto": "Demonstrou postura profissional e cortês?",
+     "criterioSim": "Manteve respeito e não interrompeu",
+     "criterioNao": "Interrompeu, respondeu com aspereza ou ironia"
+    },
+    {
+     "id": "sub-04-4",
+     "texto": "Apresentou escuta ativa, empatia e profissionalismo?",
+     "criterioSim": "Reagiu ao que o cliente disse antes de responder",
+     "criterioNao": "Respondeu por script, ignorando o que foi dito"
+    }
+   ],
+   "quandoNA": "Nunca é N/A. A abertura existe em todo atendimento — e em contato ativo a identificação é ainda mais exigível."
+  },
+  {
+   "id": "crit-05",
+   "numero": 5,
+   "category": "ABERTURA",
+   "name": "Rapidez para atender a ligação",
+   "description": "Mede o tempo de resposta ao cliente.",
+   "orientacao": "Excelente: atendeu em menos de 5 minutos. Bom: entre 5 e 15 minutos. Regular: acima de 15 minutos. Ruim: pediu um momento no início do atendimento. Esteja sempre preparado para iniciar o atendimento imediatamente.",
+   "tipoResposta": "FAIXA_TEMPO",
+   "eliminatorio": false,
+   "weight": 1,
+   "active": true,
+   "channels": [
+    "Chat",
+    "WhatsApp",
+    "E-mail",
+    "Telefone",
+    "Presencial",
+    "Teams"
+   ],
+   "ancoras": {
+    "0": "pediu um momento no início — falta de prontidão",
+    "2": "menos de 5 min — padrão ouro",
+    "1.33": "5 a 15 min — aceitável, com espaço para melhoria",
+    "0.67": "acima de 15 min — há obstáculo de processo a eliminar"
+   },
+   "quandoNA": "N/A quando o contato é ativo: quem ligou foi a empresa."
+  },
+  {
+   "id": "crit-06",
+   "numero": 6,
+   "category": "COMUNICAÇÃO",
+   "name": "Demonstrou interesse e empatia com o pedido do cliente?",
+   "description": "Avalia empatia e interesse genuíno pelo pedido do cliente.",
+   "orientacao": "Faça perguntas pertinentes, demonstre curiosidade genuína, reconheça os sentimentos do cliente e use tom de voz calmo e acolhedor.",
+   "tipoResposta": "ESCALA_4",
+   "eliminatorio": false,
+   "weight": 2,
+   "active": true,
+   "channels": [
+    "Chat",
+    "WhatsApp",
+    "E-mail",
+    "Telefone",
+    "Presencial",
+    "Teams"
+   ],
+   "ancoras": {
+    "0": "Ignorou o conteúdo emocional ou factual do pedido; respondeu outra coisa; tratou o cliente como interrupção.",
+    "1": "Foi cordial, mas respondeu direto ao pedido sem investigar; ou reconheceu a situação com fórmula pronta, sem conexão com o que o cliente disse.",
+    "2": "Perguntou para entender antes de responder e reconheceu explicitamente a situação do cliente. A resposta seguinte mostra que ele escutou."
+   },
+   "quandoNA": "Nunca é N/A. Todo contato tem um pedido."
+  },
+  {
+   "id": "crit-07",
+   "numero": 7,
+   "category": "COMUNICAÇÃO",
+   "name": "Avisou que ia buscar informações antes de deixar o cliente em espera?",
+   "description": "Verifica aviso prévio antes de colocar o cliente em espera.",
+   "orientacao": "Antes de se ausentar, explique que precisa de um momento para buscar informações. Use frases como 'Vou verificar essa informação, por favor aguarde um momento'.",
+   "tipoResposta": "ESCALA_4",
+   "eliminatorio": false,
+   "weight": 1,
+   "active": true,
+   "channels": [
+    "Chat",
+    "WhatsApp",
+    "E-mail",
+    "Telefone",
+    "Presencial",
+    "Teams"
+   ],
+   "ancoras": {
+    "0": "Sumiu sem avisar.",
+    "1": "Avisou de forma genérica — “um momento” — sem dizer o motivo; ou avisou depois de já ter sumido.",
+    "2": "Avisou antes de sair, e disse o que ia fazer — “vou verificar no sistema”."
+   },
+   "quandoNA": "N/A quando não houve espera. No WhatsApp, considera-se espera um intervalo relevante entre a última mensagem do cliente e a resposta seguinte, dentro de uma conversa em andamento."
+  },
+  {
+   "id": "crit-08",
+   "numero": 8,
+   "category": "COMUNICAÇÃO",
+   "name": "Ao retomar o contato agradeceu o tempo de espera?",
+   "description": "Verifica agradecimento ao retomar o atendimento após espera.",
+   "orientacao": "Ao retornar, agradeça com frases como 'Obrigado por aguardar' ou 'Agradeço sua paciência'.",
+   "tipoResposta": "ESCALA_4",
+   "eliminatorio": false,
+   "weight": 1,
+   "active": true,
+   "channels": [
+    "Chat",
+    "WhatsApp",
+    "E-mail",
+    "Telefone",
+    "Presencial",
+    "Teams"
+   ],
+   "ancoras": {
+    "0": "Retomou direto, sem qualquer reconhecimento.",
+    "1": "Retomou com a informação e agradeceu depois, ou de forma protocolar desconectada da espera real.",
+    "2": "Agradeceu ao retomar, antes de entregar a informação."
+   },
+   "quandoNA": "N/A quando não houve espera — mesma leitura do critério 7."
+  },
+  {
+   "id": "crit-09",
+   "numero": 9,
+   "category": "COMUNICAÇÃO",
+   "name": "Teve didática para explicar?",
+   "description": "Avalia clareza didática nas explicações.",
+   "orientacao": "Use linguagem simples, estruture a explicação em etapas, exemplifique de forma prática e confirme o entendimento do cliente ao longo da explicação.",
+   "tipoResposta": "ESCALA_4",
+   "eliminatorio": false,
+   "weight": 1,
+   "active": true,
+   "channels": [
+    "Chat",
+    "WhatsApp",
+    "E-mail",
+    "Telefone",
+    "Presencial",
+    "Teams"
+   ],
+   "ancoras": {
+    "0": "Explicação confusa, incompleta ou que deixou o cliente perguntando a mesma coisa de novo.",
+    "1": "Explicação correta mas em bloco único, com jargão, ou sem nenhuma checagem. O cliente entendeu apesar da explicação, não por causa dela.",
+    "2": "Explicação em passos, em linguagem simples, e houve checagem de entendimento durante ou ao final."
+   },
+   "quandoNA": "N/A quando não havia nada a explicar — só confirmar recebimento, por exemplo."
+  },
+  {
+   "id": "crit-10",
+   "numero": 10,
+   "category": "COMUNICAÇÃO",
+   "name": "Fez argumentações pertinentes?",
+   "description": "Avalia se as respostas foram diretamente relacionadas à necessidade do cliente.",
+   "orientacao": "Baseie as respostas em fatos verificáveis e mantenha o foco no problema do cliente, evitando informações desnecessárias.",
+   "tipoResposta": "ESCALA_4",
+   "eliminatorio": false,
+   "weight": 1,
+   "active": true,
+   "channels": [
+    "Chat",
+    "WhatsApp",
+    "E-mail",
+    "Telefone",
+    "Presencial",
+    "Teams"
+   ],
+   "ancoras": {
+    "0": "Argumentou fora do ponto, ou apresentou argumento sem sustentação.",
+    "1": "Argumentos genéricos, ou corretos porém dispersos, com informação que o cliente não pediu.",
+    "2": "Argumentos apoiados em dado concreto — valor, data, cláusula, regra — e ligados ao pedido."
+   },
+   "quandoNA": "N/A quando não houve necessidade de argumentar — pedido direto e atendido."
+  },
+  {
+   "id": "crit-11",
+   "numero": 11,
+   "category": "COMUNICAÇÃO",
+   "name": "Lidando com objeções?",
+   "description": "Avalia a condução de objeções apresentadas pelo cliente.",
+   "orientacao": "Escute ativamente, demonstre empatia, responda com informação clara, use perguntas de sondeio e proponha soluções mantendo a calma.",
+   "tipoResposta": "ESCALA_4",
+   "eliminatorio": false,
+   "weight": 1.5,
+   "active": true,
+   "channels": [
+    "Chat",
+    "WhatsApp",
+    "E-mail",
+    "Telefone",
+    "Presencial",
+    "Teams"
+   ],
+   "ancoras": {
+    "0": "Ignorou a objeção, repetiu a mesma resposta sem reformular, ou entrou em confronto.",
+    "1": "Respondeu a objeção com informação correta, mas sem acolher ou sem confirmar; ou resolveu no atrito.",
+    "2": "Ouviu, acolheu, respondeu com fato e confirmou com o cliente que a objeção foi resolvida."
+   },
+   "quandoNA": "N/A quando não houve objeção. Marcar N/A aqui é comum e legítimo — não forçar nota."
+  },
+  {
+   "id": "crit-12",
+   "numero": 12,
+   "category": "COMUNICAÇÃO",
+   "name": "Comunicação clara e transparente?",
+   "description": "Avalia clareza e transparência na comunicação.",
+   "orientacao": "Use linguagem simples e direta, organize a informação em ordem lógica e seja honesto sobre o que pode ou não ser feito.",
+   "tipoResposta": "ESCALA_4",
+   "eliminatorio": false,
+   "weight": 1.5,
+   "active": true,
+   "channels": [
+    "Chat",
+    "WhatsApp",
+    "E-mail",
+    "Telefone",
+    "Presencial",
+    "Teams"
+   ],
+   "ancoras": {
+    "0": "Deixou ambiguidade que gera nova ligação, ou deu resposta sem base para encerrar rápido.",
+    "1": "Foi claro no que era favorável, mas contornou ou omitiu a parte desfavorável — prazo, limitação, condição.",
+    "2": "Disse o que podia e o que não podia ser feito, com os próximos passos explícitos, em linguagem simples."
+   },
+   "quandoNA": "Nunca é N/A."
+  },
+  {
+   "id": "crit-13",
+   "numero": 13,
+   "category": "COMUNICAÇÃO",
+   "name": "Gramática escrita e falada?",
+   "description": "Avalia correção gramatical na escrita e na fala.",
+   "orientacao": "Utilize a língua portuguesa corretamente, evitando erros de concordância e vocabulário informal, para transmitir profissionalismo e credibilidade.",
+   "tipoResposta": "ESCALA_4",
+   "eliminatorio": false,
+   "weight": 1,
+   "active": true,
+   "channels": [
+    "Chat",
+    "WhatsApp",
+    "E-mail",
+    "Telefone",
+    "Presencial",
+    "Teams"
+   ],
+   "ancoras": {
+    "0": "Erros frequentes ou que comprometem o entendimento; escrita sem pontuação; abreviação de mensagem pessoal — “vc”, “blz”, “pq” — em canal institucional.",
+    "1": "Erros pontuais que não comprometem o entendimento — digitação, acento, concordância isolada.",
+    "2": "Sem erro relevante. Pontuação e concordância adequadas ao canal."
+   },
+   "quandoNA": "Nunca é N/A."
+  },
+  {
+   "id": "crit-14",
+   "numero": 14,
+   "category": "COMUNICAÇÃO",
+   "name": "Tom de voz Moura Leite?",
+   "description": "Avalia aderência ao tom de voz institucional da marca.",
+   "orientacao": "O tom Moura Leite é cordial e acolhedor, profissional e respeitoso: trata o cliente pelo nome com formalidade, sem excesso de intimidade e sem burocratizar o atendimento; não terceiriza responsabilidade para outras áreas; não usa ironia nem impaciência; e mantém o mesmo tom do início ao fim, inclusive quando o cliente muda o dele. Definição validada pela área em 25/08/2026.",
+   "tipoResposta": "ESCALA_4",
+   "eliminatorio": false,
+   "weight": 1,
+   "active": true,
+   "channels": [
+    "Chat",
+    "WhatsApp",
+    "E-mail",
+    "Telefone",
+    "Presencial",
+    "Teams"
+   ],
+   "ancoras": {
+    "0": "Tom que destoa da marca: seco, irônico, íntimo demais, ou que empurra a responsabilidade para outra área.",
+    "1": "Tom adequado mas oscilante — cai em informalidade, burocratês ou distanciamento em alguns trechos.",
+    "2": "Tom consistente e alinhado do início ao fim; o cliente é tratado como cliente da empresa, não da pessoa."
+   },
+   "quandoNA": "Nunca é N/A. Não confundir com o 4: o 4 avalia a abertura; o 14 avalia o atendimento inteiro."
+  },
+  {
+   "id": "crit-15",
+   "numero": 15,
+   "category": "CONHECIMENTO DO PRODUTO/SERVIÇO",
+   "name": "O agente demonstrou habilidades de negociação eficazes?",
+   "description": "Avalia habilidade de negociação em cobranças/condições.",
+   "orientacao": "Explique valores e condições de forma clara, ofereça opções flexíveis de pagamento e busque um meio-termo que atenda cliente e empresa.",
+   "tipoResposta": "ESCALA_4",
+   "eliminatorio": false,
+   "weight": 1.5,
+   "active": true,
+   "channels": [
+    "Chat",
+    "WhatsApp",
+    "E-mail",
+    "Telefone",
+    "Presencial",
+    "Teams"
+   ],
+   "ancoras": {
+    "0": "Apenas informou o valor e encerrou; ou ofereceu condição fora da política.",
+    "1": "Informou o valor e a condição corretamente, mas sem explorar alternativa nem investigar a situação do cliente.",
+    "2": "Explicou a composição do valor, ouviu a limitação do cliente e ofereceu opção viável dentro da política."
+   },
+   "quandoNA": "N/A quando não houve negociação — informação, 2ª via simples, atualização cadastral."
+  },
+  {
+   "id": "crit-16",
+   "numero": 16,
+   "category": "CONHECIMENTO DO PRODUTO/SERVIÇO",
+   "name": "Forneceu informações precisas e relevantes para resolver o problema do cliente?",
+   "description": "Avalia precisão e relevância das informações fornecidas.",
+   "orientacao": "Compreenda completamente o problema antes de responder, forneça apenas informação verificada e mantenha o foco no que foi perguntado.",
+   "tipoResposta": "ESCALA_4",
+   "eliminatorio": false,
+   "weight": 2,
+   "active": true,
+   "channels": [
+    "Chat",
+    "WhatsApp",
+    "E-mail",
+    "Telefone",
+    "Presencial",
+    "Teams"
+   ],
+   "ancoras": {
+    "0": "Informação errada, desatualizada, ou que não respondia ao que foi perguntado.",
+    "1": "Informação correta mas incompleta — faltou dado que o cliente precisaria — ou correta com excesso que confundiu.",
+    "2": "Entendeu o pedido, entregou informação correta e completa, e só o que era necessário."
+   },
+   "quandoNA": "Nunca é N/A. Sempre há informação em jogo."
+  },
+  {
+   "id": "crit-17",
+   "numero": 17,
+   "category": "CONHECIMENTO DO PRODUTO/SERVIÇO",
+   "name": "Ofereceu uma solução que atendesse às necessidades do cliente?",
+   "description": "Avalia adequação da solução oferecida à necessidade do cliente.",
+   "orientacao": "A solução final deve responder diretamente ao pedido inicial do cliente, evitando respostas genéricas ou automáticas.",
+   "tipoResposta": "ESCALA_4",
+   "eliminatorio": false,
+   "weight": 1.5,
+   "active": true,
+   "channels": [
+    "Chat",
+    "WhatsApp",
+    "E-mail",
+    "Telefone",
+    "Presencial",
+    "Teams"
+   ],
+   "ancoras": {
+    "0": "Encerrou sem solução, ou entregou algo diferente do que foi pedido.",
+    "1": "Ofereceu solução parcial, ou solução correta que o cliente não confirmou aceitar.",
+    "2": "O desfecho corresponde ao pedido inicial e o cliente confirmou que atendia."
+   },
+   "quandoNA": "Nunca é N/A."
+  },
+  {
+   "id": "crit-18",
+   "numero": 18,
+   "category": "PRECISÃO DAS INFORMAÇÕES",
+   "name": "O agente evitou desinformação ou engano?",
+   "description": "Avalia se houve desinformação ou engano ao cliente.",
+   "orientacao": "Verifique a precisão de qualquer informação antes de repassá-la; se não tiver certeza, comprometa-se a buscar e confirmar antes de responder.",
+   "tipoResposta": "ESCALA_4",
+   "eliminatorio": false,
+   "weight": 2,
+   "active": true,
+   "channels": [
+    "Chat",
+    "WhatsApp",
+    "E-mail",
+    "Telefone",
+    "Presencial",
+    "Teams"
+   ],
+   "ancoras": {
+    "0": "Passou informação incorreta, ou afirmou o que não podia garantir.",
+    "1": "Afirmou com segurança algo que deveria ter confirmado antes, mesmo que por sorte estivesse certo.",
+    "2": "Tudo o que foi afirmado se sustenta. Onde não sabia, disse que ia verificar."
+   },
+   "quandoNA": "Nunca é N/A."
+  },
+  {
+   "id": "crit-19",
+   "numero": 19,
+   "category": "PRECISÃO DAS INFORMAÇÕES",
+   "name": "Resolução no Primeiro Contato - FCR?",
+   "description": "Avalia se o problema foi resolvido já no primeiro contato.",
+   "orientacao": "FCR: resolver a questão do cliente sem necessidade de novo contato. Prepare-se com informações e recursos necessários antes de iniciar o atendimento.",
+   "tipoResposta": "ESCALA_4",
+   "eliminatorio": false,
+   "weight": 1.5,
+   "active": true,
+   "channels": [
+    "Chat",
+    "WhatsApp",
+    "E-mail",
+    "Telefone",
+    "Presencial",
+    "Teams"
+   ],
+   "ancoras": {
+    "0": "Não resolvido; ficou dependendo de nova ação do cliente.",
+    "1": "Resolvido, mas com transferência, consulta demorada ou retorno em segundo momento — resolvido, porém não no primeiro contato.",
+    "2": "Resolvido neste contato, sem transferência e sem promessa de retorno."
+   },
+   "quandoNA": "N/A quando o contato, por natureza, não se encerra em si — protocolo que depende de área externa e foi corretamente encaminhado. Registrar o motivo."
+  },
+  {
+   "id": "crit-20",
+   "numero": 20,
+   "category": "PRECISÃO DAS INFORMAÇÕES",
+   "name": "Demonstrou paciência e profissionalismo?",
+   "description": "Avalia paciência e postura profissional durante o atendimento.",
+   "orientacao": "Mantenha a calma mesmo sob pressão, separe questões pessoais do atendimento e foque na resolução eficaz do problema.",
+   "tipoResposta": "ESCALA_4",
+   "eliminatorio": false,
+   "weight": 1,
+   "active": true,
+   "channels": [
+    "Chat",
+    "WhatsApp",
+    "E-mail",
+    "Telefone",
+    "Presencial",
+    "Teams"
+   ],
+   "ancoras": {
+    "0": "Perdeu a paciência, respondeu com aspereza, ou deixou questão pessoal invadir o atendimento.",
+    "1": "Manteve o profissionalismo, mas deixou transparecer pressa, cansaço ou desinteresse em algum trecho.",
+    "2": "Manteve postura e ritmo mesmo quando o atendimento ficou difícil."
+   },
+   "quandoNA": "Nunca é N/A."
+  },
+  {
+   "id": "crit-21",
+   "numero": 21,
+   "category": "PRECISÃO DAS INFORMAÇÕES",
+   "name": "Aplicou a técnicas de desescalada?",
+   "description": "Avalia uso de técnicas de desescalada em situações de tensão.",
+   "orientacao": "Use tom calmo, valide os sentimentos do cliente, escute sem interromper e proponha soluções claras para reduzir a tensão. Aplicável apenas quando houver tensão no atendimento.",
+   "tipoResposta": "ESCALA_4",
+   "eliminatorio": false,
+   "weight": 1,
+   "active": true,
+   "channels": [
+    "Chat",
+    "WhatsApp",
+    "E-mail",
+    "Telefone",
+    "Presencial",
+    "Teams"
+   ],
+   "ancoras": {
+    "0": "Não tentou, ou escalou — respondeu na mesma temperatura, confrontou, culpou o cliente.",
+    "1": "Tentou acalmar, mas de forma genérica ou tardia; a tensão permaneceu.",
+    "2": "Aplicou técnica identificável e a tensão baixou — o cliente muda de tom depois."
+   },
+   "quandoNA": "N/A quando não houve tensão. É a marcação esperada na maioria dos casos: a própria orientação diz que o critério só é aplicável quando houver tensão."
+  },
+  {
+   "id": "crit-22",
+   "numero": 22,
+   "category": "ENCERRAMENTO",
+   "name": "Verificou se o cliente entendeu as informações repassadas?",
+   "description": "Verifica confirmação de entendimento antes de encerrar.",
+   "orientacao": "Faça um breve resumo dos pontos discutidos e pergunte se o cliente tem dúvidas antes de encerrar.",
+   "tipoResposta": "ESCALA_4",
+   "eliminatorio": false,
+   "weight": 1,
+   "active": true,
+   "channels": [
+    "Chat",
+    "WhatsApp",
+    "E-mail",
+    "Telefone",
+    "Presencial",
+    "Teams"
+   ],
+   "ancoras": {
+    "0": "Encerrou sem qualquer verificação.",
+    "1": "Perguntou “tem mais alguma dúvida?” sem resumir; ou resumiu e encerrou sem esperar resposta.",
+    "2": "Resumiu os pontos e obteve confirmação do cliente."
+   },
+   "quandoNA": "N/A quando não havia informação a reter — só confirmação de recebimento."
+  },
+  {
+   "id": "crit-23",
+   "numero": 23,
+   "category": "ENCERRAMENTO",
+   "name": "Construção de Relacionamento?",
+   "description": "Avalia a construção de relacionamento ao longo de todo o atendimento.",
+   "orientacao": "Cumprimente e identifique-se, escute ativamente, demonstre empatia, ofereça soluções personalizadas e agradeça o cliente ao longo da interação.",
+   "tipoResposta": "ESCALA_4",
+   "eliminatorio": false,
+   "weight": 1,
+   "active": true,
+   "channels": [
+    "Chat",
+    "WhatsApp",
+    "E-mail",
+    "Telefone",
+    "Presencial",
+    "Teams"
+   ],
+   "ancoras": {
+    "0": "Transacional ou frio; o cliente foi tratado como chamado.",
+    "1": "Correto e cordial, mas impessoal — qualquer cliente receberia exatamente as mesmas frases.",
+    "2": "O atendimento é personalizado do início ao fim: usa o nome, retoma o contexto, agradece e deixa a porta aberta."
+   },
+   "quandoNA": "Nunca é N/A."
+  },
+  {
+   "id": "crit-24",
+   "numero": 24,
+   "category": "ENCERRAMENTO",
+   "name": "Encerrou o contato corretamente?",
+   "description": "Verifica encerramento correto, incluindo script obrigatório por canal.",
+   "orientacao": "Checklist: perguntou se o cliente possui mais alguma dúvida? Despediu-se de forma correta? Mensagem obrigatória para WhatsApp: 'Fico feliz em ter conseguido te auxiliar. Se surgir qualquer nova necessidade, é só nos chamar. Seguimos à disposição!'. Para telefone/presencial, seguir o script de encerramento institucional equivalente.",
+   "tipoResposta": "CHECKLIST_SIM_NAO",
+   "eliminatorio": false,
+   "weight": 1.5,
+   "active": true,
+   "channels": [
+    "Chat",
+    "WhatsApp",
+    "E-mail",
+    "Telefone",
+    "Presencial",
+    "Teams"
+   ],
+   "subPerguntas": [
+    {
+     "id": "sub-24-1",
+     "texto": "Perguntou se o cliente possui mais alguma dúvida?",
+     "criterioSim": "Perguntou e aguardou resposta",
+     "criterioNao": "Não perguntou, ou perguntou e encerrou sem esperar"
+    },
+    {
+     "id": "sub-24-2",
+     "texto": "Despediu-se de forma correta?",
+     "criterioSim": "Enviou o script do canal, com sentido preservado",
+     "criterioNao": "Despedida improvisada, ou script de outro canal"
+    }
+   ],
+   "quandoNA": "N/A quando o atendimento foi interrompido pelo cliente antes do fechamento. Nesse caso, verificar se cabe o eliminatório 27."
+  },
+  {
+   "id": "crit-25",
+   "numero": 25,
+   "category": "MANDOU MAL",
+   "name": "Confirmação de dados de segurança insuficiente",
+   "description": "Verifica se houve confirmação adequada de dados de segurança antes de repassar informação sensível.",
+   "orientacao": "Antes de fornecer qualquer informação sensível, confirme a identidade do cliente com perguntas de segurança (CPF, e-mail, data de nascimento, etc.), conforme a LGPD. Item eliminatório: se insuficiente, zera a monitoria.",
+   "tipoResposta": "SIM_NAO",
+   "eliminatorio": true,
+   "weight": 0,
+   "active": true,
+   "channels": [
+    "Chat",
+    "WhatsApp",
+    "E-mail",
+    "Telefone",
+    "Presencial",
+    "Teams"
+   ],
+   "ancoras": {
+    "0": "Aciona: informação sensível — valores, saldo, parcelas, dados contratuais, boleto — foi repassada sem confirmação positiva de identidade; ou a pessoa não é o titular e não consta autorização de terceiro no Extrato V do Sienge ou no CRM",
+    "2": "Não aciona: atendimento receptivo pelo número cadastrado e com confirmação de ao menos um dado de segurança; nenhuma informação sensível repassada; ou o cliente chegou autenticado (critério 29 = Sim), caso em que este critério fica N/A"
+   }
+  },
+  {
+   "id": "crit-26",
+   "numero": 26,
+   "category": "MANDOU MAL",
+   "name": "Faltou com respeito ao cliente",
+   "description": "Verifica tratamento desrespeitoso ao cliente.",
+   "orientacao": "Qualquer tratamento rude, deselegante ou não profissional ao cliente. Item eliminatório: se ocorrer, zera a monitoria.",
+   "tipoResposta": "SIM_NAO",
+   "eliminatorio": true,
+   "weight": 0,
+   "active": true,
+   "channels": [
+    "Chat",
+    "WhatsApp",
+    "E-mail",
+    "Telefone",
+    "Presencial",
+    "Teams"
+   ],
+   "ancoras": {
+    "0": "Aciona: ofensa, ironia, deboche ou grosseria; elevação de voz contra o cliente; interrupção sistemática com desqualificação do que ele diz",
+    "2": "Não aciona: atendente seco, apressado ou pouco empático — isso é nota baixa nos critérios 14, 20 e 23, não eliminatório. A fronteira é o desrespeito, não a frieza"
+   }
+  },
+  {
+   "id": "crit-27",
+   "numero": 27,
+   "category": "MANDOU MAL",
+   "name": "Ligação derrubada ou atendimento encerrado sem atendimento do cliente?",
+   "description": "Verifica se a ligação foi derrubada ou encerrada sem atendimento efetivo.",
+   "orientacao": "Contato interrompido ou finalizado sem que o cliente tenha sido efetivamente atendido. O corte é pelo desfecho do atendimento, não pela causa da interrupção. Vale igual para telefone e WhatsApp.",
+   "tipoResposta": "SIM_NAO",
+   "eliminatorio": true,
+   "weight": 0,
+   "active": true,
+   "channels": [
+    "Chat",
+    "WhatsApp",
+    "E-mail",
+    "Telefone",
+    "Presencial",
+    "Teams"
+   ],
+   "ancoras": {
+    "0": "Aciona: o cliente ficou sem resposta; o atendimento foi abandonado; houve encerramento sem resolução e sem retorno; houve queda sem tentativa de contato posterior",
+    "2": "Não aciona: o cliente encerrou por conta própria após ser atendido; houve tentativa comprovada de retorno; a interrupção não prejudicou a conclusão do atendimento"
+   }
+  },
+  {
+   "id": "crit-28",
+   "numero": 28,
+   "category": "MANDOU MAL",
+   "name": "Promessa de produto/serviço inexistente",
+   "description": "Verifica promessas de produtos/condições inexistentes.",
+   "orientacao": "Não prometa ao cliente produto, condição ou serviço que não existe ou não é praticado pela empresa. Item eliminatório: se ocorrer, zera a monitoria.",
+   "tipoResposta": "SIM_NAO",
+   "eliminatorio": true,
+   "weight": 0,
+   "active": true,
+   "channels": [
+    "Chat",
+    "WhatsApp",
+    "E-mail",
+    "Telefone",
+    "Presencial",
+    "Teams"
+   ],
+   "ancoras": {
+    "0": "Aciona: foi prometido desconto, prazo, isenção, condição de parcelamento ou serviço que não existe, ou algo fora do escopo do atendente",
+    "2": "Não aciona: a informação estava errada mas o produto existe — isso é o critério 18 com nota 0"
+   }
+  },
+  {
+   "id": "crit-29",
+   "numero": 29,
+   "category": "FORMAS DO CONTATO",
+   "name": "Cliente chegou autenticado?",
+   "description": "Identifica se o canal reconheceu o cliente antes de a atendente assumir a conversa.",
+   "orientacao": "O roteiro do Blip tem duas aberturas: AUTENTICADO cumprimenta pelo nome, SEM AUTENTICAÇÃO pede o nome. O que separa as duas é o contato vir do número cadastrado — número diferente dispara a bateria de confirmação. A prova está nas primeiras mensagens da conversa. Em canais sem pré-autenticação (telefone, presencial), a resposta é Não.",
+   "tipoResposta": "MULTIPLA_ESCOLHA",
+   "eliminatorio": false,
+   "weight": 0,
+   "active": true,
+   "channels": [
+    "Chat",
+    "WhatsApp",
+    "E-mail",
+    "Telefone",
+    "Presencial",
+    "Teams"
+   ],
+   "opcoes": [
+    "Sim",
+    "Não",
+    "Não identificável"
+   ],
+   "ancoras": {
+    "Sim": "A abertura cumprimenta pelo nome do cliente, sem pedir identificação e sem mencionar número divergente",
+    "Não": "A abertura pede o nome, ou o roteiro de número divergente foi acionado. Também é a resposta em canais sem pré-autenticação — telefone e presencial não têm esse passo",
+    "Não identificável": "A conversa não permite determinar: começa no meio, a saudação parece manual, ou o registro está incompleto"
+   }
+  }
+ ]
+}

@@ -74,7 +74,12 @@ export interface MonitoringFormProps {
    * calculada igual. O que muda é o status final e o destaque da competência.
    */
   modoRetroativo?: boolean;
-  onSave: (monitoring: Monitoring) => void;
+  /**
+   * Modo local: grava e devolve nada. Modo compartilhado: devolve o que o BANCO registrou (id e
+   * protocolo gerados por ele, nota calculada por ele) — ou `null` quando a gravação foi recusada,
+   * caso em que a mensagem já foi mostrada e o formulário continua aberto.
+   */
+  onSave: (monitoring: Monitoring) => void | Promise<{ id: string; protocolo: string; nota: number } | null>;
 }
 
 /** Estado do formulário. Espelha Monitoring, com os campos ainda soltos durante a edição. */
@@ -355,7 +360,7 @@ export const MonitoringForm = ({
     }
   }, [formData.canal, initialData, applicableCriteria]);
 
-  const { finalScore, totalObtained, totalPossible, qtdAvaliados, qtdNA, categoryScores, hasEliminatoryTrigger, triggeredEliminatoryCriteria } = useMemo(() => {
+  const { finalScore, qtdAvaliados, qtdNA, categoryScores, hasEliminatoryTrigger, triggeredEliminatoryCriteria } = useMemo(() => {
     let obtained = 0;
     let possible = 0;
     let avaliados = 0;
@@ -760,19 +765,25 @@ export const MonitoringForm = ({
     };
   };
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
     const data = buildFinalData(true);
-    onSave(data);
+    const registrado = await onSave(data);
+    if (registrado === null) return;
     setLastSaved(new Date().toLocaleTimeString());
-    alert('Rascunho salvo com sucesso!');
+    alert(registrado ? `Rascunho salvo com sucesso!\nCódigo: ${registrado.id}` : 'Rascunho salvo com sucesso!');
   };
 
-  const handleSaveFinal = (e: FormEvent<HTMLFormElement>) => {
+  const handleSaveFinal = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (window.confirm("Deseja concluir esta monitoria? Após salvar ela seguirá para validação.")) {
       const data = buildFinalData(false);
-      onSave(data);
-      alert(`Monitoria salva com sucesso!\nProtocolo: ${data.protocolo}\nCódigo: ${data.id}\nNota: ${data.finalScore}% (${getScoreConcept(data.finalScore).label})`);
+      const registrado = await onSave(data);
+      if (registrado === null) return;
+      // No modo compartilhado, protocolo, código e nota são os do banco — a nota oficial é a dele.
+      const protocolo = registrado ? registrado.protocolo : data.protocolo;
+      const codigo = registrado ? registrado.id : data.id;
+      const nota = registrado ? registrado.nota : data.finalScore;
+      alert(`Monitoria salva com sucesso!\nProtocolo: ${protocolo}\nCódigo: ${codigo}\nNota: ${nota}% (${getScoreConcept(nota).label})`);
     }
   };
 

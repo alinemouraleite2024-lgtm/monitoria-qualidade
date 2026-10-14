@@ -1,0 +1,8 @@
+{
+  "name": "monitoria-testes-banco",
+  "private": true,
+  "description": "Suítes de integração do banco compartilhado (scripts supabase/sql) num Postgres local (PGlite). Separado do portal: a Vercel não instala nada daqui.",
+  "dependencies": {
+    "@electric-sql/pglite": "0.5.8"
+  }
+}

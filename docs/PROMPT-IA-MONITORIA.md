@@ -7,7 +7,8 @@
 > `monitoria-chatgpt/1`, que a monitora importa na Nova Monitoria. A seção "Entrega para o
 > MonitorIA" está no fim do prompt; o contrato completo está em `CONTRATO-IMPORTACAO-CHATGPT.md`.
 >
-> **Régua 2.0 — vigente para avaliações a partir de 12/10/2026.** Calibração aprovada em
+> **Régua 2.0 — vigente para avaliações registradas a partir de 12/10/2026** (vale a data de
+> registro da avaliação, não a do atendimento nem a competência). Calibração aprovada em
 > 10/10/2026: cumprimento × oportunidade, uma causa raiz por desconto, evidência insuficiente vai
 > para revisão humana, justificativa obrigatória também no N/A, e leitura revisada dos critérios
 > 4, 5, 6, 7, 9, 12, 13, 16, 18, 19, 22 e 23. Pesos, escala e eliminatórios não mudaram. Fonte:

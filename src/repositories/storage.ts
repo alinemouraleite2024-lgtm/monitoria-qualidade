@@ -1,5 +1,10 @@
 // Primitiva única de acesso ao localStorage.
 // Nenhum outro arquivo da camada de repositório deve chamar localStorage diretamente.
+//
+// MODO COMPARTILHADO (banco Supabase): esta primitiva vira uma trava. O localStorage do portal
+// antigo não é lido para a tela (as coleções começam vazias e são preenchidas pelo banco), não é
+// gravado e não é apagado — os dados de lá só saem pela migração (script 09).
+import { modoCompartilhado } from '../shared/compartilhado/modo';
 
 // As chaves são declaradas com o nome completo (incluindo o prefixo pm2_) para que sejam
 // idênticas, caractere a caractere, às usadas antes da F0-12 — o prefixo também é o que
@@ -48,6 +53,8 @@ export const KEYS = {
 // Devolve o valor armazenado ou o fallback. Reproduz o comportamento anterior
 // (`saved ? JSON.parse(saved) : SEED`), inclusive para conteúdo inválido.
 export const read = <T,>(key: string, fallback: T): T => {
+  // Coleção: vazia até o banco responder. Configuração: o padrão do código (nunca dado local).
+  if (modoCompartilhado()) return (Array.isArray(fallback) ? [] : fallback) as T;
   const raw = localStorage.getItem(key);
   if (raw === null || raw === '') return fallback;
   try {
@@ -58,9 +65,11 @@ export const read = <T,>(key: string, fallback: T): T => {
 };
 
 export const write = <T,>(key: string, value: T): void => {
+  if (modoCompartilhado()) return;
   localStorage.setItem(key, JSON.stringify(value));
 };
 
 export const remove = (key: string): void => {
+  if (modoCompartilhado()) return;
   localStorage.removeItem(key);
 };

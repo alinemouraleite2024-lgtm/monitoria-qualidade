@@ -4,7 +4,7 @@ import { getScoreConcept } from '../../scoreUtils';
 import { canalLabel } from '../../constants/canais';
 import { exibirDuracao } from '../../domain/duracao';
 import { competenciaLabel } from '../../domain/period';
-import { podeValidar } from '../../domain/validacaoService';
+import { podeValidar, exigeReenvio, MOTIVO_REENVIO_MIGRADA } from '../../domain/validacaoService';
 import type { Collaborator, Criterion, Monitoring, Role, User } from '../../types/domain';
 
 interface MonitoringHistoryProps {
@@ -60,10 +60,12 @@ export const MonitoringHistory = ({
 
   const canApprove = validacao.pode && aguardandoValidacao;
   const motivoBloqueio = !validacao.pode && aguardandoValidacao ? validacao.motivo : null;
+  // Migrada sem régua (M1): o rodapé mantém só "Solicitar Ajustes" (devolver) e diz por quê.
+  const somenteDevolver = canApprove && exigeReenvio(monitoring);
 
   // F0-08: confirmação de zerada é um fluxo independente da aprovação de conteúdo acima —
   // só depende de haver uma sinalização pendente, não do status da monitoria.
-  const canConfirmZerada = validacao.pode && monitoring.eliminatoryPending === true;
+  const canConfirmZerada = validacao.pode && monitoring.eliminatoryPending === true && !exigeReenvio(monitoring);
   const getCriterionName = (id: string) => criteria.find(c => c.id === id)?.name || id;
   const triggeredCriteriaNames = (monitoring.scores || [])
     .filter(s => {
@@ -294,7 +296,13 @@ export const MonitoringHistory = ({
         {canApprove && (
           <div className="slide-over-footer" style={{ flexDirection: 'column', gap: '1rem' }}>
             <div style={{ fontWeight: '600', fontSize: '0.9rem' }}>Fluxo de Aprovação</div>
-            
+            {somenteDevolver && (
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', fontSize: '0.85rem', color: 'var(--warning)', lineHeight: 1.5 }}>
+                <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
+                {MOTIVO_REENVIO_MIGRADA}
+              </div>
+            )}
+
             {showAdjustInput ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 <textarea 
@@ -313,15 +321,19 @@ export const MonitoringHistory = ({
               </div>
             ) : (
               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                <button className="btn btn-secondary" style={{ color: 'var(--danger)', borderColor: 'var(--danger-light)' }} onClick={() => onReject(monitoring.id)}>
-                  <X size={16} /> Reprovar
-                </button>
+                {!somenteDevolver && (
+                  <button className="btn btn-secondary" style={{ color: 'var(--danger)', borderColor: 'var(--danger-light)' }} onClick={() => onReject(monitoring.id)}>
+                    <X size={16} /> Reprovar
+                  </button>
+                )}
                 <button className="btn btn-secondary" style={{ color: 'var(--warning)', borderColor: 'var(--warning-light)' }} onClick={() => setShowAdjustInput(true)}>
                   <AlertCircle size={16} /> Solicitar Ajustes
                 </button>
-                <button className="btn btn-primary" onClick={() => onApprove(monitoring.id)}>
-                  <Check size={16} /> Aprovar Monitoria
-                </button>
+                {!somenteDevolver && (
+                  <button className="btn btn-primary" onClick={() => onApprove(monitoring.id)}>
+                    <Check size={16} /> Aprovar Monitoria
+                  </button>
+                )}
               </div>
             )}
           </div>

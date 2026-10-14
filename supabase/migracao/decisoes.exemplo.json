@@ -1,0 +1,73 @@
+{
+  "_leia": "MODELO. Copie para decisoes.json (fora do git) e preencha só com decisões aprovadas. Valores <...> são pendências.",
+  "responsavel_implantacao": "Aline Oliveira <aline.oliveira@mouraleite.com.br>",
+  "_responsavel": "Use UM dos dois. responsavel_implantacao (\"Nome <e-mail>\") vale só enquanto NÃO existir nenhum perfil ADMIN (06, R5) — é o caminho de 13/10/2026. Quando a conta ADMIN for definida, troque por responsavel_admin_id.",
+  "perfis": {
+    "usr-1": {
+      "perfis": [
+        "MONITOR"
+      ],
+      "email": "aline.oliveira@mouraleite.com.br",
+      "decisao": "Contas separadas (12/10/2026) e alternativa A (13/10/2026): Aline operacional só MONITOR, com o e-mail corporativo individual; o e-mail anterior fica preservado em extras._email_original e o histórico não muda"
+    },
+    "usr-7": {
+      "perfis": [],
+      "status": "INACTIVE",
+      "decisao": "usr-7 admin@ genérico: inativo e sem perfis (12/10/2026)"
+    }
+  },
+  "novos_perfis": [
+    {
+      "apelido": "erivan",
+      "email": "<e-mail do Erivan>",
+      "nome": "<nome completo do Erivan>",
+      "perfis": [
+        "GESTOR"
+      ],
+      "decisao": "Decisão 2 (12/10/2026): cadastro novo, GESTOR, sem reutilizar id, sem senha"
+    }
+  ],
+  "areas": {
+    "area-1": {
+      "gestor": "@erivan",
+      "monitores": [
+        "usr-1"
+      ],
+      "decisao": "Decisão 7 (12/10/2026): Aline MONITOR e Erivan GESTOR do Relacionamento"
+    }
+  },
+  "regua1": {
+    "arquivo": "<regua-1.v0.25.0.json gerado por extrair-regua.mjs>",
+    "anterior": "<regua-1-anterior.v0.24.0.json gerado por extrair-regua.mjs (evidência: crit-24 antes de 07/10)>",
+    "vigente_desde": "2026-08-31",
+    "rotulo": "Régua 1",
+    "descricao": "Régua 1 oficial (semente do código em v0.25.0). Vigência = data técnica do commit 37b345a (comprovada); publicação em produção não comprovada.",
+    "datas": {
+      "validacao_documento": {
+        "data": "2026-08-25",
+        "situacao": "comprovada",
+        "fonte": "docs/METODOLOGIA-MONITORIA.md § 3A.0 (32 itens revisados, 32 aprovados)"
+      },
+      "commit_codigo": {
+        "data": "2026-08-31T16:52:48-03:00",
+        "situacao": "comprovada",
+        "fonte": "commit 37b345a em main (data de autor = data de commit)"
+      },
+      "publicacao_producao": {
+        "situacao": "nao_comprovada",
+        "janela_inicio": "2026-08-31T16:52:48-03:00",
+        "janela_fim": "2026-09-01T16:54:00-03:00",
+        "fonte": "deployment Vercel iwb8bzvq0 (Production, main, 37b345a) excluído pela retenção de 30 dias, sem data; limite superior = registro da 0.19.0 publicada (d8b4774)",
+        "limitacao": "GitHub privado sem acesso de leitura autenticado no ambiente; histórico de push local começa em 07/09"
+      }
+    }
+  },
+  "regua2": {
+    "codigo": "<regua.HEAD.json gerado por extrair-regua.mjs>",
+    "vigente_desde": "2026-10-12",
+    "rotulo": "Régua 2.0",
+    "descricao": "Régua 2.0 — critérios atuais do portal",
+    "diferencas_aprovadas": []
+  },
+  "evidencia_0810": "<caminho do backup de 08/10 (só o pm2_criteria é usado, como prova)>"
+}

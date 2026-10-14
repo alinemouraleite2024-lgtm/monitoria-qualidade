@@ -1,0 +1,6 @@
+# Exportações do navegador contêm senhas em texto puro: nunca versionar.
+*.json
+!decisoes.exemplo.json
+# Saída do gerador (09b com dados reais e manifesto)
+saida/
+09b_migracao_dados.sql

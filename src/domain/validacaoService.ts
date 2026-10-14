@@ -58,6 +58,21 @@ export interface ResultadoValidacao {
   motivo?: string;
 }
 
+export const MOTIVO_REENVIO_MIGRADA =
+  'Monitoria migrada: é necessário devolver para revisão e reenvio antes da decisão final.';
+
+/**
+ * Monitoria vinda do portal antigo cuja nota nunca foi calculada pelo banco (sem versão da
+ * régua — regra M1 do script 08). Enquanto for assim, a única ação do gestor é devolver:
+ * validar, reprovar e confirmar zeramento ficam fora da tela. Depois do reenvio o banco grava
+ * a versão da régua e a monitoria volta às regras normais.
+ *
+ * O banco recusa validar e zerar; a REPROVAÇÃO direta ainda é aceita pela API (pendência
+ * registrada em 14/10/2026). Esconder o botão aqui não é proteção — é orientação.
+ */
+export const exigeReenvio = (monitoring: Monitoring | null | undefined): boolean =>
+  monitoring?.origem === 'migracao' && !monitoring.reguaVersaoId;
+
 /**
  * Se esta pessoa, no contexto atual, pode aprovar, devolver ou confirmar eliminatório.
  *

@@ -2,13 +2,34 @@ import { perfisDe, ROTULO_PERFIL } from '../../domain/perfis';
 import { useState } from 'react';
 import { Shield, Key, Mail, Building, Briefcase, Clock } from 'lucide-react';
 import { logAuthEvent } from '../../auth';
+import { modoCompartilhado } from '../../shared/compartilhado/modo';
+import { trocarSenha, problemaDaSenhaNova } from '../../shared/compartilhado/supabase';
+import { mensagemDoErro } from '../../shared/compartilhado/transporte';
 
 export const MyProfile = ({ currentUser }) => {
   const [activeTab, setActiveTab] = useState('info');
   const [passwordForm, setPasswordForm] = useState({ current: '', new: '', confirm: '' });
+  const [salvando, setSalvando] = useState(false);
+  const compartilhado = modoCompartilhado();
 
-  const handlePasswordChange = (e) => {
+  const handlePasswordChange = async (e) => {
     e.preventDefault();
+    if (compartilhado) {
+      // Ambiente compartilhado: a troca é real, no Supabase Auth.
+      const problema = problemaDaSenhaNova(passwordForm.current, passwordForm.new, passwordForm.confirm);
+      if (problema) { alert(problema); return; }
+      setSalvando(true);
+      try {
+        await trocarSenha(currentUser.email, passwordForm.current, passwordForm.new);
+        alert('Senha alterada com sucesso. Use a nova senha no próximo acesso.');
+        setPasswordForm({ current: '', new: '', confirm: '' });
+      } catch (erro) {
+        alert(mensagemDoErro(erro));
+      } finally {
+        setSalvando(false);
+      }
+      return;
+    }
     if (passwordForm.new !== passwordForm.confirm) {
       alert("As novas senhas não coincidem!");
       return;
@@ -81,7 +102,7 @@ export const MyProfile = ({ currentUser }) => {
                   <Shield size={18} /> Provider de Autenticação
                 </h4>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>
-                  Sua conta está configurada com login <strong>{currentUser.provider}</strong>.
+                  Sua conta está configurada com login <strong>{compartilhado ? 'e-mail e senha (Supabase)' : currentUser.provider}</strong>.
                   O sistema está estruturalmente preparado para futuras integrações (Microsoft 365, Google Workspace, Azure AD).
                 </p>
               </div>
@@ -106,8 +127,13 @@ export const MyProfile = ({ currentUser }) => {
                   <input type="password" required className="form-control" value={passwordForm.confirm} onChange={e => setPasswordForm({...passwordForm, confirm: e.target.value})} />
                 </div>
                 
-                <button type="submit" className="btn btn-primary" style={{ marginTop: '0.5rem', alignSelf: 'flex-start' }}>
-                  Atualizar Senha
+                {compartilhado && (
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    Mínimo de 10 caracteres. A senha fica só no serviço de login — ninguém do MonitorIA tem acesso a ela.
+                  </p>
+                )}
+                <button type="submit" className="btn btn-primary" disabled={salvando} style={{ marginTop: '0.5rem', alignSelf: 'flex-start' }}>
+                  {salvando ? 'Salvando…' : 'Atualizar Senha'}
                 </button>
               </form>
             </div>
