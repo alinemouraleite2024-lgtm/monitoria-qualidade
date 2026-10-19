@@ -2,7 +2,8 @@
 -- MonitorIA · Banco compartilhado · Script 11a — colaborador FICTÍCIO para o teste
 -- =============================================================================
 --
--- ONDE RODAR: somente no projeto de HOMOLOGAÇÃO, pelo SQL Editor, depois do 10.
+-- ONDE RODAR: somente no projeto de HOMOLOGAÇÃO, pelo SQL Editor, depois do 12a
+-- (o ADMIN adm-aline-oliveira precisa existir e estar ativo).
 -- Só com autorização específica.
 --
 -- POR QUÊ
@@ -17,12 +18,11 @@
 --   Não cria alocação nem meta: o colaborador não entra em carteira de ninguém.
 --   Não altera nenhum registro existente.
 --
--- AUTORIZAÇÃO E AUDITORIA
---   Gravação direta no banco: declara o responsável (regra R5 do 06). Enquanto não
---   existe nenhum ADMIN, vale "Nome <e-mail>" de quem executa; a auditoria registra a
---   inclusão com esse responsável. NÃO simula conta ADMIN nem login de ninguém.
---   Se um ADMIN já existir, o próprio banco recusa (R5) — aí o script precisa ser
---   revisto para declarar o id do ADMIN.
+-- AUTORIZAÇÃO E AUDITORIA (revisão de 19/10/2026 — P3, "Ordem 2")
+--   Roda DEPOIS do 12a: declara o ADMIN ativo `adm-aline-oliveira` como responsável
+--   (regra R5 do 06), e a auditoria registra a inclusão com essa declaração. A exceção de
+--   implantação ("Nome <e-mail>") já está fechada e NÃO é usada. Se não houver esse ADMIN
+--   ativo, o script RECUSA antes de gravar. NÃO simula login de ninguém.
 --
 -- UMA TRANSAÇÃO. PODE RODAR MAIS DE UMA VEZ: se o colaborador já existir exatamente
 -- como abaixo, não faz nada; se existir diferente, recusa. Não cria tabela.
@@ -30,7 +30,7 @@
 
 begin;
 
-set local app.responsavel = 'Aline Oliveira <aline.oliveira@mouraleite.com.br>';
+set local app.responsavel = 'adm-aline-oliveira';
 
 do $pre$
 declare
@@ -38,6 +38,10 @@ declare
 begin
   if not exists (select 1 from app.versoes_esquema where versao = '10') then
     raise exception 'SCRIPT 11a RECUSADO: o script 10 precisa estar aplicado.' using errcode = 'MI403';
+  end if;
+  if not exists (select 1 from public.perfis where id = 'adm-aline-oliveira' and perfis = array['ADMIN']::text[]
+                   and coalesce(status, 'ACTIVE') = 'ACTIVE') then
+    raise exception 'SCRIPT 11a RECUSADO: o ADMIN ativo adm-aline-oliveira não existe. Rode antes o 12a (Ordem 2, P3).' using errcode = 'MI403';
   end if;
   if not exists (select 1 from public.areas where id = 'area-1') then
     raise exception 'SCRIPT 11a RECUSADO: a área area-1 (Relacionamento) não existe.' using errcode = 'MI404';

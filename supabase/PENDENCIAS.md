@@ -71,3 +71,13 @@ Quando o primeiro perfil ADMIN existir, a declaração "Nome <e-mail>" deixa de 
 toda gravação direta por SQL passa a exigir o **id de um ADMIN ativo** em `app.responsavel`.
 O `11a` (colaborador fictício), como está, será **recusado** depois disso — aplicar antes, ou
 ajustar para declarar o id do ADMIN e testar de novo. Decidir a ordem antes de criar o ADMIN.
+
+**P2 — andamento (19/10/2026):** script 12 APLICADO na homologação (conferência 9/9; MON-10001/10002 e
+âncora 264 · `67ca3a2a…` idênticas). Decisão: caminho B — conta ADMIN separada da Aline
+(`adm-aline-oliveira`, `aline.oliveira+admin@mouraleite.com.br`, entrega do e-mail testada).
+
+**P3 — decisão (19/10/2026): Ordem 2.** Primeiro o ADMIN (`12a_admin_aline_oliveira.sql`, último uso
+da exceção de implantação), depois o `11a` REVISADO (declara `adm-aline-oliveira` e recusa sem ADMIN
+ativo). Preparado e testado só localmente (`testes-12a-admin.mjs` 18/18; `testes-11` na nova ordem
+29/29). Conferência: `supabase/sql/conferencia-12a.sql`. O 12a é irreversível na prática (perfis sem
+exclusão; o último ADMIN ativo não pode ser desativado).

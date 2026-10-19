@@ -39,6 +39,7 @@ const SUITES = [
   { nome: 'ensaio da migração real', arq: 'ensaio-real.mjs', args: [raiz], requer: [join(saida, '09b_migracao_dados.sql'), join(saida, 'manifesto.json')] },
   { nome: 'portal compartilhado', arq: 'testes-compartilhado.mjs', args: [raiz, join(fx, 'reguas')], ts: true },
   { nome: '12 (MFA do ADMIN)', arq: 'testes-12-mfa.mjs', args: [raiz], ts: true, requer: [join(saida, '09b_migracao_dados.sql'), join(saida, 'manifesto.json')] },
+  { nome: '12a (primeiro ADMIN)', arq: 'testes-12a-admin.mjs', args: [raiz], ts: true, requer: [join(saida, '09b_migracao_dados.sql'), join(saida, 'manifesto.json')] },
   { nome: '11 (homologação ponta a ponta)', arq: 'testes-11-homologacao.mjs', args: [raiz], ts: true, requer: [join(saida, '09b_migracao_dados.sql'), join(saida, 'manifesto.json')] },
 ];
 

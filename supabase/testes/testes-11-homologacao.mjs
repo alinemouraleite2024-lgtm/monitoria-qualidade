@@ -29,6 +29,9 @@ const t = readFileSync(new URL('./testes-e1.mjs', import.meta.url), 'utf8');
 const SETUP = t.slice(t.indexOf('await db.exec(`') + 15, t.indexOf('`);', t.indexOf('await db.exec(`')));
 const man = JSON.parse(readFileSync(join(projeto, 'supabase/migracao/saida/manifesto.json'), 'utf8'));
 const DECL = man.responsavel.declarado;
+const ADM = 'adm-aline-oliveira', EMAIL_ADM = 'aline.oliveira+admin@mouraleite.com.br';
+const STUB_MFA = `create table if not exists auth.mfa_factors (id uuid primary key default gen_random_uuid(), user_id uuid not null,
+  friendly_name text, factor_type text not null default 'totp', status text not null, created_at timestamptz default now());`;
 
 const r = [];
 const ok = (id, d, c, det = '') => r.push({ id, d, ok: !!c, det });
@@ -41,11 +44,17 @@ definirModoParaTeste(true);
 // ---- banco igual à homologação: 00–09a, 09b real, 10, logins de Aline e Erivan --------------
 const db = await PGlite.create({ extensions: { pgcrypto } });
 await db.exec(SETUP);
+await db.exec(STUB_MFA);
 for (const f of ['00_base.sql', '01_identidade.sql', '02_estrutura.sql', '03_regua.sql', '04_monitorias.sql', '05_documentos.sql', '06_auditoria.sql', '07_seguranca.sql', '08_funcoes.sql', '09a_migracao_estrutura.sql'])
   await db.exec(sql(f));
 await db.exec(readFileSync(join(projeto, 'supabase/migracao/saida/09b_migracao_dados.sql'), 'utf8'));
 await db.exec(sql('10_p1_reprovar_m1.sql'));
 await db.exec(`begin; set local app.responsavel = '${DECL}'; insert into auth.users values ('${U(1)}', 'aline.oliveira@mouraleite.com.br', now()), ('${U(2)}', 'erivan.sousa@mouraleite.com.br', now()); commit;`);
+// Ordem 2 (P3): o ADMIN existe ANTES do 11a revisado
+await db.exec(sql('12_estado_do_acesso_mfa.sql'));
+await db.exec(sql('12a_admin_aline_oliveira.sql'));
+await db.exec(`begin; set local app.responsavel = '${ADM}'; insert into auth.users values ('${U(9)}', '${EMAIL_ADM}', now()); commit;`);
+await db.exec(`insert into auth.mfa_factors (user_id, friendly_name, status) values ('${U(9)}', 'celular 1', 'verified'), ('${U(9)}', 'celular 2', 'verified')`);
 
 const um = async (q, p) => (await db.query(q, p)).rows[0];
 const foto = async (ids) => JSON.stringify((await db.query(`select id, status, versao, nota, nota_historica, regua_versao_id, aprovado_por, revisado_por, cancelado_por from public.monitorias where id = any($1) order by id`, [ids])).rows);
@@ -65,15 +74,16 @@ ok('H.2', '11a pode rodar de novo: não duplica nem altera (idempotente)', !e &&
 const col = await um("select nome, area_id, ativo, extras from public.colaboradores where id = 'col-teste-homolog-1'");
 const audCol = await um("select acao, responsavel_declarado d, autor_perfil_id a from public.auditoria where tabela = 'colaboradores' and chave ->> 'id' = 'col-teste-homolog-1' order by seq");
 ok('H.3', `colaborador fictício: "${col.nome}", area-1, ativo, marcado como fictício, SEM alocação; auditoria declarada ("${audCol?.d}")`,
-   col.area_id === 'area-1' && col.ativo === true && col.extras.ficticio === true && audCol?.acao === 'INSERT' && audCol.d === DECL
+   col.area_id === 'area-1' && col.ativo === true && col.extras.ficticio === true && audCol?.acao === 'INSERT' && audCol.d === ADM
    && Number((await um("select count(*) n from public.alocacoes where colaborador_id = 'col-teste-homolog-1'")).n) === 0);
 ok('H.4', 'o 11a não tocou em nada além do colaborador: MON-10001 e MON-10002 idênticas; só 1 linha nova de auditoria (a inclusão) + o registro de versão não auditado',
    (await foto(['MON-10001', 'MON-10002'])) === linhaDeBase.reais && Number((await um('select count(*) n from public.auditoria')).n) === linhaDeBase.aud + 1);
 // adulteração: se já existir com outros dados, o 11a recusa e não altera nada
-{ const d2 = await PGlite.create({ extensions: { pgcrypto } }); await d2.exec(SETUP);
+{ const d2 = await PGlite.create({ extensions: { pgcrypto } }); await d2.exec(SETUP); await d2.exec(STUB_MFA);
   for (const f of ['00_base.sql', '01_identidade.sql', '02_estrutura.sql', '03_regua.sql', '04_monitorias.sql', '05_documentos.sql', '06_auditoria.sql', '07_seguranca.sql', '08_funcoes.sql', '09a_migracao_estrutura.sql']) await d2.exec(sql(f));
   await d2.exec(readFileSync(join(projeto, 'supabase/migracao/saida/09b_migracao_dados.sql'), 'utf8')); await d2.exec(sql('10_p1_reprovar_m1.sql'));
-  await d2.exec(`begin; set local app.responsavel = '${DECL}'; insert into public.colaboradores (id, nome, area_id, ativo) values ('col-teste-homolog-1', 'Pessoa Real Qualquer', 'area-1', true); commit;`);
+  await d2.exec(sql('12_estado_do_acesso_mfa.sql')); await d2.exec(sql('12a_admin_aline_oliveira.sql'));
+  await d2.exec(`begin; set local app.responsavel = '${ADM}'; insert into public.colaboradores (id, nome, area_id, ativo) values ('col-teste-homolog-1', 'Pessoa Real Qualquer', 'area-1', true); commit;`);
   // o SQL Editor desfaz a transação que falhou; aqui o rollback é explícito
   let e2 = null; try { await d2.exec(sql('11a_colaborador_teste_homologacao.sql')); } catch (x) { e2 = x; await d2.exec('rollback'); }
   const ainda = (await d2.query("select nome from public.colaboradores where id = 'col-teste-homolog-1'")).rows[0].nome;
@@ -178,15 +188,13 @@ ok('H.18', 'hoje ninguém cancela pelo portal: Monitora e Gestor recebem MI403 (
 let semResp = null; try { await db.exec(`update public.monitorias set status = 'Cancelada', versao_lida = versao where id = '${ID}'`); } catch (x) { semResp = x; }
 ok('H.19', 'escrita direta no banco sem responsável declarado é recusada (MI401) — não há atalho silencioso', semResp?.code === 'MI401', semResp?.message);
 // Caminho recomendado: conta ADMIN pessoal (decisão pendente com o Erivan), com MFA, cancela pelo portal.
-await db.exec(`begin; set local app.responsavel = '${DECL}'; insert into public.perfis (id, email, nome, perfis, status) values ('adm-teste', 'adm.teste@exemplo.test', 'ADMIN de teste (local)', '{ADMIN}', 'ACTIVE'); commit;`);
-await db.exec(`begin; set local app.responsavel = 'adm-teste'; insert into auth.users values ('${U(9)}', 'adm.teste@exemplo.test', now()); commit;`);
 const semMFA = await tenta(() => cancelarMonitoria(transporte(U(9), 'aal1'), mF, 'Teste de homologação de 15/10/2026 — registro fictício.'));
 ok('H.20', 'ADMIN sem MFA (aal1) não cancela', ['MI403', '42501'].includes(semMFA.erro?.codigo), semMFA.erro?.message);
 const audAntes = Number((await um('select count(*) n from public.auditoria')).n);
 const canc = await tenta(() => cancelarMonitoria(transporte(U(9), 'aal2'), mF, 'Teste de homologação de 15/10/2026 — registro fictício.'));
 const mC = await um('select status, cancelado_por, cancelado_motivo, nota, aprovado_por from public.monitorias where id = $1', [ID]);
 ok('H.21', `ADMIN com MFA cancela pelo portal: Cancelada, cancelado_por ${mC.cancelado_por}, motivo gravado; nota e aprovação PRESERVADAS (${mC.nota}, ${mC.aprovado_por})`,
-   !canc.erro && mC.status === 'Cancelada' && mC.cancelado_por === 'adm-teste' && /fictício/.test(mC.cancelado_motivo) && mC.aprovado_por === erivan.id, canc.erro?.message);
+   !canc.erro && mC.status === 'Cancelada' && mC.cancelado_por === ADM && /fictício/.test(mC.cancelado_motivo) && mC.aprovado_por === erivan.id, canc.erro?.message);
 ok('H.22', 'o cancelamento ACRESCENTA auditoria (nada é apagado ou reescrito); cadeia sem quebras',
    Number((await um('select count(*) n from public.auditoria')).n) > audAntes && Number((await um('select count(*) n from (select a.hash <> app.auditoria_hash(a) or a.hash_anterior is distinct from lag(a.hash) over (order by a.seq) q from public.auditoria a) x where q')).n) === 0
    && Number((await um("select count(*) n from public.auditoria where tabela = 'monitorias' and chave ->> 'id' = $1 and acao = 'DELETE'", [ID])).n) === 0);
@@ -198,7 +206,7 @@ ok('H.23', `depois do cancelamento: sai da fila e de todo indicador (conta como 
 ok('H.24', 'MON-10001 e MON-10002 intactas também depois do encerramento', (await foto(['MON-10001', 'MON-10002'])) === linhaDeBase.reais);
 let r5 = null; try { await db.exec(`begin; set local app.responsavel = '${DECL}'; update public.colaboradores set ativo = false, versao_lida = versao where id = 'col-teste-homolog-1'; commit;`); } catch (x) { r5 = x; await db.exec('rollback').catch(() => {}); }
 ok('H.25', 'depois que existe ADMIN, a declaração por nome (implantação) deixa de valer: desativar o colaborador exige declarar o ADMIN (R5)', r5?.code === 'MI401', r5?.message);
-let r6 = null; try { await db.exec(`begin; set local app.responsavel = 'adm-teste'; update public.colaboradores set ativo = false, versao_lida = versao where id = 'col-teste-homolog-1'; commit;`); } catch (x) { r6 = x; await db.exec('rollback').catch(() => {}); }
+let r6 = null; try { await db.exec(`begin; set local app.responsavel = '${ADM}'; update public.colaboradores set ativo = false, versao_lida = versao where id = 'col-teste-homolog-1'; commit;`); } catch (x) { r6 = x; await db.exec('rollback').catch(() => {}); }
 const colX = await um("select ativo from public.colaboradores where id = 'col-teste-homolog-1'");
 ok('H.26', 'desativação do colaborador fictício declarada pelo ADMIN: aceita e auditada (sem apagar)', !r6 && colX.ativo === false, r6?.message);
 
