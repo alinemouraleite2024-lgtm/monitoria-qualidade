@@ -5,6 +5,7 @@ import { logAuthEvent } from '../../auth';
 import { modoCompartilhado } from '../../shared/compartilhado/modo';
 import { trocarSenha, problemaDaSenhaNova } from '../../shared/compartilhado/supabase';
 import { mensagemDoErro } from '../../shared/compartilhado/transporte';
+import { SegundoFatorPerfil } from '../../features/auth/SegundoFatorPerfil';
 
 export const MyProfile = ({ currentUser }) => {
   const [activeTab, setActiveTab] = useState('info');
@@ -136,6 +137,8 @@ export const MyProfile = ({ currentUser }) => {
                   {salvando ? 'Salvando…' : 'Atualizar Senha'}
                 </button>
               </form>
+              {/* P2: segundo fator — só a conta ADMIN, no ambiente compartilhado */}
+              {compartilhado && perfisDe(currentUser).includes('ADMIN') && <SegundoFatorPerfil />}
             </div>
           )}
         </div>

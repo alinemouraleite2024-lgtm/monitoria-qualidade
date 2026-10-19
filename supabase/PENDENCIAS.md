@@ -44,3 +44,30 @@ auditoria preservada (257 registros, última sequência 257).
 de reprovação contra o banco de homologação (passo opcional 4, não autorizado); a recusa pela API
 está provada nos testes locais (T.7–T.10 de `testes-10`). Ao publicar em outro ambiente, o
 script 10 precisa ser aplicado lá também.
+
+## P2 — MFA (TOTP) da conta ADMIN no portal (aberta em 15/10/2026)
+
+**Classe:** segurança. **Bloqueante para:** criar a conta ADMIN real e para a Produção.
+
+**Situação:** o banco já exigia aal2 do ADMIN (07), mas o portal só fazia login por senha (aal1):
+nenhum ADMIN conseguiria usar o portal, e o encerramento do teste de homologação (cancelamento
+pelo ADMIN com MFA) ficava impossível.
+
+**Andamento (15/10/2026) — PREPARADO E TESTADO SÓ LOCALMENTE, NÃO APLICADO:**
+- `supabase/sql/12_estado_do_acesso_mfa.sql` — `api.estado_do_meu_acesso()`, só da própria sessão.
+- Portal: `src/shared/compartilhado/mfa.ts` (regra da etapa), funções de MFA em `supabase.ts`,
+  `src/features/auth/MfaScreen.tsx` (cadastro e código), `src/features/auth/SegundoFatorPerfil.tsx`
+  (segundo autenticador em Meu Perfil), portão no `App.tsx` (login, sessão restaurada, renovação).
+- Testes: `tests/mfa.test.ts` (6) e `supabase/testes/testes-12-mfa.mjs` (20).
+- Procedimento de recuperação, riscos e avaliação da validade do token: `supabase/MFA-ADMIN.md`.
+
+**Falta para fechar:** decisão do e-mail da conta ADMIN; aplicar o 12 na homologação; publicar o
+portal novo no Preview; criar o ADMIN (12a, com autorização); cadastrar dois autenticadores;
+testes manuais da `MFA-ADMIN.md`; MFA nas contas do Supabase, da Vercel e do GitHub.
+
+## P3 — Fim da exceção de implantação (R5) ao criar o primeiro ADMIN (aberta em 15/10/2026)
+
+Quando o primeiro perfil ADMIN existir, a declaração "Nome <e-mail>" deixa de valer para sempre:
+toda gravação direta por SQL passa a exigir o **id de um ADMIN ativo** em `app.responsavel`.
+O `11a` (colaborador fictício), como está, será **recusado** depois disso — aplicar antes, ou
+ajustar para declarar o id do ADMIN e testar de novo. Decidir a ordem antes de criar o ADMIN.

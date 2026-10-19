@@ -55,7 +55,8 @@ import {
 import { USER_STATUS } from './constants/auth';
 import { DATABASE_VERSION } from './config';
 import { modoCompartilhado } from './shared/compartilhado/modo';
-import { transporteSupabase, entrarComSenha, loginRestaurado, sairDoSupabase } from './shared/compartilhado/supabase';
+import { transporteSupabase, entrarComSenha, loginRestaurado, sairDoSupabase, estadoDoAcesso, aoRenovarSessao } from './shared/compartilhado/supabase';
+import { etapaFinal } from './shared/compartilhado/mfa';
 import {
   carregarDados, perfilDoLogin, salvarMonitoria, validarMonitoria, reprovarMonitoria, devolverMonitoria,
   confirmarZeramento, cancelarMonitoria, registrarAcesso, type ResultadoMonitoria, type DadosCompartilhados,
@@ -94,6 +95,7 @@ import { MonitoringHistory } from './modules/monitoring/MonitoringHistory';
 import { NotImplementedScreen } from './shared/components/NotImplementedScreen';
 import { ReportsScreen } from './features/reports/ReportsScreen';
 import { LoginScreen } from './features/auth/LoginScreen';
+import { MfaScreen } from './features/auth/MfaScreen';
 import { PlanningScreen } from './features/planning/PlanningScreen';
 import { PlanoMetasEditor } from './features/planning/PlanoMetasEditor';
 import { AllocationsScreen } from './features/allocations/AllocationsScreen';
@@ -322,6 +324,8 @@ function AppContent() {
   const [showDevTools, setShowDevTools] = useState(false);
   // Modo compartilhado: enquanto a sessão do Supabase é restaurada, não há login nem tela.
   const [carregandoBanco, setCarregandoBanco] = useState(COMPARTILHADO);
+  // P2: sessão que precisa do segundo fator antes de abrir o portal (contas com MFA — o ADMIN).
+  const [etapaMfa, setEtapaMfa] = useState<'cadastrar_mfa' | 'verificar_mfa' | null>(null);
 
   // F0-13: a URL é a fonte da verdade da navegação. `activeTab` deixou de ser estado e passou
   // a ser derivado do path — continua alimentando o destaque do menu (igualdade exata) e o
@@ -594,7 +598,30 @@ function AppContent() {
     return d;
   };
 
+  /** Esvazia a tela e pede o segundo fator. Os dados já não viriam: a RLS barra o ADMIN sem aal2. */
+  const bloquearAteMfa = (etapa: 'cadastrar_mfa' | 'verificar_mfa') => {
+    setMonitorings([]);
+    setUsers([]);
+    setCollaborators([]);
+    setAreas([]);
+    setCriteria([]);
+    setAllocations([]);
+    setCurrentUser(null);
+    setPerfilAtivo(null);
+    setEtapaMfa(etapa);
+  };
+
   const abrirSessaoCompartilhada = async (login: { authUserId: string; nivel: string | null }) => {
+    // P2: antes de carregar qualquer dado, o banco diz se esta sessão precisa do segundo fator
+    // (api.estado_do_meu_acesso, 12). Sem o script 12 aplicado, segue o fluxo anterior — e o
+    // banco continua barrando o ADMIN sem aal2. MONITOR e GESTOR sem fator: 'liberado'.
+    const estado = await estadoDoAcesso(transporteSupabase());
+    const etapa = estado ? etapaFinal(estado) : null;
+    if (etapa === 'cadastrar_mfa' || etapa === 'verificar_mfa') {
+      bloquearAteMfa(etapa);
+      return;
+    }
+    setEtapaMfa(null);
     const d = await recarregarDoBanco();
     const user = perfilDoLogin(d, login.authUserId);
     // Sem perfil liberado a RLS não devolve nada — inclusive conta ADMIN sem MFA (07, R4).
@@ -617,6 +644,22 @@ function AppContent() {
       setLoginError(mensagemDoErro(e));
     }
   };
+
+  // P2: a cada renovação do token, confere de novo o estado do acesso. O token renovado mantém o
+  // nível (aal) da sessão; se por qualquer motivo a sessão deixar de ter o segundo fator exigido,
+  // a tela é esvaziada e o código é pedido. Para quem não usa MFA a resposta é sempre 'liberado'.
+  useEffect(() => {
+    if (!COMPARTILHADO) return;
+    return aoRenovarSessao(async () => {
+      try {
+        const estado = await estadoDoAcesso(transporteSupabase());
+        const etapa = estado ? etapaFinal(estado) : null;
+        if (etapa === 'cadastrar_mfa' || etapa === 'verificar_mfa') bloquearAteMfa(etapa);
+      } catch {
+        // falha de rede na conferência não derruba a sessão; a próxima chamada ao banco decide
+      }
+    });
+  }, []); // uma assinatura só, na montagem
 
   // Restaura a sessão do Supabase ao abrir o portal.
   useEffect(() => {
@@ -1436,6 +1479,24 @@ function AppContent() {
       <div style={{ display: 'flex', minHeight: '100vh', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: '0.95rem' }}>
         Conectando ao MonitorIA…
       </div>
+    );
+  }
+
+  // P2: segundo fator pendente — nada do portal aparece antes da verificação.
+  if (COMPARTILHADO && etapaMfa && !currentUser) {
+    return (
+      <MfaScreen
+        etapa={etapaMfa}
+        onConcluido={(login) => {
+          setEtapaMfa(null);
+          setLoginError('');
+          abrirSessaoCompartilhada(login).catch((e) => setLoginError(mensagemDoErro(e)));
+        }}
+        onSair={() => {
+          setEtapaMfa(null);
+          void sairDoSupabase();
+        }}
+      />
     );
   }
 

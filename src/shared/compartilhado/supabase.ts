@@ -9,6 +9,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { configSupabase } from './modo';
 import { ErroBanco, type Transporte } from './transporte';
+import type { EstadoDoAcesso } from './mfa';
 
 const CHAVE_SESSAO = 'monitoria-sessao-supabase';
 const PAGINA = 1000; // limite padrão de linhas por resposta da Data API
@@ -110,6 +111,86 @@ export const trocarSenha = async (email: string, atual: string, nova: string): P
   }
   const { error } = await sb.auth.updateUser({ password: nova });
   if (error) throw new ErroBanco('SENHA', `A senha não foi alterada: ${error.message}`);
+};
+
+// ---- segundo fator (MFA/TOTP) — P2 ---------------------------------------------------------
+// O banco exige aal2 do ADMIN (07). Estas funções só conduzem o cadastro e a verificação; o
+// segredo TOTP e o QR code nunca são gravados no navegador nem no banco do MonitorIA.
+
+const erroMfa = (e: { status?: number; name?: string; message?: string } | null, padrao: string): ErroBanco => {
+  if (e && (e.status === 0 || /fetch/i.test(e.name ?? ''))) {
+    return new ErroBanco('CONEXAO', 'Não foi possível falar com o servidor do MonitorIA. Verifique a internet e tente de novo.');
+  }
+  return new ErroBanco('MFA', padrao);
+};
+
+/**
+ * Estado do acesso da própria sessão (api.estado_do_meu_acesso, script 12). Devolve `null` se o
+ * script 12 ainda não estiver aplicado no banco — aí o portal segue o fluxo anterior, e o banco
+ * continua barrando o ADMIN sem aal2 do mesmo jeito.
+ */
+export const estadoDoAcesso = async (t: Transporte): Promise<EstadoDoAcesso | null> => {
+  try {
+    return await t.chamar<EstadoDoAcesso>('estado_do_meu_acesso', {});
+  } catch (e) {
+    if (e instanceof ErroBanco && ['PGRST202', '42883'].includes(e.codigo)) return null;
+    throw e;
+  }
+};
+
+/**
+ * Avisa a cada renovação automática do token (a cada ~1 h, pelo supabase-js). Só esse evento:
+ * entrada, saída e troca de senha continuam pelos fluxos que já existiam. Devolve o cancelamento.
+ */
+export const aoRenovarSessao = (aviso: () => void): (() => void) => {
+  const { data } = clienteSupabase().auth.onAuthStateChange((evento) => {
+    if (evento === 'TOKEN_REFRESHED') setTimeout(aviso, 0);   // fora do callback do supabase-js
+  });
+  return () => data.subscription.unsubscribe();
+};
+
+export interface CadastroMfa {
+  factorId: string;
+  /** Imagem SVG (data URL) do QR code, para o app autenticador. */
+  qrCode: string;
+  /** O mesmo segredo, para digitar à mão se a câmera não ler o QR. */
+  segredo: string;
+}
+
+/** Inicia o cadastro de um fator TOTP. Descarta antes cadastros interrompidos (não verificados). */
+export const iniciarCadastroMfa = async (apelido: string): Promise<CadastroMfa> => {
+  const sb = clienteSupabase();
+  const { data: lista } = await sb.auth.mfa.listFactors();
+  for (const f of lista?.all ?? []) {
+    if (f.status !== 'verified') await sb.auth.mfa.unenroll({ factorId: f.id });
+  }
+  const { data, error } = await sb.auth.mfa.enroll({ factorType: 'totp', friendlyName: apelido });
+  if (error || !data || data.type !== 'totp') throw erroMfa(error, 'Não foi possível iniciar o cadastro do segundo fator. Tente de novo.');
+  return { factorId: data.id, qrCode: data.totp.qr_code, segredo: data.totp.secret };
+};
+
+/** Confirma um código TOTP para o fator (cadastro novo ou login). Devolve o login já em aal2. */
+export const confirmarCodigoMfa = async (factorId: string, codigo: string): Promise<LoginAtual> => {
+  const sb = clienteSupabase();
+  const { error } = await sb.auth.mfa.challengeAndVerify({ factorId, code: codigo });
+  if (error) throw erroMfa(error, 'Código inválido ou vencido. Confira o app autenticador e digite o código atual.');
+  const login = await loginRestaurado();
+  if (!login || login.nivel !== 'aal2') throw new ErroBanco('MFA', 'A verificação não foi concluída. Entre novamente.');
+  return login;
+};
+
+export interface FatorMfa {
+  id: string;
+  apelido: string;
+  criadoEm: string;
+}
+
+/** Fatores TOTP verificados da própria conta. */
+export const fatoresVerificados = async (): Promise<FatorMfa[]> => {
+  const { data, error } = await clienteSupabase().auth.mfa.listFactors();
+  if (error) throw erroMfa(error, 'Não foi possível consultar os fatores de autenticação.');
+  return (data?.totp ?? []).filter((f) => f.status === 'verified')
+    .map((f) => ({ id: f.id, apelido: f.friendly_name || 'Autenticador', criadoEm: f.created_at }));
 };
 
 export const sairDoSupabase = async (): Promise<void> => {
