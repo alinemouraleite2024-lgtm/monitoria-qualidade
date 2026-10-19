@@ -1,7 +1,8 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { pathToTab, tabToPath, PATH_LOGIN, PATH_ENTRADA, ADMIN_SECOES, ENTRADA_POR_PERFIL } from './routes/paths';
+import { pathToTab, tabToPath, PATH_LOGIN, ADMIN_SECOES, ENTRADA_POR_PERFIL } from './routes/paths';
+import { entradaDoPerfil, destinoAposEntrar } from './routes/entrada';
 import type { FormEvent, ReactNode } from 'react';
 import type {
   Area, Canal, Collaborator, Criterion, Monitoring, PlanoMetas, Role, User,
@@ -1542,15 +1543,16 @@ function AppContent() {
         >
           <Routes>
 
-            <Route path="/" element={<Navigate to={PATH_ENTRADA} replace />} />
+            <Route path="/" element={<Navigate to={entradaDoPerfil(perfilAtivo)} replace />} />
 
-            {/* Já autenticado em /login: devolve à rota pretendida antes do login, quando houver.
-                É também o passo final do fluxo de autenticação — ver handleLogin. */}
-            <Route path={PATH_LOGIN} element={<Navigate to={location.state?.from || PATH_ENTRADA} replace />} />
+            {/* Já autenticado em /login: devolve à rota pretendida antes do login, quando o perfil ATIVO
+                pode abri-la; senão, à entrada do próprio perfil (ENTRADA_POR_PERFIL — o ADMIN não
+                tem /monitorings). É também o passo final do fluxo de autenticação — ver handleLogin. */}
+            <Route path={PATH_LOGIN} element={<Navigate to={destinoAposEntrar(perfilAtivo, location.state?.from)} replace />} />
 
             {/* Endereços antigos da Home continuam resolvendo: quem a tinha em favorito
                 recebe a tela de trabalho, e não um erro de rota inexistente. */}
-            <Route path="/home" element={<Navigate to={PATH_ENTRADA} replace />} />
+            <Route path="/home" element={<Navigate to={entradaDoPerfil(perfilAtivo)} replace />} />
 
             <Route path="/dashboard" element={
               <Screen tab="dashboard" perfil={perfilAtivo}>
