@@ -4,6 +4,7 @@
 // situação, com qual versão da régua e com qual nota. Esta camada só leva e traz, e devolve o
 // erro do banco como ele veio — a tela mostra a mensagem.
 import type { Transporte } from './transporte';
+import { indexarDocumentos, type IndiceDocumentos } from './documentos';
 import {
   paraAlocacao, paraAreas, paraColaborador, paraCriterios, paraMonitorias, paraUsuario,
   documentosDa, catalogo, configuracao, montarDadosParaSalvar,
@@ -25,6 +26,8 @@ export interface DadosCompartilhados {
   metasColaborador: unknown[];
   planosMetas: PlanoMetas[];
   feriados: unknown[];
+  /** Versão e posição de cada documento ativo — o que a gravação de metas e planos precisa. */
+  indiceDocumentos: IndiceDocumentos;
   settings: SystemSettings;
   brand: BrandConfig;
 }
@@ -49,6 +52,7 @@ export const carregarDados = async (t: Transporte, padroes: { settings: SystemSe
     metasColaborador: documentosDa(d.documentos, 'metas_colaborador'),
     planosMetas: documentosDa<PlanoMetas>(d.documentos, 'planos_metas'),
     feriados: documentosDa(d.documentos, 'feriados'),
+    indiceDocumentos: indexarDocumentos(d.documentos),
     settings: configuracao(d.configuracoes, 'settings', padroes.settings),
     brand: configuracao(d.configuracoes, 'brand', padroes.brand),
   };

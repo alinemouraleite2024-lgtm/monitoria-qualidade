@@ -30,6 +30,7 @@ node rodar-todos.mjs --dias 80    # relógio deslocado: prova que nenhum teste d
 | `testes-decisoes-reais.mjs` | as decisões reais de `migracao/decisoes.json` com exportação sintética | sim — `migracao/decisoes.json` e `migracao/reguas/` |
 | `ensaio-real.mjs` | ensaio da migração real (09b exato) + conferência + logins simulados | sim — `migracao/saida/` |
 | `testes-compartilhado.mjs` | o código do portal (`src/shared/compartilhado`) contra o banco, inclusive M1 na tela | não |
+| `testes-13-metas.mjs` | script 13 (monitora nas metas de agosto) e o portal gravando metas e planos (só GESTOR, versão, remoção lógica) | sim — `migracao/saida/` (09b real) |
 
 Os arquivos locais são **git-ignorados** de propósito (dados reais da migração). Sem eles, a
 suíte aparece como **PULADA**, nunca como aprovada.

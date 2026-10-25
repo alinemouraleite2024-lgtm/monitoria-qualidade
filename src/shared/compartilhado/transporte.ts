@@ -10,8 +10,16 @@ export interface Transporte {
   selecionar<T = Record<string, unknown>>(tabela: string): Promise<T[]>;
   /** Chama uma operação do schema `api` (08). */
   chamar<T = unknown>(funcao: string, args: Record<string, unknown>): Promise<T>;
-  /** Inclusão simples numa tabela de public (usada só para o histórico de acessos). */
+  /** Inclusão simples numa tabela de public (histórico de acessos, metas e planos). */
   incluir(tabela: string, linha: Record<string, unknown>): Promise<void>;
+  /**
+   * Alteração de UMA linha de public, identificada pela chave, com a versão lida (controle de
+   * concorrência do 00: sem ela, MI428; divergente, MI409). Devolve a versão nova.
+   *
+   * A RLS não dá erro quando barra um UPDATE — ela só não encontra a linha. Por isso "nenhuma
+   * linha alterada" vira erro aqui (42501): sem isso, a tela diria "salvo" sem ter salvo nada.
+   */
+  alterar(tabela: string, chave: Record<string, unknown>, valores: Record<string, unknown>, versaoLida: number): Promise<number>;
 }
 
 /** Erro devolvido pelo banco, com o código (MI401, MI403, MI404, MI409, MI422, MI428 ou SQLSTATE). */

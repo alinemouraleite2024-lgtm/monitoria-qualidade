@@ -1,5 +1,5 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { pathToTab, tabToPath, PATH_LOGIN, ADMIN_SECOES, ENTRADA_POR_PERFIL } from './routes/paths';
 import { entradaDoPerfil, destinoAposEntrar } from './routes/entrada';
@@ -63,6 +63,7 @@ import {
   confirmarZeramento, cancelarMonitoria, registrarAcesso, type ResultadoMonitoria, type DadosCompartilhados,
 } from './shared/compartilhado/dados';
 import { mensagemDoErro, ErroBanco } from './shared/compartilhado/transporte';
+import { gravarColecao, type IndiceDocumentos } from './shared/compartilhado/documentos';
 
 // Avaliado uma vez: o modo é definido pelas variáveis do build, não muda com a página aberta.
 const COMPARTILHADO = modoCompartilhado();
@@ -99,6 +100,8 @@ import { LoginScreen } from './features/auth/LoginScreen';
 import { MfaScreen } from './features/auth/MfaScreen';
 import { PlanningScreen } from './features/planning/PlanningScreen';
 import { PlanoMetasEditor } from './features/planning/PlanoMetasEditor';
+import { ResumoResultados } from './features/reports/ResumoResultados';
+import { notaParaExibir, resumirNotas } from './domain/resultadosService';
 import { AllocationsScreen } from './features/allocations/AllocationsScreen';
 import { AdminScreen } from './features/admin/AdminScreen';
 import { CriterionModal } from './features/admin/modals/CriterionModal';
@@ -147,6 +150,7 @@ import {
   competenciaLabel,
   competenciaDaAgenda,
   periodToCompetencia,
+  parseData,
 } from './domain/period';
 import type { Period } from './domain/period';
 import { countsForCarteiraGoal } from './domain/monitoringRules';
@@ -281,6 +285,8 @@ function AppContent() {
   const [monitorGoals, setMonitorGoals] = useState(() => monitorGoalsRepository.load());
   const [colaboradorGoals, setColaboradorGoals] = useState(() => colaboradorGoalsRepository.load());
   const [planosMetas, setPlanosMetas] = useState(() => planosMetasRepository.load());
+  // Só no compartilhado: versão de cada meta/plano carregado, para gravar com controle de concorrência.
+  const indiceDocumentos = useRef<IndiceDocumentos>({});
   // As migrações de dados legados (escala 0-10 -> 0-100 e Fluxo -> Processo) foram
   // transferidas para monitoringsRepository na F0-12, sem alteração de regra.
   const [monitorings, setMonitorings] = useState(() => monitoringsRepository.load());
@@ -588,6 +594,7 @@ function AppContent() {
     setCatalogCategorias(d.categorias);
     setColaboradorGoals(d.metasColaborador as typeof colaboradorGoals);
     setPlanosMetas(d.planosMetas);
+    indiceDocumentos.current = d.indiceDocumentos;
     setHolidays(d.feriados as typeof holidays);
     setSettings(d.settings);
     setBrand(d.brand);
@@ -679,12 +686,37 @@ function AppContent() {
     return () => { vivo = false; };
   }, []); // a restauração roda uma vez, na montagem
 
-  /** Cadastros e metas ainda não gravam no banco: no modo compartilhado a alteração é recusada. */
+  /** Cadastros ainda não gravam no banco: no modo compartilhado a alteração é recusada. */
   const recusarNoCompartilhado = (): boolean => {
     if (!COMPARTILHADO) return false;
     alert('No ambiente compartilhado, esta alteração ainda não está disponível pelo portal.\n\nNada foi alterado.');
     return true;
   };
+
+  /**
+   * Metas e planos (desde 25/10/2026 também no compartilhado). No modo local a lista nova vira o
+   * estado e o repositório grava, como sempre. No compartilhado vai ao banco só a diferença
+   * (documentos.ts) e a tela recarrega do banco — o que aparece é o que ficou gravado.
+   * `true` = gravado; `false` = recusado, com o motivo já exibido.
+   */
+  const persistirColecao = async <T extends { id: string }>(
+    colecao: 'metas_colaborador' | 'planos_metas', antes: T[], depois: T[], aplicarLocal: (v: T[]) => void,
+  ): Promise<boolean> => {
+    if (!COMPARTILHADO) { aplicarLocal(depois); return true; }
+    try {
+      await gravarColecao(transporteSupabase(), colecao, indiceDocumentos.current, antes, depois);
+      await recarregarDoBanco();
+      return true;
+    } catch (e) {
+      alert(`${mensagemDoErro(e)}\n\nNada além do informado foi alterado.`);
+      await recarregarDoBanco().catch(() => undefined);
+      return false;
+    }
+  };
+  const persistirMetas = (novas: typeof colaboradorGoals) =>
+    persistirColecao('metas_colaborador', colaboradorGoals, novas, setColaboradorGoals);
+  const persistirPlanos = (novos: PlanoMetas[]) =>
+    persistirColecao('planos_metas', planosMetas, novos, setPlanosMetas);
 
   const salvarNoBanco = async (m: Monitoring): Promise<ResultadoMonitoria | null> => {
     const jaNoBanco = monitorings.some((x) => x.id === m.id);
@@ -1003,9 +1035,20 @@ function AppContent() {
   // A meta é gravada no período ESCOLHIDO na tela (0.22.0). Antes era sempre o mês corrente,
   // o que impedia cadastrar meta retroativa — e sem meta na competência, o progresso daquele
   // mês não tem denominador. Reconstruir o histórico desde janeiro depende disto.
-  const handleUpdateColabGoal = (e: FormEvent<HTMLFormElement>) => {
+  const handleUpdateColabGoal = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (recusarNoCompartilhado()) return;
+    // 25/10/2026 — o formulário começava com monitor e colaboradora vazios e a tela exibia o
+    // primeiro nome da lista: quem salvava sem mexer gravava `monitorId: ''`. Foi assim que as
+    // metas de agosto ficaram sem monitor e sumiram do Painel. Vazio agora não é gravado.
+    if (!newCGoalVal.monitorId || !newCGoalVal.colaboradorId) {
+      alert('Selecione a monitora responsável e a colaboradora antes de salvar a meta.\n\nNada foi alterado.');
+      return;
+    }
+    const alvoInformado = parseInt(String(newCGoalVal.targetQty), 10);
+    if (!Number.isFinite(alvoInformado) || alvoInformado < 1) {
+      alert('Informe um volume de monitorias igual ou maior que 1.\n\nNada foi alterado.');
+      return;
+    }
     const { year, month } = planningPeriod;
     const canal = newCGoalVal.canal ? (newCGoalVal.canal as Canal) : undefined;
 
@@ -1056,21 +1099,20 @@ function AppContent() {
         && g.month === month
         && (g.canal ?? undefined) === canal
     );
-    if (existingIndex > -1) {
-      const updated = [...colaboradorGoals];
-      updated[existingIndex].targetQty = parseInt(String(newCGoalVal.targetQty));
-      setColaboradorGoals(updated);
-    } else {
-      setColaboradorGoals([...colaboradorGoals, {
+    // Cópia do item, nunca alteração no lugar: mexer no objeto do estado faria a lista "antes"
+    // e a "depois" serem iguais, e a gravação por diferença não veria mudança nenhuma.
+    const novas = existingIndex > -1
+      ? colaboradorGoals.map((g, i) => (i === existingIndex ? { ...g, targetQty: alvoInformado } : g))
+      : [...colaboradorGoals, {
         id: `cgoal-${Date.now()}`,
         monitorId: newCGoalVal.monitorId,
         colaboradorId: newCGoalVal.colaboradorId,
         year,
         month,
         ...(canal ? { canal } : {}),
-        targetQty: parseInt(String(newCGoalVal.targetQty))
-      }]);
-    }
+        targetQty: alvoInformado
+      }];
+    if (!(await persistirMetas(novas))) return;
     const escopo = canal ? canalLabel(canal) : 'geral';
     alert(`Meta ${escopo} de ${nome} atualizada para ${periodLabel(planningPeriod)}.`);
   };
@@ -1079,7 +1121,6 @@ function AppContent() {
   // colaboradora de meta geral para meta por canal era impossível pela tela — ela ficaria com
   // as duas, que é justamente o estado proibido.
   const handleRemoveColabGoal = (goalId: string) => {
-    if (recusarNoCompartilhado()) return;
     const alvo = colaboradorGoals.find(g => g.id === goalId);
     if (!alvo) return;
     const nome = collaborators.find(c => c.id === alvo.colaboradorId)?.name
@@ -1087,7 +1128,7 @@ function AppContent() {
       ?? 'a colaboradora';
     const escopo = alvo.canal ? canalLabel(alvo.canal) : 'geral';
     if (!confirm(`Remover a meta ${escopo} de ${nome} em ${periodLabel(planningPeriod)}?`)) return;
-    setColaboradorGoals(colaboradorGoals.filter(g => g.id !== goalId));
+    void persistirMetas(colaboradorGoals.filter(g => g.id !== goalId));
   };
 
   // --- Plano de metas (0.23.0) ---------------------------------------------------------
@@ -1102,9 +1143,8 @@ function AppContent() {
    * gravado, e sim o plano sendo lido. Apagar a exceção devolve a leitura ao plano.
    */
   const handleVoltarAoPlano = (monitorId: string, colaboradorId: string) => {
-    if (recusarNoCompartilhado()) return;
     const { year, month } = planningPeriod;
-    setColaboradorGoals(colaboradorGoals.filter(
+    void persistirMetas(colaboradorGoals.filter(
       g => !(g.monitorId === monitorId && g.colaboradorId === colaboradorId
         && g.year === year && g.month === month)
     ));
@@ -1120,7 +1160,6 @@ function AppContent() {
    * meta por canal do plano sobreviveria ao lado do afastamento.
    */
   const handleSemMeta = (monitorId: string, colaboradorId: string) => {
-    if (recusarNoCompartilhado()) return;
     const motivo = prompt(
       `Por que ${nomeDaColaboradora(colaboradorId)} fica sem meta em ${periodLabel(planningPeriod)}?`,
       'Férias',
@@ -1132,7 +1171,7 @@ function AppContent() {
       g => !(g.monitorId === monitorId && g.colaboradorId === colaboradorId
         && g.year === year && g.month === month)
     );
-    setColaboradorGoals([...semAsAntigas, {
+    void persistirMetas([...semAsAntigas, {
       id: `cgoal-${Date.now()}`,
       monitorId,
       colaboradorId,
@@ -1151,7 +1190,6 @@ function AppContent() {
    * exceção está sujeita às mesmas regras que a meta sempre esteve.
    */
   const handleAjustarMeta = (monitorId: string, colaboradorId: string, alvoAtual: number, canal?: Canal) => {
-    if (recusarNoCompartilhado()) return;
     setNewCGoalVal({
       monitorId,
       colaboradorId,
@@ -1167,8 +1205,7 @@ function AppContent() {
    * meta em dezembro não pode reavaliar agosto contra um alvo que não valia quando o trabalho
    * foi feito.
    */
-  const handleSalvarPlano = (plano: PlanoMetas): boolean => {
-    if (recusarNoCompartilhado()) return false;
+  const handleSalvarPlano = async (plano: PlanoMetas): Promise<boolean> => {
     const existente = planosMetas.find(p => p.id === plano.id);
 
     if (vigenciaColide(planosMetas, plano.vigenciaInicio, plano.vigenciaFim, plano.id)) {
@@ -1181,13 +1218,15 @@ function AppContent() {
     }
 
     if (!existente) {
-      setPlanosMetas([...planosMetas, plano]);
+      if (!(await persistirPlanos([...planosMetas, plano]))) return false;
       alert(`Plano "${plano.nome}" criado para ${competenciaLabel(plano.vigenciaInicio)} a ${competenciaLabel(plano.vigenciaFim)}.`);
       return true;
     }
 
     const { substitui, novo } = sucederPlano(existente, plano.linhas, periodoAtual, currentUser!.id);
-    setPlanosMetas([...planosMetas.filter(p => p.id !== existente.id), substitui, ...(novo ? [novo] : [])]);
+    // Sucessão: o plano corrente é alterado (vigência encerrada) e o novo é incluído — duas
+    // gravações, nessa ordem. Se a segunda for recusada, a tela recarrega e avisa.
+    if (!(await persistirPlanos([...planosMetas.filter(p => p.id !== existente.id), substitui, ...(novo ? [novo] : [])]))) return false;
 
     alert(novo
       ? `Alteração registrada. Vale a partir de ${periodLabel(periodoAtual)}.\n\n`
@@ -1335,6 +1374,9 @@ function AppContent() {
 
   const getFilteredMonitorings = () => monitoriasFiltradas;
 
+  /** Nome de colaboradora ou monitora: o cadastro de colaboradoras primeiro, depois as pessoas. */
+  const nomeDaPessoa = (id: string) => collaborators.find(c => c.id === id)?.name ?? users.find(u => u.id === id)?.name;
+
   // Quem ainda não foi monitorada no período.
   //
   // 2A.3: passou a ser escopado. Antes varria TODAS as colaboradoras cadastradas, então
@@ -1396,11 +1438,11 @@ function AppContent() {
     const filtered = getFilteredMonitorings();
     filtered.forEach(m => {
       const mon = users.find(u => u.id === m.monitorId)?.name || 'N/A';
-      const col = users.find(u => u.id === m.colaboradorId)?.name || 'N/A';
+      const col = nomeDaPessoa(m.colaboradorId) || 'N/A';
       const formattedDate = new Date(m.date).toLocaleDateString('pt-BR');
       const cleanComments = (m.comments ?? '').replace(/"/g, '""');
       const fmtDataHora = (v?: string) => (v ? new Date(v).toLocaleString('pt-BR') : '');
-      csvContent += `"${m.id}","${m.competencia ?? ''}","${formattedDate}","${mon}","${col}","${m.numeroAtendimento ?? ''}","${m.protocolo ?? ''}","${m.numeroTitulo ?? ''}","${m.categoriaAtendimento ?? ''}","${canalLabel(m.canal)}","${m.tipo}","${fmtDataHora(m.inicioAtendimento)}","${fmtDataHora(m.fimAtendimento)}","${exibirDuracao(m.duracaoMinutos, m.tempo)}","${m.status}","${m.finalScore.toFixed(2)}%","${cleanComments}"\n`;
+      csvContent += `"${m.id}","${m.competencia ?? ''}","${formattedDate}","${mon}","${col}","${m.numeroAtendimento ?? ''}","${m.protocolo ?? ''}","${m.numeroTitulo ?? ''}","${m.categoriaAtendimento ?? ''}","${canalLabel(m.canal)}","${m.tipo}","${fmtDataHora(m.inicioAtendimento)}","${fmtDataHora(m.fimAtendimento)}","${exibirDuracao(m.duracaoMinutos, m.tempo)}","${m.status}","${notaParaExibir(m)}","${cleanComments}"\n`;
     });
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
@@ -1414,10 +1456,11 @@ function AppContent() {
   const handleExportPDF = () => {
     const printWindow = window.open('', '_blank');
     const filtered = getFilteredMonitorings();
+    const resumoPdf = resumirNotas(filtered);
     let rowsHtml = '';
     filtered.forEach(m => {
       const mon = users.find(u => u.id === m.monitorId)?.name || 'N/A';
-      const col = users.find(u => u.id === m.colaboradorId)?.name || 'N/A';
+      const col = nomeDaPessoa(m.colaboradorId) || 'N/A';
       rowsHtml += `
         <tr>
           <td>${new Date(m.date).toLocaleDateString('pt-BR')}</td>
@@ -1425,7 +1468,7 @@ function AppContent() {
           <td>${col}</td>
           <td>${canalLabel(m.canal)} (${m.tipo})</td>
           <td>${m.status}</td>
-          <td style="font-weight: bold; color: ${m.finalScore >= 95 ? '#008443' : m.finalScore >= 75 ? '#f59e0b' : '#ef4444'}">${m.finalScore.toFixed(2)}%</td>
+          <td style="font-weight: bold; color: ${m.finalScore >= 95 ? '#008443' : m.finalScore >= 75 ? '#f59e0b' : '#ef4444'}">${notaParaExibir(m)}</td>
           <td>${m.comments}</td>
         </tr>
       `;
@@ -1445,7 +1488,8 @@ function AppContent() {
         </head>
         <body>
           <h1>Relatório Executivo de Avaliações - V2</h1>
-          <div><strong>Branding:</strong> ${brand.name} | <strong>Competência:</strong> ${periodLabel(reportPeriod)} | <strong>Emitido em:</strong> ${new Date(hoje).toLocaleDateString('pt-BR')}</div>
+          <div><strong>Branding:</strong> ${brand.name} | <strong>Competência:</strong> ${periodLabel(reportPeriod)} | <strong>Emitido em:</strong> ${parseData(hoje).toLocaleDateString('pt-BR')}</div>
+          <div style="margin-top: 6px"><strong>Monitorias:</strong> ${resumoPdf.total} | <strong>Na média:</strong> ${resumoPdf.consideradas} | <strong>Média geral:</strong> ${resumoPdf.media === null ? '—' : `${resumoPdf.media.toFixed(2)}%`} <span style="color:#666">(Pendente, Validada e Concluída; rascunho, reprovada e cancelada ficam fora da média)</span></div>
           <table>
             <thead>
               <tr>
@@ -1561,6 +1605,7 @@ function AppContent() {
                     settings={settings}
                     areas={areas}
                     users={users}
+                    collaborators={collaborators}
                     colaboradorGoals={metasDoPainel}
                     monitorings={monitorings}
                     currentUser={currentUser}
@@ -1728,6 +1773,13 @@ function AppContent() {
             <Route path="/reports" element={
               <Screen tab="reports" perfil={perfilAtivo}>
                   <ReportsScreen
+                    resumo={
+                      <ResumoResultados
+                        monitorias={monitoriasFiltradas}
+                        nomeDe={nomeDaPessoa}
+                        periodoLabel={periodLabel(reportPeriod)}
+                      />
+                    }
                     historico={
                       <MonitoringList
                         monitorings={monitoriasFiltradas}
@@ -1889,7 +1941,7 @@ function AppContent() {
           periodoAtual={periodoAtual}
           getMonitors={getMonitors}
           getCollaborators={getCollaborators}
-          onSalvar={(plano: PlanoMetas) => { if (handleSalvarPlano(plano)) setShowPlanoEditor(false); }}
+          onSalvar={async (plano: PlanoMetas) => { if (await handleSalvarPlano(plano)) setShowPlanoEditor(false); }}
           onFechar={() => setShowPlanoEditor(false)}
         />
       )}

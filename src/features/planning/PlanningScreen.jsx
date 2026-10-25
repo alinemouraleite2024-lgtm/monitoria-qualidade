@@ -139,11 +139,15 @@ export const PlanningScreen = ({
           <form onSubmit={onUpdateColabGoal}>
             <div className="form-group">
               <label className="form-label">Monitor Responsável</label>
+              {/* 25/10/2026 — sem opção vazia, a tela mostrava o primeiro nome enquanto o valor
+                  real era '': a meta era gravada sem monitor e não entrava em Painel nem fila. */}
               <select
                 className="form-control"
                 value={newCGoalVal.monitorId}
                 onChange={(e) => setNewCGoalVal({ ...newCGoalVal, monitorId: e.target.value })}
+                required
               >
+                <option value="" disabled>Selecione a monitora…</option>
                 {getMonitors().map(m => (
                   <option key={m.id} value={m.id}>{m.name}</option>
                 ))}
@@ -156,7 +160,9 @@ export const PlanningScreen = ({
                 className="form-control"
                 value={newCGoalVal.colaboradorId}
                 onChange={(e) => setNewCGoalVal({ ...newCGoalVal, colaboradorId: e.target.value })}
+                required
               >
+                <option value="" disabled>Selecione a colaboradora…</option>
                 {getCollaborators().map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
@@ -317,6 +323,15 @@ export const PlanningScreen = ({
                               Do plano
                             </span>
                           ) : null}
+                          {/* Meta gravada sem monitora ou sem colaboradora (agosto/2026, antes da
+                              correção do formulário): aparece aqui, mas Painel, fila e progresso
+                              só contam metas da monitora — a gestora precisa saber por quê. */}
+                          {(!grupo.monitorId || !grupo.colaboradorId) && (
+                            <span className="badge-pill badge-danger" style={{ fontSize: '0.68rem' }}
+                              title="Não entra no Painel, na fila nem no progresso da carteira.">
+                              {!grupo.colaboradorId ? 'Sem colaboradora' : 'Sem monitora responsável'} · não conta no Painel
+                            </span>
+                          )}
                         </div>
                       </td>
                     </tr>,

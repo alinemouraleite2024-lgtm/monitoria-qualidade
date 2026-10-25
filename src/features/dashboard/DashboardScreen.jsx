@@ -3,11 +3,30 @@ import { FileSpreadsheet, CheckCircle2, AlertTriangle, Layers, Award, TrendingUp
 import { getMetaDaColaboradora, getEscoposDaColaboradora } from '../../domain/goalService';
 import { canalLabel } from '../../constants/canais';
 import { getEquipeDoGestor } from '../../domain/scopeService';
+import { naCompetencia } from '../../domain/period';
+import { isAwaitingValidation } from '../../domain/monitoringRules';
+import { resumirNotas, resultadosPorColaboradora, evolucaoMensal, notaParaExibir } from '../../domain/resultadosService';
+
+const fmtNota = (n) => (n === null ? '—' : `${n.toFixed(2).replace('.', ',')}%`);
+
+/**
+ * Monitorias que o painel considera: as da equipe do perfil ativo e, se houver, da área
+ * escolhida. Um conjunto só para KPIs, gráfico, resultados e "Últimas Monitorias" (25/10/2026):
+ * antes, duas das quatro partes calculavam a equipe sem o perfil ativo e, para o GESTOR,
+ * respondiam só sobre as monitorias dele mesmo — ou seja, nenhuma.
+ */
+const monitoresDoEscopo = (currentUser, areas, perfilAtivo, dashboardAreaId) => {
+  const equipe = getEquipeDoGestor(currentUser, areas, perfilAtivo);
+  if (dashboardAreaId === 'ALL') return equipe;
+  const daArea = areas.find(a => a.id === dashboardAreaId)?.monitorIds || [];
+  return equipe === null ? daArea : equipe.filter(id => daArea.includes(id));
+};
 
 export const DashboardScreen = ({
   settings,
   areas = /** @type {import('../../types/domain').Area[]} */ ([]),
   users = /** @type {import('../../types/domain').User[]} */ ([]),
+  collaborators = /** @type {import('../../types/domain').Collaborator[]} */ ([]),
   colaboradorGoals = /** @type {import('../../types/domain').ColaboradorGoal[]} */ ([]),
   monitorings = /** @type {import('../../types/domain').Monitoring[]} */ ([]),
   currentUser,
@@ -26,7 +45,21 @@ export const DashboardScreen = ({
   periodoAtual,
   periodoLabel,
   onPeriodoChange
-}) => (
+}) => {
+  const isGestorView = perfilAtivo === 'GESTOR' || perfilAtivo === 'ADMIN';
+  const escopo = isGestorView
+    ? monitoresDoEscopo(currentUser, areas, perfilAtivo, dashboardAreaId)
+    : [currentUser.id];
+  const monitoriasDoEscopo = escopo === null ? monitorings : monitorings.filter(m => escopo.includes(m.monitorId));
+  const doPeriodo = monitoriasDoEscopo.filter(m => naCompetencia(m.competencia, periodoAtual));
+  const notas = resumirNotas(doPeriodo);
+  const nomeDe = (id) => collaborators.find(c => c.id === id)?.name ?? users.find(u => u.id === id)?.name;
+  const porColaboradora = resultadosPorColaboradora(doPeriodo, nomeDe);
+  const evolucao = evolucaoMensal(monitoriasDoEscopo, periodoAtual, 6);
+  const maiorQtd = Math.max(1, ...evolucao.map(p => p.consideradas));
+  const aguardandoValidacao = monitoriasDoEscopo.filter(isAwaitingValidation).length;
+
+  return (
           <div className="animate-fade-in">
             <div className="page-header" style={{ marginBottom: '1.5rem' }}>
               <div>
@@ -59,11 +92,13 @@ export const DashboardScreen = ({
             </div>
 
             {/* Approval Queue Slider Notification */}
-            {settings.requireGestorValidation && (perfilAtivo === 'GESTOR' || perfilAtivo === 'ADMIN') && monitorings.some(m => m.status === 'Concluída') && (
+            {/* 25/10/2026 — o aviso dependia de status 'Concluída', que nada grava (ver
+                monitoringRules): nunca aparecia. A fila do gestor é a das monitorias Pendentes. */}
+            {settings.requireGestorValidation && isGestorView && aguardandoValidacao > 0 && (
               <div className="section-card animate-fade-in" style={{ marginBottom: '1.5rem', border: '1px solid var(--border-color)', backgroundColor: 'var(--primary-light)' }}>
                 <h3 className="section-card-title" style={{ color: 'var(--primary)', margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <CheckCircle2 size={18} /> Há avaliações pendentes de validação operacional!
+                    <CheckCircle2 size={18} /> {aguardandoValidacao} {aguardandoValidacao === 1 ? 'avaliação aguarda' : 'avaliações aguardam'} validação
                   </span>
                   <button className="btn btn-primary btn-sm" onClick={() => onNavigate('monitorings')} style={{ padding: '0.25rem 0.75rem' }}>
                     Ver Fila de Validação
@@ -83,24 +118,10 @@ export const DashboardScreen = ({
               let pace = 0;
               
               if (isGestor) {
-                // Gestor stats across all monitors, filtered by area if selected
                 // getMonitors() já exclui o GESTOR desde a 0.17.0 — filtrar por role aqui de
-                // novo excluiria também o ADMIN, que opera.
-                let allMonitors = getMonitors();
+                // novo excluiria também o ADMIN, que opera. Equipe e área: `escopo`, acima.
+                const allMonitors = getMonitors().filter(m => escopo === null || escopo.includes(m.id));
 
-                // Escopo: o GESTOR acompanha apenas os monitores das áreas em que é o gestor
-                // responsável. `null` significa sem restrição (ADMIN).
-                const equipe = getEquipeDoGestor(currentUser, areas, perfilAtivo);
-                if (equipe !== null) {
-                  allMonitors = allMonitors.filter(m => equipe.includes(m.id));
-                }
-
-                if (dashboardAreaId !== 'ALL') {
-                  const area = areas.find(a => a.id === dashboardAreaId);
-                  const daArea = area?.monitorIds || [];
-                  allMonitors = allMonitors.filter(m => daArea.includes(m.id));
-                }
-                
                 allMonitors.forEach(m => {
                   const s = getMonitorStats(m.id, periodoAtual);
                   totalRealizadas += s.cobertura;
@@ -225,20 +246,33 @@ export const DashboardScreen = ({
                       <div className="charts-row">
                         {/* Evolução Mensal Line Area Chart */}
                         <div className="section-card" style={{ display: 'flex', flexDirection: 'column' }}>
+                          {/* 25/10/2026 — era um desenho fixo (a mesma curva para qualquer equipe e
+                              qualquer mês). Agora: monitorias entregues e nota média de cada uma
+                              das seis competências até a que está na tela. */}
                           <h2 className="section-card-title"><TrendingUp size={18} /> Evolução Mensal</h2>
-                          <div style={{ flex: 1, position: 'relative', height: '180px', marginTop: '1rem' }}>
-                            <svg width="100%" height="100%" viewBox="0 0 300 100" preserveAspectRatio="none">
-                              <defs>
-                                <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.3" />
-                                  <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
-                                </linearGradient>
-                              </defs>
-                              <path d="M 0,90 Q 50,40 100,50 T 200,20 T 300,30 L 300,100 L 0,100 Z" fill="url(#areaGradient)" />
-                              <path d="M 0,90 Q 50,40 100,50 T 200,20 T 300,30" fill="none" stroke="var(--primary)" strokeWidth="3" />
-                              <circle cx="200" cy="20" r="4" fill="var(--primary)" stroke="#fff" strokeWidth="2" />
-                              <circle cx="300" cy="30" r="4" fill="var(--primary)" stroke="#fff" strokeWidth="2" />
-                            </svg>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                            Monitorias entregues e nota média por competência (Pendente, Validada, Concluída).
+                          </div>
+                          <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: '0.5rem', height: '180px', marginTop: '1rem' }}>
+                            {evolucao.map(p => {
+                              const atual = p.periodo.year === periodoAtual.year && p.periodo.month === periodoAtual.month;
+                              return (
+                                <div key={p.rotulo} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', height: '100%', justifyContent: 'flex-end' }}
+                                  title={`${p.rotulo}: ${p.consideradas} entregue(s), média ${fmtNota(p.media)}`}>
+                                  <span style={{ fontSize: '0.7rem', fontWeight: 700 }}>{fmtNota(p.media)}</span>
+                                  <div style={{
+                                    width: '100%', maxWidth: '36px', borderRadius: '4px 4px 0 0',
+                                    height: `${Math.max(2, Math.round((p.consideradas / maiorQtd) * 110))}px`,
+                                    backgroundColor: atual ? 'var(--primary)' : 'var(--primary-light)',
+                                    border: '1px solid var(--primary)',
+                                  }} />
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 700 }}>{p.consideradas}</span>
+                                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
+                                    {p.rotulo.split(' ')[0].slice(0, 3)}/{String(p.periodo.year).slice(2)}
+                                  </span>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                         
@@ -289,10 +323,7 @@ export const DashboardScreen = ({
                             </thead>
                             <tbody>
                               {isGestor ? (
-                                getMonitors().filter(m => {
-                                  const equipe = getEquipeDoGestor(currentUser, areas);
-                                  return equipe === null || equipe.includes(m.id);
-                                }).map(monitor => {
+                                getMonitors().filter(m => escopo === null || escopo.includes(m.id)).map(monitor => {
                                   const s = getMonitorStats(monitor.id, periodoAtual);
                                   return (
                                     <tr key={monitor.id}>
@@ -378,6 +409,56 @@ export const DashboardScreen = ({
                         </div>
                       </div>
 
+                      {/* Resultados da competência (25/10/2026): quantidade e notas reais, por
+                          colaboradora. A média segue a régua de resultadosService. */}
+                      <div className="section-card">
+                        <h2 className="section-card-title">
+                          <Award size={18} /> Resultados por colaboradora — {periodoLabel}
+                        </h2>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 0 1rem' }}>
+                          {notas.total} {notas.total === 1 ? 'monitoria registrada' : 'monitorias registradas'}
+                          {' · '}{notas.consideradas} na média
+                          {' · '}média geral <strong style={{ color: 'var(--text-main)' }}>{fmtNota(notas.media)}</strong>
+                          {notas.zeradas > 0 && ` · ${notas.zeradas} zerada(s) por eliminatório`}
+                          {(notas.total - notas.consideradas) > 0 && ` · ${notas.total - notas.consideradas} fora da média (rascunho, reprovada ou cancelada)`}
+                        </p>
+                        {porColaboradora.length === 0 ? (
+                          <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', margin: 0 }}>Nenhuma monitoria nesta competência.</p>
+                        ) : (
+                          <div className="table-responsive">
+                            <table className="table-premium">
+                              <thead>
+                                <tr>
+                                  <th>Colaboradora</th>
+                                  <th>Registradas</th>
+                                  <th>Na média</th>
+                                  <th>Média</th>
+                                  <th>Menor</th>
+                                  <th>Maior</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {porColaboradora.map(r => (
+                                  <tr key={r.colaboradorId || 'sem-colaboradora'}>
+                                    <td>
+                                      <div className="user-cell-wrapper">
+                                        {renderUserAvatar(r.nome)}
+                                        <span style={{ fontWeight: '600' }}>{r.nome}</span>
+                                      </div>
+                                    </td>
+                                    <td>{r.total}</td>
+                                    <td>{r.consideradas}</td>
+                                    <td style={{ fontWeight: 'bold' }}>{fmtNota(r.media)}</td>
+                                    <td>{fmtNota(r.menor)}</td>
+                                    <td>{fmtNota(r.maior)}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+
                     </div>
 
                     {/* Right Column (Timeline) */}
@@ -389,25 +470,22 @@ export const DashboardScreen = ({
                         
                         <ul className="timeline-root" style={{ marginTop: '1.5rem' }}>
                           {(() => {
-                            // O gestor vê a atividade da própria equipe; o ADMIN, de todos
-                            // (getEquipeDoGestor devolve null para ele).
-                            const escopoRecentes = getEquipeDoGestor(currentUser, areas);
-                            let recentMon = isGestor
-                              ? (escopoRecentes === null
-                                  ? [...monitorings]
-                                  : monitorings.filter(m => escopoRecentes.includes(m.monitorId)))
-                              : monitorings.filter(m => m.monitorId === currentUser.id);
+                            // O gestor vê a atividade da própria equipe; o ADMIN, de todos. Mesmo
+                            // escopo dos KPIs (antes, sem o perfil ativo, o GESTOR via a lista vazia).
+                            // Canceladas ficam de fora: não são atividade, são registro anulado.
+                            const recentMon = monitoriasDoEscopo.filter(m => m.status !== 'Cancelada');
                             recentMon.sort((a,b) => new Date(b.date) - new Date(a.date));
-                            
+
                             if (recentMon.length === 0) {
                               return <li style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Sem atividades recentes.</li>;
                             }
-                            
+
                             return recentMon.slice(0, 5).map(m => {
-                              const colName = users.find(u => u.id === m.colaboradorId)?.name || 'N/A';
+                              const colName = nomeDe(m.colaboradorId) || 'N/A';
+                              const rascunho = m.status === 'Rascunho';
                               const isHigh = m.finalScore >= 95;
                               const isLow = m.finalScore < 75;
-                              const nodeClass = isHigh ? 'success' : (isLow ? 'danger' : 'warning');
+                              const nodeClass = rascunho ? 'warning' : isHigh ? 'success' : (isLow ? 'danger' : 'warning');
                               
                               return (
                                 <li key={m.id} className="timeline-item">
@@ -418,8 +496,8 @@ export const DashboardScreen = ({
                                   }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                       <div style={{ fontWeight: '700', fontSize: '0.85rem' }}>{colName}</div>
-                                      <div style={{ fontWeight: '800', color: isHigh ? 'var(--primary)' : (isLow ? 'var(--danger)' : 'var(--warning)') }}>
-                                        {m.finalScore.toFixed(2)}%
+                                      <div style={{ fontWeight: '800', color: rascunho ? 'var(--text-muted)' : isHigh ? 'var(--primary)' : (isLow ? 'var(--danger)' : 'var(--warning)') }}>
+                                        {notaParaExibir(m)}
                                       </div>
                                     </div>
                                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
@@ -442,4 +520,5 @@ export const DashboardScreen = ({
               );
             })()}
           </div>
-);
+  );
+};

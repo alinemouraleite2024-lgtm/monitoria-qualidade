@@ -37,6 +37,8 @@ interface ReportsScreenProps {
    * registro de monitoria.
    */
   historico?: ReactNode;
+  /** Resumo de quantidades e notas dos MESMOS registros do histórico (25/10/2026). */
+  resumo?: ReactNode;
 }
 
 export const ReportsScreen = ({
@@ -53,6 +55,7 @@ export const ReportsScreen = ({
   onExportExcel,
   onExportPDF,
   historico,
+  resumo,
 }: ReportsScreenProps) => {
   // Duas ausências diferentes: a competência não tem registro nenhum, ou os filtros do usuário
   // não acharam nada. A segunda não pode esconder a tabela, senão ele perde os controles e
@@ -220,6 +223,7 @@ export const ReportsScreen = ({
       {/* A tabela some só quando a competência está vazia. Se foram os filtros que zeraram o
           resultado, ela precisa continuar visível — é onde os controles vivem, e sem eles o
           usuário não consegue desfazer o próprio filtro. */}
+      {!periodoVazio && !semResultado && resumo}
       {!periodoVazio && historico}
     </div>
   );

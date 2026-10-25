@@ -51,6 +51,12 @@ export const transporteSupabase = (): Transporte => {
       const { error } = await sb.from(tabela).insert(linha);
       if (error) throw erro(error);
     },
+    async alterar(tabela: string, chave: Record<string, unknown>, valores: Record<string, unknown>, versaoLida: number): Promise<number> {
+      const { data, error } = await sb.from(tabela).update({ ...valores, versao_lida: versaoLida }).match(chave).select('versao');
+      if (error) throw erro(error);
+      if (!data || data.length !== 1) throw new ErroBanco('42501', 'O banco não aceitou a alteração (registro não encontrado ou sem permissão).');
+      return Number((data[0] as { versao: number }).versao);
+    },
   };
 };
 
