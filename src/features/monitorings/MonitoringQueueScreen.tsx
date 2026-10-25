@@ -27,7 +27,7 @@ import { useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
 import type { Area, Collaborator, ColaboradorGoal, Monitoring, User, Allocation, Holiday, Role, SystemSettings } from '../../types/domain';
 import type { Period } from '../../domain/period';
-import { getCurrentPeriod, periodLabel, todayISO, businessDaysRemainingIn, competenciaDaAgenda, periodRange, monthLabel } from '../../domain/period';
+import { getCurrentPeriod, periodLabel, todayISO, businessDaysRemainingIn, competenciaDaAgenda, periodRange, monthLabel, situacaoDaCompetencia } from '../../domain/period';
 import { SeletorCompetencia } from '../../shared/components/SeletorCompetencia';
 import { getCarteiraProgress } from '../../domain/goalService';
 import {
@@ -182,6 +182,8 @@ export const MonitoringQueueScreen = ({
     matchesBusca(x.monitoring, busca, nomeDe(x.monitoring.colaboradorId))
   );
 
+  const { situacao, monitoradaEm } = situacaoDaCompetencia(periodo, mesDeTrabalho, settings.defasagemCompetencia);
+
   return (
     <div className="animate-fade-in" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
@@ -197,7 +199,13 @@ export const MonitoringQueueScreen = ({
                 ? `Competência de ${monthLabel(periodo).toLowerCase()}, monitorada em ${monthLabel(mesDeTrabalho).toLowerCase()}.`
                 : ehPadrao
                   ? 'O que você precisa monitorar neste mês.'
-                  : `Competência encerrada, aberta para consulta e lançamento. Você está em ${periodLabel(mesDeTrabalho)}.`}
+                  // 25/10/2026 — antes, toda competência fora da padrão era "encerrada",
+                  // inclusive a do mês corrente, ainda em curso (ver situacaoDaCompetencia).
+                  : situacao === 'encerrada'
+                    ? `Competência encerrada, aberta para consulta e lançamento. Você está em ${periodLabel(mesDeTrabalho)}.`
+                    : situacao === 'em-andamento'
+                      ? `Competência em andamento: os atendimentos de ${monthLabel(periodo).toLowerCase()} serão monitorados em ${periodLabel(monitoradaEm).toLowerCase()}. Você está em ${periodLabel(mesDeTrabalho)}.`
+                      : `Competência futura: será monitorada em ${periodLabel(monitoradaEm).toLowerCase()}. Você está em ${periodLabel(mesDeTrabalho)}.`}
           </p>
         </div>
 

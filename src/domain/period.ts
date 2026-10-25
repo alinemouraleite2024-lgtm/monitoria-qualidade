@@ -114,6 +114,31 @@ export const competenciaDaAgenda = (mesDeTrabalho: Period, defasagemMeses: numbe
   shiftPeriod(mesDeTrabalho, -defasagemMeses);
 
 /**
+ * Situação de uma competência em relação ao mês de trabalho (25/10/2026).
+ *
+ *   padrao        é a que a agenda audita agora (mês de trabalho − defasagem);
+ *   encerrada     anterior à padrão: o mês em que devia ser monitorada já passou;
+ *   em-andamento  posterior à padrão, mas os atendimentos dela já começaram (com defasagem 1,
+ *                 é o próprio mês corrente: outubro é monitorado em novembro);
+ *   futura        nenhum atendimento dela aconteceu ainda.
+ *
+ * Até aqui a fila tratava tudo o que não era a padrão como "encerrada" — inclusive outubro,
+ * que estava em curso. `monitoradaEm` é o mês de trabalho previsto para a competência.
+ */
+export const situacaoDaCompetencia = (
+  competencia: Period,
+  mesDeTrabalho: Period,
+  defasagemMeses: number,
+): { situacao: 'padrao' | 'encerrada' | 'em-andamento' | 'futura'; monitoradaEm: Period } => {
+  const c = periodToCompetencia(competencia);
+  const padrao = periodToCompetencia(competenciaDaAgenda(mesDeTrabalho, defasagemMeses));
+  const monitoradaEm = shiftPeriod(competencia, defasagemMeses);
+  if (c === padrao) return { situacao: 'padrao', monitoradaEm };
+  if (c < padrao) return { situacao: 'encerrada', monitoradaEm };
+  return { situacao: c <= periodToCompetencia(mesDeTrabalho) ? 'em-andamento' : 'futura', monitoradaEm };
+};
+
+/**
  * Primeiro e último dia do período, em YYYY-MM-DD.
  *
  * Usa `new Date(year, month + 1, 0)` para o último dia, que resolve fevereiro e ano

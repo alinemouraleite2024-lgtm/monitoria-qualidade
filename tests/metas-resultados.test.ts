@@ -152,3 +152,21 @@ test('nota para exibir: rascunho mostra "—", não 0,00%', () => {
   assert.equal(notaParaExibir(mon('1', 'Rascunho', 0)), '—');
   assert.equal(notaParaExibir(mon('2', 'Pendente', 69.05)), '69.05%');
 });
+
+test('situação da competência (defasagem 1, trabalhando em outubro): agosto encerrada, setembro padrão, outubro em andamento, novembro futura', async () => {
+  const { situacaoDaCompetencia } = await import('../src/domain/period');
+  const out = { year: 2026, month: 9 };
+  const s = (month: number, year = 2026, d = 1) => situacaoDaCompetencia({ year, month }, out, d);
+  assert.equal(s(7).situacao, 'encerrada');
+  assert.equal(s(8).situacao, 'padrao');
+  assert.equal(s(9).situacao, 'em-andamento');
+  assert.deepEqual(s(9).monitoradaEm, { year: 2026, month: 10 });
+  assert.equal(s(10).situacao, 'futura');
+  assert.deepEqual(s(11).monitoradaEm, { year: 2027, month: 0 });
+  // defasagem 0: o próprio mês é a padrão; não existe "em andamento"
+  assert.equal(s(9, 2026, 0).situacao, 'padrao');
+  assert.equal(s(8, 2026, 0).situacao, 'encerrada');
+  assert.equal(s(10, 2026, 0).situacao, 'futura');
+  // virada de ano
+  assert.equal(situacaoDaCompetencia({ year: 2026, month: 11 }, { year: 2027, month: 0 }, 1).situacao, 'padrao');
+});
