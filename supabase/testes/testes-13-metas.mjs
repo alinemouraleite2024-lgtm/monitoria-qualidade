@@ -97,24 +97,53 @@ ok('M.1', `Erivan (GESTOR) carrega as 7 metas de agosto e o "Plano 2026"; equipe
 ok('M.2', `as monitorias de agosto visíveis ao Erivan entram no resumo (${p0.notas.total} registrada(s), ${p0.notas.consideradas} na média, média ${p0.notas.media})`,
    p0.notas.total >= 1 && p0.notas.consideradas >= 1, JSON.stringify(p0.notas));
 
-// ---- 2. script 13 ---------------------------------------------------------------------------
+// ---- 2. script 13 (versão reduzida: a sétima meta não é tocada) ------------------------------
+const SETIMA = '{"id":"cgoal-1789126035423","monitorId":"","colaboradorId":"","year":2026,"month":7,"targetQty":5}';
+const fotoMetas = async () => JSON.stringify((await db.query("select id, ativo, versao, conteudo from public.documentos where colecao in ('metas_colaborador','planos_metas') order by colecao, id")).rows);
+const antesDoTreze = (await db.query("select id, conteudo from public.documentos where colecao = 'metas_colaborador'")).rows;
+
+// 2a. pré-condição: com UMA meta diferente do que a migração gravou, recusa e não muda nada
+await db.exec(`begin; set local app.responsavel = 'adm-aline-oliveira';
+  update public.documentos set conteudo = jsonb_set(conteudo, '{targetQty}', '6') where colecao = 'metas_colaborador' and id = 'cgoal-1789126078236';`);
+let e = null;
+try { await db.exec(sql('13_correcao_metas_agosto.sql').replace(/^begin;$/m, 'savepoint s13;').replace(/^commit;$/m, 'release savepoint s13;')); } catch (x) { e = x; }
+await db.exec('rollback');
+ok('M.3a', `pré-condição: com uma das 7 metas alterada antes, o 13 RECUSA (${e?.code}) — a transação de teste foi desfeita e o banco volta ao estado da migração`,
+   e?.code === 'MI409' && /esperava as 7 metas/.test(e.message)
+   && Number((await um("select versao from public.documentos where colecao = 'metas_colaborador' and id = 'cgoal-1789126078236'")).versao) === 1, e?.message);
+
+const foto0 = await fotoMetas();
 const aud0 = Number((await um('select count(*) n from public.auditoria')).n);
-let e = await roda('13_correcao_metas_agosto.sql');
-const docs = (await db.query("select id, ativo, versao, conteudo from public.documentos where colecao = 'metas_colaborador' order by ordem")).rows;
-const audDocs = (await db.query("select acao, responsavel_declarado d, antes, depois from public.auditoria where tabela = 'documentos' and seq > (select max(seq) - 7 from public.auditoria) order by seq")).rows;
-ok('M.3', '13 aplicado: 6 metas com monitorId usr-1 (valores, canais e ids iguais), a sem colaboradora retirada (ativo false, conteúdo intacto), todas na versão 2',
-   !e && docs.length === 7 && docs.filter((x) => x.ativo && x.conteudo.monitorId === 'usr-1' && x.conteudo.targetQty === 5 && x.versao === 2).length === 6
-   && docs.filter((x) => !x.ativo && x.id === 'cgoal-1789126035423' && x.conteudo.monitorId === '' && x.versao === 2).length === 1, e?.message ?? JSON.stringify(docs));
-ok('M.4', `auditoria: 7 UPDATE em documentos declarados por "${audDocs[0]?.d}", com o conteúdo original em "antes"; cadeia sem quebras`,
-   Number((await um('select count(*) n from public.auditoria')).n) === aud0 + 7 && audDocs.length === 7 && audDocs.every((a) => a.acao === 'UPDATE' && a.d === 'adm-aline-oliveira' && a.antes.conteudo.monitorId === '')
-   && (await quebras()) === 0, JSON.stringify(audDocs.map((a) => [a.acao, a.d])));
 e = await roda('13_correcao_metas_agosto.sql');
-ok('M.5', 'rodar o 13 de novo: RECUSADO (MI409) e nada muda', e?.code === 'MI409' && Number((await um('select count(*) n from public.auditoria')).n) === aud0 + 7, e?.message);
+const docs = (await db.query("select id, ativo, versao, conteudo from public.documentos where colecao = 'metas_colaborador' order by ordem")).rows;
+const audDocs = (await db.query("select acao, chave->>'id' id, responsavel_declarado d, antes, depois from public.auditoria where seq > (select max(seq) - 6 from public.auditoria) order by seq")).rows;
+const original = Object.fromEntries(antesDoTreze.map((x) => [x.id, x.conteudo]));
+const canonico = (o) => JSON.stringify(Object.keys(o).sort().map((k) => [k, o[k]]));
+ok('M.3', '13 aplicado: exatamente as 6 metas com colaboradora passam a ter monitorId usr-1 (versão 2); colaboradora, canal, ano, mês, volume e id IDÊNTICOS ao original',
+   !e && docs.filter((x) => x.versao === 2).length === 6
+   && docs.filter((x) => x.versao === 2).every((x) => x.ativo && x.conteudo.monitorId === 'usr-1'
+     && canonico({ ...x.conteudo, monitorId: '' }) === canonico(original[x.id])), e?.message ?? JSON.stringify(docs));
+const sete = docs.find((x) => x.id === 'cgoal-1789126035423');
+// comparação pelo próprio banco (jsonb = jsonb): o jsonb não guarda a ordem das chaves
+const seteIgual = (await um("select conteudo = $1::jsonb igual from public.documentos where colecao = 'metas_colaborador' and id = 'cgoal-1789126035423'", [SETIMA])).igual;
+ok('M.3b', 'a sétima meta (sem colaboradora) continua EXATAMENTE como estava: ativa, versão 1, conteúdo original, nenhuma linha de auditoria para ela',
+   sete?.ativo === true && sete.versao === 1 && seteIgual === true
+   && !audDocs.some((a) => a.id === 'cgoal-1789126035423'), JSON.stringify(sete));
+ok('M.4', `auditoria: exatamente 6 UPDATE (só as 6 metas), declarados por "${audDocs[0]?.d}", com o conteúdo original em "antes"; plano intacto; cadeia sem quebras`,
+   Number((await um('select count(*) n from public.auditoria')).n) === aud0 + 6 && audDocs.length === 6
+   && audDocs.every((a) => a.acao === 'UPDATE' && a.d === 'adm-aline-oliveira' && a.antes.conteudo.monitorId === '' && a.depois.conteudo.monitorId === 'usr-1')
+   && Number((await um("select versao from public.documentos where colecao = 'planos_metas'")).versao) === 1 && (await quebras()) === 0,
+   JSON.stringify(audDocs.map((a) => [a.acao, a.id, a.d])));
+const foto1 = await fotoMetas();
+e = await roda('13_correcao_metas_agosto.sql');
+ok('M.5', 'rodar o 13 de novo: RECUSADO (MI409) e nada muda (mesma auditoria, mesmas linhas)',
+   e?.code === 'MI409' && Number((await um('select count(*) n from public.auditoria')).n) === aud0 + 6 && (await fotoMetas()) === foto1 && foto1 !== foto0, e?.message);
 
 dE = await carregar(ERV);
 const p1 = painel(dE, AGOSTO);
-ok('M.6', `depois do 13, o Painel do Erivan em agosto tem meta: alvo ${p1.p.target} (6 linhas de 5), entregues ${p1.p.entregues}, cobertura ${p1.p.cobertura}`,
-   p1.p.hasGoal && p1.p.target === 30 && p1.metas.length === 6 && p1.p.entregues === p1.notas.consideradas && p1.p.cobertura >= 1, JSON.stringify(p1.p));
+ok('M.6', `depois do 13, o Painel do Erivan em agosto tem meta: alvo ${p1.p.target} (6 linhas de 5; a sétima, sem monitora, não conta), entregues ${p1.p.entregues}, cobertura ${p1.p.cobertura}`,
+   p1.p.hasGoal && p1.p.target === 30 && p1.metas.length === 7 && p1.metas.filter((g) => g.monitorId === 'usr-1').length === 6
+   && p1.p.entregues === p1.notas.consideradas && p1.p.cobertura >= 1, JSON.stringify(p1.p));
 
 // ---- 3. portal gravando metas (GESTOR) ---------------------------------------------------------
 const nova = { id: 'cgoal-teste-1', monitorId: 'usr-1', colaboradorId: 'usr-4', year: 2026, month: 9, canal: 'WhatsApp', targetQty: 7 };

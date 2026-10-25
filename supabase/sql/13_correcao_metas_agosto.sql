@@ -26,17 +26,19 @@
 --        cgoal-1789126059712  Allanis  (usr-4)  WhatsApp  5
 --        cgoal-1789126078236  Susana   (usr-5)  geral     5
 --        cgoal-1789126085844  Ana Carla(usr-6)  geral     5
---   3. A sétima (cgoal-1789126035423: SEM colaboradora e sem monitora, meta geral de 5) não
---      é meta de ninguém — nenhuma tela consegue contá-la. É RETIRADA (ativo = false): a
---      linha continua no banco, com o conteúdo original, e a auditoria registra.
---      >>> Este passo depende de decisão própria da Aline. Sem ela, apague o bloco 3. <<<
---   4. Mostra o resultado.
+--   3. A sétima (cgoal-1789126035423: SEM colaboradora e sem monitora, meta geral de 5) NÃO
+--      É TOCADA — decisão da Aline em 25/10/2026: não se sabe se foi teste ou meta destinada a
+--      ela. O script confere, no fim, que ela continua idêntica (conteúdo, versão 1, ativa);
+--      se não estiver, desfaz tudo.
+--   4. Confere o resultado (exatamente 6 linhas alteradas, só o monitorId mudou) e mostra.
 --
 -- AUDITORIA: o 06 registra antes/depois de cada linha, com o responsável declarado abaixo.
 -- O conteúdo original de cada meta fica no campo `antes` da trilha.
 --
 -- PODE RODAR MAIS DE UMA VEZ: se já estiver corrigido, a conferência do passo 1 recusa
 -- (versão ≠ 1) e nada muda.
+--
+-- VERSÃO REDUZIDA (25/10/2026): retirada da sétima meta removida a pedido da Aline.
 -- =============================================================================
 
 begin;
@@ -78,13 +80,42 @@ update public.documentos
    and id in ('cgoal-1789126047497', 'cgoal-1789126050904', 'cgoal-1789126055453',
               'cgoal-1789126059712', 'cgoal-1789126078236', 'cgoal-1789126085844');
 
--- 3. Retirada da meta sem colaboradora (DECISÃO DA ALINE — sem ela, apague este bloco) -----
-update public.documentos
-   set ativo = false
- where colecao = 'metas_colaborador' and ativo and versao = 1
-   and id = 'cgoal-1789126035423';
+-- 3 e 4. Conferência depois da alteração: qualquer desvio desfaz a transação inteira --------
+do $pos$
+declare
+  v_sete  public.documentos;
+  v_n     integer;
+begin
+  -- a sétima meta continua exatamente como a migração gravou
+  select * into v_sete from public.documentos where colecao = 'metas_colaborador' and id = 'cgoal-1789126035423';
+  if not found or not v_sete.ativo or v_sete.versao <> 1
+     or v_sete.conteudo <> '{"id":"cgoal-1789126035423","monitorId":"","colaboradorId":"","year":2026,"month":7,"targetQty":5}'::jsonb then
+    raise exception 'SCRIPT 13 DESFEITO: a sétima meta (cgoal-1789126035423) não está intacta.' using errcode = 'MI409';
+  end if;
+  -- exatamente 6 metas na versão 2, com monitorId usr-1 e TODO o resto idêntico ao original
+  select count(*) into v_n
+    from public.documentos d
+   where d.colecao = 'metas_colaborador' and d.ativo and d.versao = 2
+     and d.id in ('cgoal-1789126047497', 'cgoal-1789126050904', 'cgoal-1789126055453',
+                  'cgoal-1789126059712', 'cgoal-1789126078236', 'cgoal-1789126085844')
+     and d.conteudo->>'monitorId' = 'usr-1'
+     and (d.conteudo - 'monitorId') = (select (a.antes->'conteudo') - 'monitorId'
+                                         from public.auditoria a
+                                        where a.tabela = 'documentos' and a.acao = 'UPDATE'
+                                          and a.chave->>'colecao' = 'metas_colaborador' and a.chave->>'id' = d.id
+                                        order by a.seq desc limit 1);
+  if v_n <> 6 then
+    raise exception 'SCRIPT 13 DESFEITO: esperava 6 metas corrigidas com o resto idêntico; encontrei %.', v_n using errcode = 'MI409';
+  end if;
+  -- nenhuma outra linha de documentos foi tocada nesta transação
+  select count(*) into v_n from public.auditoria where transacao = txid_current();
+  if v_n <> 6 then
+    raise exception 'SCRIPT 13 DESFEITO: a transação alterou % linhas (esperado: 6).', v_n using errcode = 'MI409';
+  end if;
+end
+$pos$;
 
--- 4. Resultado --------------------------------------------------------------------------------
+-- Resultado ----------------------------------------------------------------------------------
 select id, ativo, versao, conteudo->>'monitorId' as monitora, conteudo->>'colaboradorId' as colaboradora,
        coalesce(conteudo->>'canal', 'geral') as escopo, conteudo->>'targetQty' as meta
   from public.documentos
