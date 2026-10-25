@@ -22,6 +22,7 @@ const { definirModoParaTeste } = await mod('src/shared/compartilhado/modo.ts');
 const { gravarColecao } = await mod('src/shared/compartilhado/documentos.ts');
 const { resolverMetasDoPeriodo, sucederPlano, getPlanoVigente } = await mod('src/domain/planoMetasService.ts');
 const { getCarteiraProgress } = await mod('src/domain/goalService.ts');
+const { getFilaDaCarteira } = await mod('src/domain/queueService.ts');
 const { resumirNotas } = await mod('src/domain/resultadosService.ts');
 const { getEquipeDoGestor } = await mod('src/domain/scopeService.ts');
 const sql = (f) => readFileSync(join(projeto, 'supabase/sql', f), 'utf8');
@@ -97,7 +98,28 @@ ok('M.1', `Erivan (GESTOR) carrega as 7 metas de agosto e o "Plano 2026"; equipe
 ok('M.2', `as monitorias de agosto visíveis ao Erivan entram no resumo (${p0.notas.total} registrada(s), ${p0.notas.consideradas} na média, média ${p0.notas.media})`,
    p0.notas.total >= 1 && p0.notas.consideradas >= 1, JSON.stringify(p0.notas));
 
-// ---- 2. script 13 (versão reduzida: a sétima meta não é tocada) ------------------------------
+// ---- 1b. o que aconteceu no banco real em 25/10/2026 às 13:43 (auditoria seq 344–346) -------
+// Pelo próprio código do portal, com o login do Erivan: a sétima meta retirada pela lixeira e o
+// "Plano 2026" salvo em outubro (sucessão: o original até 2026-09, um novo de 2026-10 a 2026-12).
+{ const d = await carregar(ERV);
+  await gravarColecao(ERV, 'metas_colaborador', d.indiceDocumentos, d.metasColaborador, d.metasColaborador.filter((g) => g.id !== 'cgoal-1789126035423'));
+  const d2 = await carregar(ERV);
+  const { substitui, novo } = sucederPlano(d2.planosMetas[0], d2.planosMetas[0].linhas, OUTUBRO, ERIVAN);
+  await gravarColecao(ERV, 'planos_metas', d2.indiceDocumentos, d2.planosMetas, [substitui, novo]); }
+{ const sete = await um("select ativo, versao from public.documentos where colecao = 'metas_colaborador' and id = 'cgoal-1789126035423'");
+  const planos = (await db.query("select conteudo->>'vigenciaInicio' i, conteudo->>'vigenciaFim' f, conteudo->'linhas' l from public.documentos where colecao = 'planos_metas' order by ordem")).rows;
+  ok('M.2b', `estado do banco real reproduzido: sétima inativa v${sete.versao}; planos ${planos.map((p) => `${p.i}..${p.f}`).join(' + ')} com as mesmas linhas`,
+     sete.ativo === false && sete.versao === 2 && planos.length === 2 && planos[0].f === '2026-09' && planos[1].i === '2026-10' && planos[1].f === '2026-12'
+     && JSON.stringify(planos[0].l) === JSON.stringify(planos[1].l), JSON.stringify({ sete, planos })); }
+// a divisão do plano não muda as metas de setembro e outubro
+{ const d = await carregar(ERV);
+  const metasDe = (p) => resolverMetasDoPeriodo(d.planosMetas, d.metasColaborador, p).metas.filter((g) => g.monitorId === 'usr-1')
+    .map((g) => `${g.colaboradorId}:${g.targetQty}`).sort().join(',');
+  const SETEMBRO = { year: 2026, month: 8 };
+  ok('M.2c', `setembro e outubro com as mesmas metas depois da divisão do plano (${metasDe(SETEMBRO)})`,
+     metasDe(SETEMBRO) === 'usr-1:5,usr-3:10,usr-4:10,usr-5:5,usr-6:5' && metasDe(OUTUBRO) === metasDe(SETEMBRO), `${metasDe(SETEMBRO)} | ${metasDe(OUTUBRO)}`); }
+
+// ---- 2. script 13 (revisão 2: a sétima fica como está — inativa, versão 2) --------------------
 const SETIMA = '{"id":"cgoal-1789126035423","monitorId":"","colaboradorId":"","year":2026,"month":7,"targetQty":5}';
 const fotoMetas = async () => JSON.stringify((await db.query("select id, ativo, versao, conteudo from public.documentos where colecao in ('metas_colaborador','planos_metas') order by colecao, id")).rows);
 const antesDoTreze = (await db.query("select id, conteudo from public.documentos where colecao = 'metas_colaborador'")).rows;
@@ -108,9 +130,20 @@ await db.exec(`begin; set local app.responsavel = 'adm-aline-oliveira';
 let e = null;
 try { await db.exec(sql('13_correcao_metas_agosto.sql').replace(/^begin;$/m, 'savepoint s13;').replace(/^commit;$/m, 'release savepoint s13;')); } catch (x) { e = x; }
 await db.exec('rollback');
-ok('M.3a', `pré-condição: com uma das 7 metas alterada antes, o 13 RECUSA (${e?.code}) — a transação de teste foi desfeita e o banco volta ao estado da migração`,
-   e?.code === 'MI409' && /esperava as 7 metas/.test(e.message)
+ok('M.3a', `pré-condição: com uma das 6 metas alterada antes, o 13 RECUSA (${e?.code}) — a transação de teste foi desfeita e o banco volta ao estado anterior`,
+   e?.code === 'MI409' && /esperava as 6 metas/.test(e.message)
    && Number((await um("select versao from public.documentos where colecao = 'metas_colaborador' and id = 'cgoal-1789126078236'")).versao) === 1, e?.message);
+// 2a'. pré-condição: com a sétima REATIVADA (ou em qualquer estado diferente de inativa v2), recusa
+await db.exec(`begin; set local app.responsavel = 'adm-aline-oliveira';
+  update public.documentos set ativo = true where colecao = 'metas_colaborador' and id = 'cgoal-1789126035423';`);
+e = null;
+try { await db.exec(sql('13_correcao_metas_agosto.sql').replace(/^begin;$/m, 'savepoint s13;').replace(/^commit;$/m, 'release savepoint s13;')); } catch (x) { e = x; }
+await db.exec('rollback');
+ok('M.3a2', `pré-condição: com a sétima fora do estado esperado (reativada), o 13 RECUSA (${e?.code}) e nada muda`,
+   e?.code === 'MI409' && /sétima meta .* não está no estado esperado/.test(e.message)
+   && (await um("select ativo, versao from public.documentos where colecao = 'metas_colaborador' and id = 'cgoal-1789126035423'")).versao === 2, e?.message);
+const fotoPlanos = async () => JSON.stringify((await db.query("select id, ativo, versao, conteudo from public.documentos where colecao = 'planos_metas' order by id")).rows);
+const planos0 = await fotoPlanos();
 
 const foto0 = await fotoMetas();
 const aud0 = Number((await um('select count(*) n from public.auditoria')).n);
@@ -120,19 +153,19 @@ const audDocs = (await db.query("select acao, chave->>'id' id, responsavel_decla
 const original = Object.fromEntries(antesDoTreze.map((x) => [x.id, x.conteudo]));
 const canonico = (o) => JSON.stringify(Object.keys(o).sort().map((k) => [k, o[k]]));
 ok('M.3', '13 aplicado: exatamente as 6 metas com colaboradora passam a ter monitorId usr-1 (versão 2); colaboradora, canal, ano, mês, volume e id IDÊNTICOS ao original',
-   !e && docs.filter((x) => x.versao === 2).length === 6
-   && docs.filter((x) => x.versao === 2).every((x) => x.ativo && x.conteudo.monitorId === 'usr-1'
+   !e && docs.filter((x) => x.ativo && x.versao === 2).length === 6
+   && docs.filter((x) => x.ativo && x.versao === 2).every((x) => x.conteudo.monitorId === 'usr-1'
      && canonico({ ...x.conteudo, monitorId: '' }) === canonico(original[x.id])), e?.message ?? JSON.stringify(docs));
 const sete = docs.find((x) => x.id === 'cgoal-1789126035423');
 // comparação pelo próprio banco (jsonb = jsonb): o jsonb não guarda a ordem das chaves
 const seteIgual = (await um("select conteudo = $1::jsonb igual from public.documentos where colecao = 'metas_colaborador' and id = 'cgoal-1789126035423'", [SETIMA])).igual;
-ok('M.3b', 'a sétima meta (sem colaboradora) continua EXATAMENTE como estava: ativa, versão 1, conteúdo original, nenhuma linha de auditoria para ela',
-   sete?.ativo === true && sete.versao === 1 && seteIgual === true
+ok('M.3b', 'a sétima meta (sem colaboradora) continua EXATAMENTE como estava: inativa, versão 2, conteúdo original, nenhuma linha de auditoria do 13 para ela',
+   sete?.ativo === false && sete.versao === 2 && seteIgual === true
    && !audDocs.some((a) => a.id === 'cgoal-1789126035423'), JSON.stringify(sete));
-ok('M.4', `auditoria: exatamente 6 UPDATE (só as 6 metas), declarados por "${audDocs[0]?.d}", com o conteúdo original em "antes"; plano intacto; cadeia sem quebras`,
+ok('M.4', `auditoria: exatamente 6 UPDATE (só as 6 metas), declarados por "${audDocs[0]?.d}", com o conteúdo original em "antes"; os 2 planos intactos; cadeia sem quebras`,
    Number((await um('select count(*) n from public.auditoria')).n) === aud0 + 6 && audDocs.length === 6
    && audDocs.every((a) => a.acao === 'UPDATE' && a.d === 'adm-aline-oliveira' && a.antes.conteudo.monitorId === '' && a.depois.conteudo.monitorId === 'usr-1')
-   && Number((await um("select versao from public.documentos where colecao = 'planos_metas'")).versao) === 1 && (await quebras()) === 0,
+   && (await fotoPlanos()) === planos0 && (await quebras()) === 0,
    JSON.stringify(audDocs.map((a) => [a.acao, a.id, a.d])));
 const foto1 = await fotoMetas();
 e = await roda('13_correcao_metas_agosto.sql');
@@ -141,9 +174,16 @@ ok('M.5', 'rodar o 13 de novo: RECUSADO (MI409) e nada muda (mesma auditoria, me
 
 dE = await carregar(ERV);
 const p1 = painel(dE, AGOSTO);
-ok('M.6', `depois do 13, o Painel do Erivan em agosto tem meta: alvo ${p1.p.target} (6 linhas de 5; a sétima, sem monitora, não conta), entregues ${p1.p.entregues}, cobertura ${p1.p.cobertura}`,
-   p1.p.hasGoal && p1.p.target === 30 && p1.metas.length === 7 && p1.metas.filter((g) => g.monitorId === 'usr-1').length === 6
+ok('M.6', `depois do 13, o Painel do Erivan em agosto tem meta: alvo ${p1.p.target} (6 linhas de 5; a sétima, inativa, não entra), entregues ${p1.p.entregues}, cobertura ${p1.p.cobertura}`,
+   p1.p.hasGoal && p1.p.target === 30 && p1.metas.length === 6 && p1.metas.every((g) => g.monitorId === 'usr-1')
    && p1.p.entregues === p1.notas.consideradas && p1.p.cobertura >= 1, JSON.stringify(p1.p));
+// a fila "Quem falta monitorar" de agosto, como a monitora vê (sem carteira cadastrada: vem das metas)
+{ const metas = resolverMetasDoPeriodo(dE.planosMetas, dE.metasColaborador, AGOSTO).metas;
+  const fila = getFilaDaCarteira({ monitorings: dE.monitorias, goals: metas, collaborators: dE.colaboradores, allocations: dE.alocacoes, holidays: [], users: dE.usuarios }, 'usr-1', AGOSTO, '2026-08-31');
+  const resumo = fila.map((l) => `${l.colaborador.id}:${l.cobertura}/${l.alvo}[${l.escopos.map((x) => `${x.canal ?? 'geral'}${x.alvo}`).sort().join(',')}]`).sort().join(' ');
+  ok('M.6b', `fila de agosto da monitora: ${resumo}`,
+     fila.length === 4 && /usr-3:0\/10\[Telefone5,WhatsApp5\]/.test(resumo) && /usr-4:\d\/10\[Telefone5,WhatsApp5\]/.test(resumo)
+     && /usr-5:0\/5\[geral5\]/.test(resumo) && /usr-6:0\/5\[geral5\]/.test(resumo), resumo); }
 
 // ---- 3. portal gravando metas (GESTOR) ---------------------------------------------------------
 const nova = { id: 'cgoal-teste-1', monitorId: 'usr-1', colaboradorId: 'usr-4', year: 2026, month: 9, canal: 'WhatsApp', targetQty: 7 };
@@ -180,13 +220,15 @@ ok('M.12', `MONITOR não grava metas: inclusão recusada (${e.erro?.codigo}) e a
 
 // ---- 4. planos -------------------------------------------------------------------------------
 dE = await carregar(ERV);
-const plano = dE.planosMetas[0];
+// o plano de outubro (criado na sucessão de 13:43) começa no mês corrente: editar é no lugar
+const planoAgo = getPlanoVigente(dE.planosMetas, AGOSTO), plano = getPlanoVigente(dE.planosMetas, OUTUBRO);
 const { substitui, novo } = sucederPlano(plano, [...plano.linhas, { monitorId: 'usr-1', colaboradorId: 'usr-6', targetQty: 2, canal: 'WhatsApp' }], OUTUBRO, ERIVAN);
-e = await tenta(() => gravarColecao(ERV, 'planos_metas', dE.indiceDocumentos, dE.planosMetas, [substitui, novo]));
+e = await tenta(() => gravarColecao(ERV, 'planos_metas', dE.indiceDocumentos, dE.planosMetas, dE.planosMetas.map((p) => (p.id === plano.id ? substitui : p))));
 dE = await carregar(ERV);
 const vAgo = getPlanoVigente(dE.planosMetas, AGOSTO), vOut = getPlanoVigente(dE.planosMetas, OUTUBRO);
-ok('M.13', `Erivan edita o plano em outubro: sucessão gravada (antigo até ${substitui.vigenciaFim}, novo desde ${novo.vigenciaInicio}); agosto continua com o plano original`,
-   e.ok === 2 && dE.planosMetas.length === 2 && vAgo?.id === plano.id && vAgo.vigenciaFim === '2026-09' && vOut?.id === novo.id && vOut.linhas.length === plano.linhas.length + 1, e.erro?.message);
+ok('M.13', 'Erivan edita o plano de outubro: alteração no lugar (sem sucessão, 1 operação); agosto e setembro continuam com o plano original, intacto',
+   !novo && e.ok === 1 && dE.planosMetas.length === 2 && vAgo?.id === planoAgo.id && JSON.stringify(vAgo) === JSON.stringify(planoAgo)
+   && vOut?.id === plano.id && vOut.linhas.length === plano.linhas.length + 1, e.erro?.message);
 const p2 = painel(dE, AGOSTO);
 ok('M.14', 'o Painel de agosto não mudou com a edição do plano em outubro (o passado não é reescrito)', JSON.stringify(p2.p) === JSON.stringify(p1.p), JSON.stringify([p1.p, p2.p]));
 ok('M.15', 'cadeia da auditoria íntegra no fim; nenhuma linha de documentos foi apagada', (await quebras()) === 0
