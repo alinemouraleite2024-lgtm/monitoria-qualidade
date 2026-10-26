@@ -1066,6 +1066,11 @@ calibração com monitorias reais e **depois** da decisão de backend — nessa 
 - Versão imprimível da metodologia — leiaute aprovado, cinco definições em aberto.
 - Volume do lançamento histórico desde janeiro — não informado.
 - Confirmar, na base de produção, que a monitora está vinculada à área da gestora.
+- **Evidências efetivas para o gestor** *(registrado em 26/10/2026, pedido da Aline)*: hoje o
+  painel de análise mostra só os dados dos anexos (nome, tipo, tamanho), os links e as
+  observações. O gestor precisa consultar as evidências usadas na avaliação, sobretudo os
+  **áudios** e os **documentos**. Exige armazenamento de arquivos com controle de acesso — a
+  definir.
 
 ## Débitos técnicos registrados
 

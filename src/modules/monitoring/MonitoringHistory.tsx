@@ -288,6 +288,11 @@ export const MonitoringHistory = ({
                       <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{[ev.type, ev.size, ev.date].filter(Boolean).join(' · ')}</span>
                     </div>
                   ))}
+                  {anexos.length > 0 && (
+                    <div role="note" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                      O portal registra apenas os dados do arquivo anexado; o arquivo não fica armazenado. Consulte a monitora ou o link informado.
+                    </div>
+                  )}
                   {links.map((l, i) => (
                     <div key={`l${i}`} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', wordBreak: 'break-all' }}>
                       <LinkIcon size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
