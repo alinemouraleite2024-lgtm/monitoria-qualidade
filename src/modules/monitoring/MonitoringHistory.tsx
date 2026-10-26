@@ -1,11 +1,19 @@
 import { useState } from 'react';
-import { X, FileText, Check, AlertCircle } from 'lucide-react';
+import { X, FileText, Check, AlertCircle, Paperclip, Link as LinkIcon, RotateCcw } from 'lucide-react';
 import { getScoreConcept } from '../../scoreUtils';
 import { canalLabel } from '../../constants/canais';
 import { exibirDuracao } from '../../domain/duracao';
 import { competenciaLabel } from '../../domain/period';
 import { podeValidar, exigeReenvio, MOTIVO_REENVIO_MIGRADA } from '../../domain/validacaoService';
+import { rotuloDaResposta, tomDaResposta, respostasDoChecklist } from '../../domain/rotulosRegua';
 import type { Collaborator, Criterion, Monitoring, Role, User } from '../../types/domain';
+
+// Etapa A (26/10/2026) — o detalhe virou o painel de ANÁLISE do gestor: a decisão (validar,
+// devolver, reprovar) só existe aqui, depois de a monitoria inteira estar na tela. A fila não
+// decide mais nada. Critério com rótulo da régua, checklist aberto, evidências e relatório.
+const CORES_TOM = { ok: 'var(--primary)', meio: 'var(--warning)', ruim: 'var(--danger)', neutro: 'var(--text-main)' } as const;
+
+type Evidencia = { id?: string; name?: string; type?: string; size?: string; date?: string };
 
 interface MonitoringHistoryProps {
   monitoring: Monitoring;
@@ -17,8 +25,9 @@ interface MonitoringHistoryProps {
   perfilAtivo?: Role | null;
   onClose: () => void;
   onApprove: (id: string) => void;
-  onReject: (id: string) => void;
-  /** Recebe o motivo informado pelo gestor além do id — contrato de BUG-03. */
+  /** Reprovação: decisão definitiva, sempre com justificativa (Etapa A). */
+  onReject: (id: string, motivo: string) => void;
+  /** Recebe o motivo informado pelo gestor além do id — contrato de BUG-03. Obrigatório. */
   onRequestAdjustments: (id: string, reason: string) => void;
   onConfirmZerada: (id: string) => void;
 }
@@ -36,8 +45,13 @@ export const MonitoringHistory = ({
   onRequestAdjustments,
   onConfirmZerada
 }: MonitoringHistoryProps) => {
-  const [adjustReason, setAdjustReason] = useState('');
-  const [showAdjustInput, setShowAdjustInput] = useState(false);
+  // Decisão em preparo: devolver e reprovar abrem a justificativa; validar não tem campo até a
+  // Etapa B (o banco ainda não guarda considerações na validação — decisão da Aline, 26/10).
+  const [decisao, setDecisao] = useState<null | 'devolver' | 'reprovar'>(null);
+  const [justificativa, setJustificativa] = useState('');
+  const [confirmaReprovacao, setConfirmaReprovacao] = useState(false);
+  const justificativaOk = justificativa.trim().length > 0;
+  const cancelarDecisao = () => { setDecisao(null); setJustificativa(''); setConfirmaReprovacao(false); };
 
   if (!monitoring) return null;
 
@@ -176,6 +190,13 @@ export const MonitoringHistory = ({
             </div>
           )}
 
+          {monitoring.status === 'Reprovada' && monitoring.motivoReprovacao && (
+            <div style={{ border: '1px solid var(--danger)', backgroundColor: 'var(--danger-light)', borderRadius: '8px', padding: '1rem' }}>
+              <div style={{ fontWeight: '700', color: 'var(--danger)' }}>Reprovada pelo gestor</div>
+              <div style={{ fontSize: '0.85rem', marginTop: '0.25rem', whiteSpace: 'pre-wrap' }}>{monitoring.motivoReprovacao}</div>
+            </div>
+          )}
+
           {/* F0-08: sinalização de eliminatório */}
           {monitoring.zerada && (
             <div style={{ border: '2px solid #ef4444', backgroundColor: '#fee2e2', borderRadius: '8px', padding: '1rem' }}>
@@ -208,20 +229,79 @@ export const MonitoringHistory = ({
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {monitoring.scores?.map((s, idx) => (
-                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '6px' }}>
-                  <div>
-                    <div style={{ fontWeight: '600', fontSize: '0.85rem' }}>{getCriterionName(s.criterionId)}</div>
-                    {s.lowScoreReason && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>"{s.lowScoreReason}"</div>}
+              {monitoring.scores?.map((s, idx) => {
+                const crit = criteria.find(c => c.id === s.criterionId);
+                const ancora = crit?.ancoras?.[String(s.score)];
+                const checklist = crit?.tipoResposta === 'CHECKLIST_SIM_NAO' ? respostasDoChecklist(crit, s.subRespostas) : [];
+                return (
+                  <div key={idx} style={{ padding: '0.55rem 0.65rem', border: '1px solid var(--border-color)', borderRadius: '6px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
+                      <div style={{ fontWeight: '600', fontSize: '0.85rem' }}>
+                        {crit?.numero ? `${String(crit.numero).padStart(2, '0')} · ` : ''}{getCriterionName(s.criterionId)}
+                        {crit?.eliminatorio && <span className="badge-pill badge-danger" style={{ marginLeft: '0.4rem', fontSize: '0.62rem' }}>Eliminatório</span>}
+                      </div>
+                      {/* Rótulo da régua no lugar do valor cru: "2" num eliminatório é "não
+                          ocorreu", e o gestor não deveria precisar decorar isso para validar. */}
+                      <div style={{ fontWeight: '700', fontSize: '0.85rem', whiteSpace: 'nowrap', color: CORES_TOM[tomDaResposta(crit, s.score)] }}>
+                        {rotuloDaResposta(crit, s.score)}
+                      </div>
+                    </div>
+                    {checklist.length > 0 && (
+                      <ul style={{ margin: '0.35rem 0 0', paddingLeft: '1.1rem', fontSize: '0.78rem' }}>
+                        {checklist.map(r => (
+                          <li key={r.id}>
+                            {r.texto}: <strong style={{ color: r.resposta === 'SIM' ? 'var(--primary)' : r.resposta === 'NÃO' ? 'var(--danger)' : 'var(--text-muted)' }}>{r.resposta}</strong>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {s.lowScoreReason && (
+                      <div style={{ fontSize: '0.78rem', marginTop: '0.3rem', whiteSpace: 'pre-wrap' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Justificativa: </span>{s.lowScoreReason}
+                      </div>
+                    )}
+                    {ancora && (
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Régua: {ancora}</div>
+                    )}
                   </div>
-                  {/* '' é "não respondido" e renderizaria uma célula vazia, indistinguível de
-                      falha de tela. Diz-se que não foi respondido. */}
-                  <div style={{ fontWeight: '700', color: s.score === '' ? 'var(--text-muted)' : undefined }}>
-                    {s.score === '' ? 'não respondido' : s.score}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
+          </div>
+
+          {/* Evidências (Etapa A). O portal guarda os dados do arquivo anexado (nome, tipo,
+              tamanho, data) — não o arquivo em si —, os links e as observações da etapa 2. */}
+          <div>
+            <h3 style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Evidências</h3>
+            {(() => {
+              const anexos = (monitoring.evidencias || []) as Evidencia[];
+              const links = ((monitoring.links || []) as unknown[]).map(String).filter(l => l.trim());
+              if (!anexos.length && !links.length && !monitoring.evidenciaObservacoes) {
+                return <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Nenhuma evidência registrada.</div>;
+              }
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem' }}>
+                  {anexos.map((ev, i) => (
+                    <div key={ev.id ?? i} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <Paperclip size={14} style={{ color: 'var(--text-muted)' }} />
+                      <span style={{ fontWeight: 600 }}>{ev.name ?? 'Arquivo'}</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{[ev.type, ev.size, ev.date].filter(Boolean).join(' · ')}</span>
+                    </div>
+                  ))}
+                  {links.map((l, i) => (
+                    <div key={`l${i}`} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', wordBreak: 'break-all' }}>
+                      <LinkIcon size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                      {/^https?:\/\//i.test(l) ? <a href={l} target="_blank" rel="noopener noreferrer">{l}</a> : <span>{l}</span>}
+                    </div>
+                  ))}
+                  {monitoring.evidenciaObservacoes && (
+                    <div style={{ whiteSpace: 'pre-wrap' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Observações: </span>{monitoring.evidenciaObservacoes}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Relatório — os seis blocos do Padrão Relatório de Monitoria, na ordem em que ele
@@ -295,7 +375,7 @@ export const MonitoringHistory = ({
 
         {canApprove && (
           <div className="slide-over-footer" style={{ flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ fontWeight: '600', fontSize: '0.9rem' }}>Fluxo de Aprovação</div>
+            <div style={{ fontWeight: '600', fontSize: '0.9rem' }}>Decisão do gestor</div>
             {somenteDevolver && (
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', fontSize: '0.85rem', color: 'var(--warning)', lineHeight: 1.5 }}>
                 <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
@@ -303,35 +383,72 @@ export const MonitoringHistory = ({
               </div>
             )}
 
-            {showAdjustInput ? (
+            {decisao === 'devolver' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <textarea 
-                  className="form-control" 
-                  rows={2} 
-                  placeholder="Motivo da solicitação de ajuste..."
-                  value={adjustReason}
-                  onChange={e => setAdjustReason(e.target.value)}
+                <label className="form-label" htmlFor="justificativa-devolucao" style={{ margin: 0 }}>
+                  Justificativa da devolução (obrigatória) — o que a monitora deve rever
+                </label>
+                <textarea
+                  id="justificativa-devolucao"
+                  className="form-control"
+                  rows={3}
+                  placeholder="Ex.: crit-17 — a solução foi apenas prometida; rever a nota e a justificativa."
+                  value={justificativa}
+                  onChange={e => setJustificativa(e.target.value)}
                 ></textarea>
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                  <button className="btn btn-secondary btn-sm" onClick={() => setShowAdjustInput(false)}>Cancelar</button>
-                  <button className="btn btn-primary btn-sm" onClick={() => { onRequestAdjustments(monitoring.id, adjustReason); setShowAdjustInput(false); }}>
-                    Enviar Solicitação
+                  <button className="btn btn-secondary btn-sm" onClick={cancelarDecisao}>Cancelar</button>
+                  <button className="btn btn-primary btn-sm" disabled={!justificativaOk} style={{ opacity: justificativaOk ? 1 : 0.5 }}
+                    onClick={() => { onRequestAdjustments(monitoring.id, justificativa.trim()); cancelarDecisao(); }}>
+                    <RotateCcw size={14} /> Devolver para correção
                   </button>
                 </div>
               </div>
-            ) : (
-              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+            )}
+
+            {decisao === 'reprovar' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', fontSize: '0.82rem', color: 'var(--danger)', lineHeight: 1.5 }}>
+                  <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
+                  A reprovação é excepcional e definitiva: a monitoria não volta para correção e não conta para a meta.
+                  Para divergência de critério ou nota, use "Devolver para correção".
+                </div>
+                <label className="form-label" htmlFor="justificativa-reprovacao" style={{ margin: 0 }}>Justificativa da reprovação (obrigatória)</label>
+                <textarea
+                  id="justificativa-reprovacao"
+                  className="form-control"
+                  rows={3}
+                  value={justificativa}
+                  onChange={e => setJustificativa(e.target.value)}
+                ></textarea>
+                <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.82rem' }}>
+                  <input type="checkbox" checked={confirmaReprovacao} onChange={e => setConfirmaReprovacao(e.target.checked)} />
+                  Confirmo que a reprovação é definitiva.
+                </label>
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                  <button className="btn btn-secondary btn-sm" onClick={cancelarDecisao}>Cancelar</button>
+                  <button className="btn btn-primary btn-sm" disabled={!justificativaOk || !confirmaReprovacao}
+                    style={{ backgroundColor: 'var(--danger)', borderColor: 'var(--danger)', opacity: justificativaOk && confirmaReprovacao ? 1 : 0.5 }}
+                    onClick={() => { onReject(monitoring.id, justificativa.trim()); cancelarDecisao(); }}>
+                    <X size={14} /> Reprovar definitivamente
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {decisao === null && (
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                 {!somenteDevolver && (
-                  <button className="btn btn-secondary" style={{ color: 'var(--danger)', borderColor: 'var(--danger-light)' }} onClick={() => onReject(monitoring.id)}>
+                  <button className="btn btn-secondary" style={{ color: 'var(--danger)', borderColor: 'var(--danger-light)' }} onClick={() => setDecisao('reprovar')}>
                     <X size={16} /> Reprovar
                   </button>
                 )}
-                <button className="btn btn-secondary" style={{ color: 'var(--warning)', borderColor: 'var(--warning-light)' }} onClick={() => setShowAdjustInput(true)}>
-                  <AlertCircle size={16} /> Solicitar Ajustes
+                <button className="btn btn-secondary" style={{ color: 'var(--warning)', borderColor: 'var(--warning-light)' }} onClick={() => setDecisao('devolver')}>
+                  <RotateCcw size={16} /> Devolver para correção
                 </button>
                 {!somenteDevolver && (
                   <button className="btn btn-primary" onClick={() => onApprove(monitoring.id)}>
-                    <Check size={16} /> Aprovar Monitoria
+                    <Check size={16} /> Validar monitoria
                   </button>
                 )}
               </div>

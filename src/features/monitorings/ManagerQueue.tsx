@@ -5,7 +5,7 @@
 //
 // Só apresentação. Ordenação, contagem e progresso chegam prontos de queueService.
 
-import { Search, Check, RotateCcw, AlertTriangle, Inbox } from 'lucide-react';
+import { Search, Eye, AlertTriangle, Inbox } from 'lucide-react';
 import type { Monitoring, User, Collaborator } from '../../types/domain';
 import type { NaFilaDeValidacao, RitmoDoMonitor, RiscoDoMes } from '../../domain/queueService';
 import { canalLabel } from '../../constants/canais';
@@ -21,7 +21,7 @@ interface ManagerQueueProps {
   monitoresPorId: Record<string, User | undefined>;
   busca: string;
   onBusca: (termo: string) => void;
-  onValidar: (id: string) => void;
+  /** Abre o painel de análise. É o ÚNICO caminho para validar, devolver ou reprovar (Etapa A). */
   onAbrir: (m: Monitoring) => void;
   onVerRelatorios: () => void;
 }
@@ -37,7 +37,6 @@ export const ManagerQueue = ({
   monitoresPorId,
   busca,
   onBusca,
-  onValidar,
   onAbrir,
   onVerRelatorios,
 }: ManagerQueueProps) => (
@@ -118,24 +117,17 @@ export const ManagerQueue = ({
                 </button>
               ) : (
                 <>
-                  {exigeReenvio(m) ? (
-                    // Migrada sem régua (M1): a fila não oferece decisão final, só devolver.
+                  {exigeReenvio(m) && (
+                    // Migrada sem régua (M1): o painel só oferece devolver, e a fila avisa antes.
                     <span title={MOTIVO_REENVIO_MIGRADA} style={{ fontSize: '0.74rem', color: 'var(--warning)', alignSelf: 'center', maxWidth: '220px' }}>
                       {MOTIVO_REENVIO_MIGRADA}
                     </span>
-                  ) : (
-                    <button className="btn btn-primary btn-sm" onClick={() => onValidar(m.id)}>
-                      <Check size={14} /> Validar
-                    </button>
                   )}
-                  {/* Devolver abre o detalhe, onde já existe o campo de motivo. Duplicar essa
-                      entrada aqui criaria uma segunda forma de escrever a mesma coisa. */}
-                  <button
-                    className="btn btn-secondary btn-sm"
-                    style={{ color: 'var(--danger)', borderColor: 'var(--danger-light)' }}
-                    onClick={() => onAbrir(m)}
-                  >
-                    <RotateCcw size={14} /> Devolver
+                  {/* Etapa A (26/10/2026): a fila não decide mais. "Validar" direto aprovava sem
+                      que a monitoria fosse aberta; validar é calibração e exige a leitura. Toda
+                      decisão — validar, devolver, reprovar — acontece no painel de análise. */}
+                  <button className="btn btn-primary btn-sm" onClick={() => onAbrir(m)}>
+                    <Eye size={14} /> Analisar
                   </button>
                 </>
               )}

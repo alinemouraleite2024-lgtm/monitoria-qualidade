@@ -1275,18 +1275,21 @@ function AppContent() {
     }));
   };
 
-  const handleRejectMonitoring = (monId: string) => {
+  // Etapa A (26/10/2026): a justificativa vem do painel de análise, que só libera o botão com o
+  // texto preenchido e a confirmação de que a decisão é definitiva. Antes era um prompt solto.
+  const handleRejectMonitoring = (monId: string, motivoInformado: string) => {
     if (!gateValidacao(monId) || recusarDecisaoFinal(monId)) return;
+    const motivo = (motivoInformado ?? '').trim();
+    // Reprovação é final e exige motivo (D5); o banco também recusa sem motivo.
+    if (!motivo) { alert('Informe a justificativa da reprovação.'); return; }
     if (COMPARTILHADO) {
-      // Reprovação é final e exige motivo (D5); o banco também recusa sem motivo.
-      const motivo = window.prompt('Motivo da reprovação (obrigatório). A reprovação é final:')?.trim();
-      if (!motivo) return;
       void acaoNoBanco(monId, (m) => reprovarMonitoria(transporteSupabase(), m, motivo));
       return;
     }
     updateMonitoringById(monId, m => ({
       ...m,
       status: 'Reprovada',
+      motivoReprovacao: motivo,
       reviewedBy: currentUser!.id,
       reviewedAt: new Date().toISOString()
     }));
@@ -1297,6 +1300,8 @@ function AppContent() {
   // um novo, evitando alterar filtros e badges da listagem nesta correção.
   const handleRequestAdjustments = (monId: string, reason: string) => {
     if (!gateValidacao(monId)) return;
+    // Etapa A: devolução sem justificativa não sai do portal (o banco também recusa, MI422).
+    if (!(reason ?? '').trim()) { alert('Informe a justificativa da devolução.'); return; }
     if (COMPARTILHADO) {
       void acaoNoBanco(monId, (m) => devolverMonitoria(transporteSupabase(), m, reason));
       setShowDetailModal(false);
@@ -1678,7 +1683,6 @@ function AppContent() {
                       setShowDetailModal(true);
                     }}
                     onEditar={(m) => navigate(`/monitorings/${m.id}/edit`)}
-                    onValidar={handleApproveMonitoring}
                     onVerRelatorios={() => navigate('/reports')}
                   />
               </Screen>

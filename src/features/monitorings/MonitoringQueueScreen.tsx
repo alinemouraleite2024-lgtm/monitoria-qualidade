@@ -67,7 +67,6 @@ interface MonitoringQueueScreenProps {
   onNovaMonitoria: (colaboradorId?: string, canal?: string | null) => void;
   onAbrir: (m: Monitoring) => void;
   onEditar: (m: Monitoring) => void;
-  onValidar: (id: string) => void;
   onVerRelatorios: () => void;
 }
 
@@ -87,7 +86,6 @@ export const MonitoringQueueScreen = ({
   onNovaMonitoria,
   onAbrir,
   onEditar,
-  onValidar,
   onVerRelatorios,
 }: MonitoringQueueScreenProps) => {
   const [busca, setBusca] = useState('');
@@ -234,7 +232,6 @@ export const MonitoringQueueScreen = ({
           monitoresPorId={porId(users)}
           busca={busca}
           onBusca={setBusca}
-          onValidar={onValidar}
           onAbrir={onAbrir}
           onVerRelatorios={onVerRelatorios}
         />

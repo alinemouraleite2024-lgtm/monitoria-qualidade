@@ -882,6 +882,20 @@ export const MonitoringForm = ({
           </div>
         </div>
 
+        {/* Etapa A (26/10/2026): monitoria devolvida mostra, dentro do formulário, o que o gestor
+            pediu para rever. Antes o motivo só aparecia na fila e no detalhe — a monitora
+            corrigia de memória. Só leitura: não altera nada do preenchimento. */}
+        {initialData?.status === 'Rascunho' && initialData.adjustmentReason && (
+          <div role="note" style={{ margin: '1rem 2rem 0', padding: '0.85rem 1rem', border: '1px solid var(--warning)', backgroundColor: 'rgba(234, 179, 8, 0.08)', borderRadius: '8px' }}>
+            <div style={{ fontWeight: 700, color: '#a16207', fontSize: '0.9rem' }}>
+              Devolvida para correção
+              {initialData.reviewedBy && ` por ${users.find(u => u.id === initialData.reviewedBy)?.name ?? 'gestor'}`}
+              {initialData.reviewedAt && ` em ${new Date(initialData.reviewedAt).toLocaleString('pt-BR')}`}
+            </div>
+            <div style={{ fontSize: '0.85rem', color: '#854d0e', marginTop: '0.25rem', whiteSpace: 'pre-wrap' }}>{initialData.adjustmentReason}</div>
+          </div>
+        )}
+
         {/* Progress Bar Header */}
         <div style={{ padding: '1rem 2rem', backgroundColor: '#fff' }}>
           <div className="stepper-container" style={{ margin: 0, padding: 0, maxWidth: '1000px', marginInline: 'auto' }}>
