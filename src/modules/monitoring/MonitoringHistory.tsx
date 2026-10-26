@@ -6,6 +6,7 @@ import { exibirDuracao } from '../../domain/duracao';
 import { competenciaLabel } from '../../domain/period';
 import { podeValidar, exigeReenvio, MOTIVO_REENVIO_MIGRADA } from '../../domain/validacaoService';
 import { rotuloDaResposta, tomDaResposta, respostasDoChecklist } from '../../domain/rotulosRegua';
+import { descricaoDoAnexo } from '../../domain/evidencias';
 import type { Collaborator, Criterion, Monitoring, Role, User } from '../../types/domain';
 
 // Etapa A (26/10/2026) — o detalhe virou o painel de ANÁLISE do gestor: a decisão (validar,
@@ -282,10 +283,10 @@ export const MonitoringHistory = ({
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem' }}>
                   {anexos.map((ev, i) => (
-                    <div key={ev.id ?? i} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <Paperclip size={14} style={{ color: 'var(--text-muted)' }} />
-                      <span style={{ fontWeight: 600 }}>{ev.name ?? 'Arquivo'}</span>
-                      <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{[ev.type, ev.size, ev.date].filter(Boolean).join(' · ')}</span>
+                    <div key={ev.id ?? i} style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.5rem', alignItems: 'center', minWidth: 0 }}>
+                      <Paperclip size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                      <span style={{ fontWeight: 600, overflowWrap: 'anywhere', minWidth: 0 }}>{ev.name ?? 'Arquivo'}</span>
+                      <span title={ev.type} style={{ color: 'var(--text-muted)', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>{descricaoDoAnexo(ev)}</span>
                     </div>
                   ))}
                   {anexos.length > 0 && (
