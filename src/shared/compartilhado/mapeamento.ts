@@ -5,7 +5,7 @@
 // voltam para o objeto como estavam; as marcas de fidelidade (`_nulos`, `_<campo>_original`,
 // `_listas_vazias`, `_criado_na_migracao`...) ficam no banco e não aparecem na tela.
 import type {
-  Allocation, Area, BrandConfig, Collaborator, Criterion, Monitoring, MonitoringScore, SystemSettings, User,
+  Allocation, Area, BrandConfig, Collaborator, Criterion, EventoCalibracao, Monitoring, MonitoringScore, SystemSettings, User,
 } from '../../types/domain';
 
 export type Linha = Record<string, unknown>;
@@ -101,7 +101,25 @@ const COLUNAS_MONITORIA: Record<string, string> = {
   regua_versao_id: 'reguaVersaoId', origem: 'origem',
 };
 
-export const paraMonitorias = (monitorias: Linha[], respostas: Linha[], evidencias: Linha[]): Monitoring[] =>
+/** Linha de monitoria_eventos (script 14) → evento do histórico. */
+export const paraEvento = (l: Linha): EventoCalibracao => ({
+  id: String(l.id),
+  tipo: txt(l.tipo) as EventoCalibracao['tipo'],
+  rodada: Number(l.rodada),
+  statusResultante: txt(l.status_resultante) as EventoCalibracao['statusResultante'],
+  nota: num(l.nota) ?? null,
+  consideracoes: typeof l.consideracoes === 'string' ? l.consideracoes : null,
+  criterios: Array.isArray(l.criterios) ? (l.criterios as EventoCalibracao['criterios']) : null,
+  responsavelId: txt(l.responsavel_id),
+  ocorridoEm: l.ocorrido_em instanceof Date ? l.ocorrido_em.toISOString() : txt(l.ocorrido_em),
+  origem: l.origem === 'reconstituido' ? 'reconstituido' : 'portal',
+});
+
+/**
+ * `eventos` nulo = o banco ainda não tem o histórico (script 14): as monitorias ficam sem o
+ * campo `historico`, e a tela diz que ele não está disponível — em vez de mostrar "vazio".
+ */
+export const paraMonitorias = (monitorias: Linha[], respostas: Linha[], evidencias: Linha[], eventos: Linha[] | null = null): Monitoring[] =>
   [...monitorias]
     .sort((a, b) => txt(b.id).localeCompare(txt(a.id), 'pt-BR', { numeric: true }))
     .map((m) => {
@@ -127,6 +145,8 @@ export const paraMonitorias = (monitorias: Linha[], respostas: Linha[], evidenci
         const itens = evidencias.filter((e) => e.monitoria_id === m.id && e.lista === lista && ativo(e)).sort(porOrdem).map((e) => e.conteudo);
         o[lista] = itens;
       }
+      if (eventos) o.historico = eventos.filter((e) => e.monitoria_id === m.id).map(paraEvento);
+      else delete o.historico;
       return o as unknown as Monitoring;
     });
 

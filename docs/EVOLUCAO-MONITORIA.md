@@ -1071,6 +1071,11 @@ calibração com monitorias reais e **depois** da decisão de backend — nessa 
   observações. O gestor precisa consultar as evidências usadas na avaliação, sobretudo os
   **áudios** e os **documentos**. Exige armazenamento de arquivos com controle de acesso — a
   definir.
+- **Duplicidade na criação e envio de monitoria nova** *(registrado em 26/10/2026, pedido da
+  Aline; fora do escopo da Etapa B)*: criar e enviar numa única chamada (`api.salvar_monitoria`
+  sem id) não tem proteção contra repetição — uma nova tentativa da rede pode criar uma segunda
+  monitoria igual. Decisões, reenvios e observações já são protegidos (versão lida e chave da
+  requisição); falta o mesmo na criação.
 
 ## Débitos técnicos registrados
 

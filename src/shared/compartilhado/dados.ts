@@ -3,7 +3,7 @@
 // Nenhuma regra de negócio é decidida aqui. Quem decide é o banco (08): quem pode, em que
 // situação, com qual versão da régua e com qual nota. Esta camada só leva e traz, e devolve o
 // erro do banco como ele veio — a tela mostra a mensagem.
-import type { Transporte } from './transporte';
+import { ErroBanco, type Transporte } from './transporte';
 import { indexarDocumentos, type IndiceDocumentos } from './documentos';
 import {
   paraAlocacao, paraAreas, paraColaborador, paraCriterios, paraMonitorias, paraUsuario,
@@ -35,10 +35,25 @@ export interface DadosCompartilhados {
 const TABELAS = ['perfis', 'colaboradores', 'areas', 'area_monitores', 'alocacoes', 'criterios', 'criterio_subperguntas',
   'monitorias', 'monitoria_respostas', 'monitoria_evidencias', 'documentos', 'catalogos', 'configuracoes'] as const;
 
+/**
+ * Histórico de calibração (script 14). Lido à parte: enquanto o banco não tiver a tabela, a
+ * carga continua funcionando sem ele (nulo = indisponível). Qualquer outro erro sobe.
+ */
+const lerHistorico = async (t: Transporte): Promise<Linha[] | null> => {
+  try {
+    return await t.selecionar<Linha>('monitoria_eventos');
+  } catch (e) {
+    const codigo = e instanceof ErroBanco ? e.codigo : String((e as { code?: unknown })?.code ?? '');
+    if (codigo === '42P01' || codigo.startsWith('PGRST2')) return null;
+    throw e;
+  }
+};
+
 /** Lê tudo o que o usuário logado pode ver (a RLS do 07 filtra) e converte para as telas. */
 export const carregarDados = async (t: Transporte, padroes: { settings: SystemSettings; brand: BrandConfig }): Promise<DadosCompartilhados> => {
   const lidas = await Promise.all(TABELAS.map((tb) => t.selecionar<Linha>(tb)));
   const d = Object.fromEntries(TABELAS.map((tb, i) => [tb, lidas[i]])) as Record<(typeof TABELAS)[number], Linha[]>;
+  const eventos = await lerHistorico(t);
   const perfis = [...d.perfis].sort((a, b) => Number(a.ordem ?? 0) - Number(b.ordem ?? 0)).map(paraUsuario);
   return {
     perfis,
@@ -47,7 +62,7 @@ export const carregarDados = async (t: Transporte, padroes: { settings: SystemSe
     areas: paraAreas(d.areas, d.area_monitores),
     alocacoes: d.alocacoes.map(paraAlocacao),
     criterios: paraCriterios(d.criterios, d.criterio_subperguntas),
-    monitorias: paraMonitorias(d.monitorias, d.monitoria_respostas, d.monitoria_evidencias),
+    monitorias: paraMonitorias(d.monitorias, d.monitoria_respostas, d.monitoria_evidencias, eventos),
     categorias: catalogo(d.catalogos, 'categorias'),
     metasColaborador: documentosDa(d.documentos, 'metas_colaborador'),
     planosMetas: documentosDa<PlanoMetas>(d.documentos, 'planos_metas'),
@@ -90,12 +105,24 @@ const acao = async (t: Transporte, funcao: string, m: Monitoring, motivo?: strin
     ? { p_id: m.id, p_versao_lida: m.versao ?? null }
     : { p_id: m.id, p_versao_lida: m.versao ?? null, p_motivo: motivo }));
 
-export const validarMonitoria = (t: Transporte, m: Monitoring) => acao(t, 'validar_monitoria', m);
+/** Considerações vazias não vão: o banco aceita a chamada sem elas (script 14). */
+export const validarMonitoria = async (t: Transporte, m: Monitoring, consideracoes?: string) => {
+  const texto = (consideracoes ?? '').trim();
+  if (!texto) return acao(t, 'validar_monitoria', m);
+  return resultado(await t.chamar('validar_monitoria', { p_id: m.id, p_versao_lida: m.versao ?? null, p_consideracoes: texto }));
+};
 export const reprovarMonitoria = (t: Transporte, m: Monitoring, motivo: string) => acao(t, 'reprovar_monitoria', m, motivo);
 export const devolverMonitoria = (t: Transporte, m: Monitoring, motivo: string) => acao(t, 'devolver_monitoria', m, motivo);
 export const confirmarZeramento = (t: Transporte, m: Monitoring) => acao(t, 'confirmar_zeramento', m);
 export const afastarEliminatorio = (t: Transporte, m: Monitoring, motivo: string) => acao(t, 'afastar_eliminatorio', m, motivo);
 export const cancelarMonitoria = (t: Transporte, m: Monitoring, motivo: string) => acao(t, 'cancelar_monitoria', m, motivo);
+
+/**
+ * Observação complementar (script 14): só acrescenta um evento — a monitoria não muda. A chave
+ * identifica a requisição: repetir a mesma chave (nova tentativa) não grava outra observação.
+ */
+export const registrarObservacao = async (t: Transporte, m: Monitoring, texto: string, chave: string) =>
+  t.chamar('registrar_observacao', { p_id: m.id, p_texto: texto, p_chave: chave });
 
 /** Histórico de acessos no banco (o 05 carimba quem e quando). Falha aqui nunca bloqueia o uso. */
 export const registrarAcesso = async (t: Transporte, evento: string, usuario: User | null, perfil: string | null, detalhes = '') => {

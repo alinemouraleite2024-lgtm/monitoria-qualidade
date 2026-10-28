@@ -17,6 +17,7 @@ import { resolverStatusInicial, temGestorConfigurado } from '../../domain/valida
 import type { Area, Collaborator, Criterion, Monitoring, SystemSettings, User } from '../../types/domain';
 import { BLOCOS_IMPORTACAO, violaRegraDeAutenticacao, type ResultadoImportacao } from '../../domain/importacaoChatGPT';
 import { ImportarAvaliacaoModal } from './ImportarAvaliacaoModal';
+import { HistoricoCalibracao } from './HistoricoCalibracao';
 
 /**
  * Contrato do formulário de monitoria.
@@ -894,6 +895,19 @@ export const MonitoringForm = ({
             </div>
             <div style={{ fontSize: '0.85rem', color: '#854d0e', marginTop: '0.25rem', whiteSpace: 'pre-wrap' }}>{initialData.adjustmentReason}</div>
           </div>
+        )}
+
+        {/* Etapa B: o histórico de calibração desta monitoria — envios, notas de cada rodada e as
+            considerações do gestor. Só leitura; recolhido para não empurrar o formulário. */}
+        {initialData?.historico && initialData.historico.length > 0 && (
+          <details style={{ margin: '1rem 2rem 0', padding: '0.6rem 1rem', border: '1px solid var(--border-color)', borderRadius: '8px', backgroundColor: '#fff' }}>
+            <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem' }}>
+              Histórico de calibração ({initialData.historico.length} {initialData.historico.length === 1 ? 'evento' : 'eventos'})
+            </summary>
+            <div style={{ marginTop: '0.75rem' }}>
+              <HistoricoCalibracao eventos={initialData.historico} users={users} />
+            </div>
+          </details>
         )}
 
         {/* Progress Bar Header */}

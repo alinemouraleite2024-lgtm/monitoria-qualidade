@@ -111,6 +111,39 @@ não altera nada.
 
 ---
 
+## Histórico de calibração (Etapa B, 26/10/2026)
+
+**Modo local:** o histórico fica dentro de cada monitoria (`historico`, em `pm2_monitorings`). O
+backup e a restauração acima já o levam junto — nada muda no procedimento.
+
+**Banco compartilhado (depois do script 14):** a tabela `public.monitoria_eventos` entra em toda
+cópia e restauração do banco, **sempre junto com `monitorias`** — um sem o outro deixa decisões
+sem histórico ou histórico sem monitoria.
+
+- **Backup:** exportar `monitoria_eventos` com as demais tabelas de dados (é só leitura).
+- **Restauração**, pelo SQL Editor, numa única transação, com o ADMIN responsável, o modo e o
+  motivo:
+
+```sql
+begin;
+  set local app.responsavel = '<id do seu perfil ADMIN>';
+  set local app.manutencao = 'restauracao';
+  set local app.manutencao_motivo = '<motivo, com ao menos 10 caracteres>';
+  -- 1) monitorias (e respostas/evidências), como já se faz; neste modo o gatilho do 14
+  --    NÃO cria eventos: o histórico vem do backup;
+  -- 2) depois, os eventos, preservando os ids:
+  --    insert into public.monitoria_eventos (...) overriding system value values (...);
+  -- 3) a numeração continua de onde parou:
+  select setval(pg_get_serial_sequence('public.monitoria_eventos', 'id'),
+                (select max(id) from public.monitoria_eventos));
+commit;
+```
+
+Fora desse modo o banco recusa alterar, apagar ou esvaziar a tabela de eventos — inclusive para o
+ADMIN. Ensaio automatizado: `supabase/testes/testes-14-historico.mjs` (V.37 a V.39).
+
+---
+
 ## Limite conhecido
 
 Backup manual depende de alguém lembrar. Enquanto a persistência for `localStorage`, é o que

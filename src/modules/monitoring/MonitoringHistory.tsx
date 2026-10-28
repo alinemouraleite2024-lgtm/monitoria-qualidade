@@ -7,6 +7,8 @@ import { competenciaLabel } from '../../domain/period';
 import { podeValidar, exigeReenvio, MOTIVO_REENVIO_MIGRADA } from '../../domain/validacaoService';
 import { rotuloDaResposta, tomDaResposta, respostasDoChecklist } from '../../domain/rotulosRegua';
 import { descricaoDoAnexo } from '../../domain/evidencias';
+import { contagemConsideracoes } from '../../domain/historicoCalibracao';
+import { HistoricoCalibracao, ContadorConsideracoes } from './HistoricoCalibracao';
 import type { Collaborator, Criterion, Monitoring, Role, User } from '../../types/domain';
 
 // Etapa A (26/10/2026) — o detalhe virou o painel de ANÁLISE do gestor: a decisão (validar,
@@ -25,12 +27,15 @@ interface MonitoringHistoryProps {
   /** Perfil ativo: validar é ato do contexto GESTOR, não de quem apenas possui o perfil. */
   perfilAtivo?: Role | null;
   onClose: () => void;
-  onApprove: (id: string) => void;
+  /** Considerações opcionais (Etapa B): vazio = validar sem texto. */
+  onApprove: (id: string, consideracoes?: string) => void;
   /** Reprovação: decisão definitiva, sempre com justificativa (Etapa A). */
   onReject: (id: string, motivo: string) => void;
   /** Recebe o motivo informado pelo gestor além do id — contrato de BUG-03. Obrigatório. */
   onRequestAdjustments: (id: string, reason: string) => void;
   onConfirmZerada: (id: string) => void;
+  /** Observação complementar (Etapa B). `true` = gravada. Ausente = sem observação neste contexto. */
+  onObservar?: (id: string, texto: string, chave: string) => Promise<boolean>;
 }
 
 export const MonitoringHistory = ({
@@ -44,14 +49,16 @@ export const MonitoringHistory = ({
   onApprove,
   onReject,
   onRequestAdjustments,
-  onConfirmZerada
+  onConfirmZerada,
+  onObservar
 }: MonitoringHistoryProps) => {
-  // Decisão em preparo: devolver e reprovar abrem a justificativa; validar não tem campo até a
-  // Etapa B (o banco ainda não guarda considerações na validação — decisão da Aline, 26/10).
-  const [decisao, setDecisao] = useState<null | 'devolver' | 'reprovar'>(null);
+  // Decisão em preparo: cada uma abre o seu campo. Etapa B (26/10): considerações OPCIONAIS ao
+  // validar, OBRIGATÓRIAS ao devolver e reprovar; até 2.000 caracteres, com contador.
+  const [decisao, setDecisao] = useState<null | 'validar' | 'devolver' | 'reprovar'>(null);
   const [justificativa, setJustificativa] = useState('');
   const [confirmaReprovacao, setConfirmaReprovacao] = useState(false);
-  const justificativaOk = justificativa.trim().length > 0;
+  const contagem = contagemConsideracoes(justificativa);
+  const justificativaOk = contagem.usados > 0 && !contagem.excedeu;
   const cancelarDecisao = () => { setDecisao(null); setJustificativa(''); setConfirmaReprovacao(false); };
 
   if (!monitoring) return null;
@@ -310,6 +317,18 @@ export const MonitoringHistory = ({
             })()}
           </div>
 
+          {/* Histórico de calibração (Etapa B): envios da monitora e decisões do gestor, com a nota
+              de cada rodada. Observação complementar só para quem pode decidir esta monitoria. */}
+          <div>
+            <h3 style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Histórico de calibração</h3>
+            <HistoricoCalibracao
+              eventos={monitoring.historico}
+              users={users}
+              podeObservar={Boolean(onObservar) && validacao.pode && monitoring.status !== 'Rascunho' && monitoring.historico !== undefined}
+              onObservar={onObservar ? (texto, chave) => onObservar(monitoring.id, texto, chave) : undefined}
+            />
+          </div>
+
           {/* Relatório — os seis blocos do Padrão Relatório de Monitoria, na ordem em que ele
               os define. Até a 0.18.0 só três existiam aqui, e os outros eram escritos à mão
               fora do sistema. Bloco vazio é dito, não escondido: monitoria anterior a esta
@@ -402,6 +421,7 @@ export const MonitoringHistory = ({
                   value={justificativa}
                   onChange={e => setJustificativa(e.target.value)}
                 ></textarea>
+                <ContadorConsideracoes texto={justificativa} />
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                   <button className="btn btn-secondary btn-sm" onClick={cancelarDecisao}>Cancelar</button>
                   <button className="btn btn-primary btn-sm" disabled={!justificativaOk} style={{ opacity: justificativaOk ? 1 : 0.5 }}
@@ -427,6 +447,7 @@ export const MonitoringHistory = ({
                   value={justificativa}
                   onChange={e => setJustificativa(e.target.value)}
                 ></textarea>
+                <ContadorConsideracoes texto={justificativa} />
                 <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.82rem' }}>
                   <input type="checkbox" checked={confirmaReprovacao} onChange={e => setConfirmaReprovacao(e.target.checked)} />
                   Confirmo que a reprovação é definitiva.
@@ -437,6 +458,29 @@ export const MonitoringHistory = ({
                     style={{ backgroundColor: 'var(--danger)', borderColor: 'var(--danger)', opacity: justificativaOk && confirmaReprovacao ? 1 : 0.5 }}
                     onClick={() => { onReject(monitoring.id, justificativa.trim()); cancelarDecisao(); }}>
                     <X size={14} /> Reprovar definitivamente
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {decisao === 'validar' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <label className="form-label" htmlFor="consideracoes-validacao" style={{ margin: 0 }}>
+                  Considerações do gestor (opcional) — ficam no histórico e a monitora pode ler
+                </label>
+                <textarea
+                  id="consideracoes-validacao"
+                  className="form-control"
+                  rows={3}
+                  value={justificativa}
+                  onChange={e => setJustificativa(e.target.value)}
+                ></textarea>
+                <ContadorConsideracoes texto={justificativa} />
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                  <button className="btn btn-secondary btn-sm" onClick={cancelarDecisao}>Cancelar</button>
+                  <button className="btn btn-primary btn-sm" disabled={contagem.excedeu} style={{ opacity: contagem.excedeu ? 0.5 : 1 }}
+                    onClick={() => { onApprove(monitoring.id, justificativa.trim() || undefined); cancelarDecisao(); }}>
+                    <Check size={14} /> Confirmar validação
                   </button>
                 </div>
               </div>
@@ -453,7 +497,7 @@ export const MonitoringHistory = ({
                   <RotateCcw size={16} /> Devolver para correção
                 </button>
                 {!somenteDevolver && (
-                  <button className="btn btn-primary" onClick={() => onApprove(monitoring.id)}>
+                  <button className="btn btn-primary" onClick={() => setDecisao('validar')}>
                     <Check size={16} /> Validar monitoria
                   </button>
                 )}

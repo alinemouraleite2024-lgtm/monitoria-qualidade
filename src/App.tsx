@@ -60,7 +60,7 @@ import { transporteSupabase, entrarComSenha, loginRestaurado, sairDoSupabase, es
 import { etapaFinal } from './shared/compartilhado/mfa';
 import {
   carregarDados, perfilDoLogin, salvarMonitoria, validarMonitoria, reprovarMonitoria, devolverMonitoria,
-  confirmarZeramento, cancelarMonitoria, registrarAcesso, type ResultadoMonitoria, type DadosCompartilhados,
+  confirmarZeramento, cancelarMonitoria, registrarAcesso, registrarObservacao, type ResultadoMonitoria, type DadosCompartilhados,
 } from './shared/compartilhado/dados';
 import { mensagemDoErro, ErroBanco } from './shared/compartilhado/transporte';
 import { gravarColecao, type IndiceDocumentos } from './shared/compartilhado/documentos';
@@ -166,6 +166,7 @@ import { exibirDuracao } from './domain/duracao';
 import { getCarteiraProgress } from './domain/goalService';
 import { perfilAtivoValido, temPerfil } from './domain/perfis';
 import { podeValidar, resolverStatusInicial, exigeReenvio, MOTIVO_REENVIO_MIGRADA } from './domain/validacaoService';
+import { eventosDaTransicao, eliminatoriosOcorridos, novaObservacao, contagemConsideracoes } from './domain/historicoCalibracao';
 
 // 2A.1: a data corrente deixou de ser simulada.
 //
@@ -868,11 +869,15 @@ function AppContent() {
       ? resolverStatusInicial({ isDraft: false, monitorId, areas, settings })
       : monitoringData.status;
 
-    const monitoringObj = {
+    const monitoringObj: Monitoring = {
       ...monitoringData,
       monitorId,
       status: resolvedStatus
     };
+    // Etapa B: envio e reenvio entram no histórico (as mesmas regras do gatilho do script 14).
+    const anterior = isEdit ? monitorings.find(m => m.id === monitoringObj.id) : undefined;
+    const eventosEnvio = eventosDaTransicao(anterior, monitoringObj, { responsavelId: currentUser!.id, agora: new Date().toISOString() });
+    monitoringObj.historico = [...(anterior?.historico ?? monitoringData.historico ?? []), ...eventosEnvio];
 
     if (isEdit) {
       setMonitorings(monitorings.map(m => m.id === monitoringObj.id ? monitoringObj : m));
@@ -1264,15 +1269,63 @@ function AppContent() {
     return true;
   };
 
-  const handleApproveMonitoring = (monId: string) => {
-    if (!gateValidacao(monId) || recusarDecisaoFinal(monId)) return;
-    if (COMPARTILHADO) { void acaoNoBanco(monId, (m) => validarMonitoria(transporteSupabase(), m)); return; }
-    updateMonitoringById(monId, m => ({
+  /**
+   * Modo local (Etapa B): a decisão entra no histórico junto com a mudança — as mesmas regras do
+   * gatilho do script 14. No compartilhado quem grava o evento é o banco.
+   */
+  const comHistorico = (antes: Monitoring, depois: Monitoring, consideracoes?: string): Monitoring => {
+    const eventos = eventosDaTransicao(antes, depois, {
+      responsavelId: currentUser!.id, agora: new Date().toISOString(), consideracoes,
+      criterios: eliminatoriosOcorridos(antes, criteria),
+    });
+    return { ...depois, historico: [...(antes.historico ?? []), ...eventos] };
+  };
+
+  const textoDentroDoLimite = (texto: string | undefined): boolean => {
+    if (!contagemConsideracoes(texto ?? '').excedeu) return true;
+    alert('O texto passa de 2.000 caracteres. Resuma antes de registrar.');
+    return false;
+  };
+
+  const handleApproveMonitoring = (monId: string, consideracoes?: string) => {
+    if (!gateValidacao(monId) || recusarDecisaoFinal(monId) || !textoDentroDoLimite(consideracoes)) return;
+    if (COMPARTILHADO) { void acaoNoBanco(monId, (m) => validarMonitoria(transporteSupabase(), m, consideracoes)); return; }
+    updateMonitoringById(monId, m => comHistorico(m, {
       ...m,
       status: 'Validada',
       approvedBy: currentUser!.id,
       approvedAt: new Date().toISOString()
-    }));
+    }, consideracoes));
+  };
+
+  /**
+   * Observação complementar (Etapa B): só acrescenta um evento — decisão, nota, versão e
+   * situação da monitoria não mudam. `chave` evita a duplicidade numa nova tentativa.
+   */
+  const handleObservar = async (monId: string, texto: string, chave: string): Promise<boolean> => {
+    if (!gateValidacao(monId)) return false;
+    const limpo = (texto ?? '').trim();
+    if (!limpo) { alert('Escreva a observação.'); return false; }
+    if (!textoDentroDoLimite(limpo)) return false;
+    if (COMPARTILHADO) {
+      const alvo = monitorings.find(m => m.id === monId);
+      if (!alvo) return false;
+      try {
+        await registrarObservacao(transporteSupabase(), alvo, limpo, chave);
+      } catch (e) {
+        alert(mensagemDoErro(e));
+        return false;
+      }
+      try {
+        const d = await recarregarDoBanco();
+        setSelectedMonitoringDetail((prev) => (prev && prev.id === monId ? (d.monitorias.find((x) => x.id === monId) ?? null) : prev));
+      } catch (e) {
+        alert(mensagemDoErro(e));
+      }
+      return true;
+    }
+    updateMonitoringById(monId, m => ({ ...m, historico: [...(m.historico ?? []), novaObservacao(m, limpo, currentUser!.id, new Date().toISOString())] }));
+    return true;
   };
 
   // Etapa A (26/10/2026): a justificativa vem do painel de análise, que só libera o botão com o
@@ -1282,11 +1335,12 @@ function AppContent() {
     const motivo = (motivoInformado ?? '').trim();
     // Reprovação é final e exige motivo (D5); o banco também recusa sem motivo.
     if (!motivo) { alert('Informe a justificativa da reprovação.'); return; }
+    if (!textoDentroDoLimite(motivo)) return;
     if (COMPARTILHADO) {
       void acaoNoBanco(monId, (m) => reprovarMonitoria(transporteSupabase(), m, motivo));
       return;
     }
-    updateMonitoringById(monId, m => ({
+    updateMonitoringById(monId, m => comHistorico(m, {
       ...m,
       status: 'Reprovada',
       motivoReprovacao: motivo,
@@ -1302,12 +1356,13 @@ function AppContent() {
     if (!gateValidacao(monId)) return;
     // Etapa A: devolução sem justificativa não sai do portal (o banco também recusa, MI422).
     if (!(reason ?? '').trim()) { alert('Informe a justificativa da devolução.'); return; }
+    if (!textoDentroDoLimite(reason)) return;
     if (COMPARTILHADO) {
       void acaoNoBanco(monId, (m) => devolverMonitoria(transporteSupabase(), m, reason));
       setShowDetailModal(false);
       return;
     }
-    updateMonitoringById(monId, m => ({
+    updateMonitoringById(monId, m => comHistorico(m, {
       ...m,
       status: 'Rascunho',
       adjustmentReason: reason || '',
@@ -1324,7 +1379,7 @@ function AppContent() {
   const handleConfirmZerada = (monId: string) => {
     if (!gateValidacao(monId) || recusarDecisaoFinal(monId)) return;
     if (COMPARTILHADO) { void acaoNoBanco(monId, (m) => confirmarZeramento(transporteSupabase(), m)); return; }
-    updateMonitoringById(monId, m => ({
+    updateMonitoringById(monId, m => comHistorico(m, {
       ...m,
       finalScore: 0,
       zerada: true,
@@ -1918,6 +1973,7 @@ function AppContent() {
           onReject={handleRejectMonitoring}
           onRequestAdjustments={handleRequestAdjustments}
           onConfirmZerada={handleConfirmZerada}
+          onObservar={handleObservar}
         />
       )}
 

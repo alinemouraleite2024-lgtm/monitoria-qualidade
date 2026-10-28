@@ -301,6 +301,34 @@ export interface Monitoring {
   notaCalculada?: number;
   /** Motivo da reprovação (D5). */
   motivoReprovacao?: string;
+  /**
+   * Histórico de calibração (Etapa B). Ausente = ambiente sem histórico (banco sem o script 14,
+   * ou monitoria local anterior a ele); lista vazia = histórico ativo, ainda sem eventos.
+   */
+  historico?: EventoCalibracao[];
+}
+
+export type TipoEventoCalibracao =
+  | 'ENVIO' | 'REENVIO' | 'VALIDACAO' | 'DEVOLUCAO' | 'REPROVACAO'
+  | 'ZERAMENTO_CONFIRMADO' | 'ELIMINATORIO_AFASTADO' | 'CANCELAMENTO' | 'OBSERVACAO';
+
+/** Um acontecimento do histórico de calibração. Só de acréscimo: nunca é alterado nem removido. */
+export interface EventoCalibracao {
+  id: string;
+  tipo: TipoEventoCalibracao;
+  /** 1 no primeiro envio; cada reenvio abre uma rodada nova. */
+  rodada: number;
+  statusResultante: MonitoringStatus;
+  /** Nota da monitoria no momento do evento. */
+  nota: number | null;
+  consideracoes?: string | null;
+  /** Zeramento/afastamento: os eliminatórios envolvidos. */
+  criterios?: { id: string; numero: number | null; nome: string }[] | null;
+  responsavelId: string;
+  /** ISO 8601. */
+  ocorridoEm: string;
+  /** 'reconstituido' = recuperado da auditoria, sem texto que não existia na época. */
+  origem: 'portal' | 'reconstituido';
 }
 
 /**
