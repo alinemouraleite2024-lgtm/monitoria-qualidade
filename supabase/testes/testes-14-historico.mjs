@@ -107,6 +107,9 @@ await devolverMonitoria(ERIVAN, await doBanco(ERIVAN, A), 'TESTE: revisar o crit
 dA = await carregarDados(ALINE, PADROES);
 await salvarMonitoria(ALINE, { ...dA.monitorias.find((m) => m.id === A), scores: GAB(2), status: 'Pendente', finalScore: prev(GAB(2)) }, dA.criterios, true, true);
 await validarMonitoria(ERIVAN, await doBanco(ERIVAN, A));
+const H0 = await criarEEnviar('H', GAB(1));
+const I0 = await criarEEnviar('I', GAB(1));
+await devolverMonitoria(ERIVAN, await doBanco(ERIVAN, I0.id), 'TESTE: devolvida antes do 14.');
 const notasA = (await db.query(`select (depois ->> 'nota') nota, depois ->> 'status' st from public.auditoria where tabela = 'monitorias' and chave ->> 'id' = $1 and acao = 'UPDATE' and (antes ->> 'status') is distinct from (depois ->> 'status') order by seq`, [A])).rows;
 
 const semHist = await carregarDados(ERIVAN, PADROES);
@@ -115,6 +118,15 @@ ok('V.0', 'ANTES do 14 o portal novo carrega normalmente, e as monitorias ficam 
 
 const foto = async () => JSON.stringify((await db.query('select id, status, versao, nota, aprovado_por, revisado_por, motivo_ajuste from public.monitorias order by id')).rows);
 const antes14 = { mon: await foto(), aud: await n('select count(*) n from public.auditoria'), ancora: (await um('select hash from public.auditoria order by seq desc limit 1')).hash };
+
+// ---- 0b. conferências SÓ LEITURA de antes do 14 (as que rodam no banco real) ------------------
+const confAntes = Object.fromEntries((await db.query(sql('conferencia-14-antes.sql'))).rows.map((x) => [x.item, x.resultado]));
+ok('V.0b', `conferencia-14-antes: quebras ${confAntes[8]}; funções ${confAntes[9]}; colunas ${confAntes[10]}; validar hoje "${confAntes[11]}"; objetos do 14 "${confAntes[13]}"`,
+   confAntes[8] === '0' && /^17 \/ 17$/.test(confAntes[9]) && /^25 \/ 25$/.test(confAntes[10]) && confAntes[11] === 'api.validar_monitoria(text,integer) · com M1'
+   && confAntes[12] === 'com M1' && confAntes[13] === 'nenhum' && !/14/.test(confAntes[1]) && confAntes[6] === '0', JSON.stringify(confAntes));
+const previaAntes = (await db.query(sql('conferencia-14-previa-antes.sql'))).rows;
+ok('V.0c', `prévia de ANTES do 14 (só leitura): ${previaAntes.length} linhas, ${previaAntes.filter((x) => x['situação'] === 'recuperável').length} recuperáveis`,
+   previaAntes.length > 0 && (await foto()) === antes14.mon && (await n('select count(*) n from public.auditoria')) === antes14.aud);
 
 // ---- 1. aplicação do 14 ---------------------------------------------------------------------
 let e = null; try { await db.exec(sql('14_historico_calibracao.sql')); } catch (x) { e = x; await db.exec('rollback').catch(() => {}); }
@@ -125,20 +137,40 @@ ok('V.3', 'o 14 não alterou nenhuma monitoria e não mexeu na auditoria existen
    (await foto()) === antes14.mon && (await n('select count(*) n from public.auditoria')) === antes14.aud
    && (await um('select hash from public.auditoria order by seq desc limit 1')).hash === antes14.ancora && (await quebras()) === 0);
 ok('V.4', 'o histórico começa vazio (nada é criado sem pedido)', (await n('select count(*) n from public.monitoria_eventos')) === 0);
+const confDepois = Object.fromEntries((await db.query(sql('conferencia-14-depois.sql'))).rows.map((x) => [x.item, x.resultado]));
+ok('V.4b', `conferencia-14-depois: 14 registrado; monitorias, respostas e auditoria IGUAIS às de antes; 0 eventos; RLS ${confDepois[11]}; validar "${confDepois[15]}"; prévia "${confDepois[17]}"`,
+   /\b14\b/.test(confDepois[1]) && [2, 3, 4, 5, 6, 7, 8, 18, 19].every((i) => confDepois[i] === confAntes[i])
+   && confDepois[9] === '0 eventos' && confDepois[10] === '0' && confDepois[11] === 'sim' && /^5 · /.test(confDepois[12])
+   && /monitorias_y_eventos/.test(confDepois[13]) && confDepois[14] === 'true/false/false/false · false'
+   && confDepois[15] === 'api.validar_monitoria(text,integer,text) · com M1' && /registrar_observacao true\/false/.test(confDepois[16])
+   && /^recuperável \d+$/.test(confDepois[17].split(' · ').find((x) => x.startsWith('recuperável')) ?? ''),
+   JSON.stringify({ antes: confAntes, depois: confDepois }));
 
 // ---- 2. reconstituição (regras 8 e 9) -------------------------------------------------------
 const rec = async () => { await db.exec(`begin; set local app.responsavel = '${ADM}';`); try { const x = (await um('select app.reconstituir_eventos() n')).n; await db.exec('commit'); return x; } catch (x) { await db.exec('rollback'); throw x; } };
 const semDecl = await tenta(async () => { await db.exec('begin'); try { await db.query('select app.reconstituir_eventos()'); await db.exec('commit'); } catch (x) { await db.exec('rollback'); throw x; } });
+const daVisao = (await db.query(`select auditoria_seq "linha da auditoria", monitoria_id monitoria, tipo evento, rodada, nota, responsavel_id "responsável", via,
+   situacao "situação", nullif(limitacoes, '') "limitações", case when consideracoes is null then 'não' else 'sim' end "tem texto"
+   from app.eventos_reconstituiveis order by monitoria_id, auditoria_seq`)).rows;
+const semQuando = (rs) => JSON.stringify(rs.map(({ quando, ...x }) => ({ ...x, nota: x.nota === null ? null : String(x.nota), 'linha da auditoria': String(x['linha da auditoria']) })));
+ok('V.0d', 'a prévia de ANTES do 14 é idêntica à visão do 14 (mesmas linhas, eventos, rodadas, notas, situações e limitações)',
+   semQuando(previaAntes) === semQuando(daVisao), semQuando(previaAntes).slice(0, 300) + ' ≠ ' + semQuando(daVisao).slice(0, 300));
+const reenviar = async (id) => { dA = await carregarDados(ALINE, PADROES);
+  return salvarMonitoria(ALINE, { ...dA.monitorias.find((m) => m.id === id), scores: GAB(2), status: 'Pendente', finalScore: prev(GAB(2)) }, dA.criterios, true, true); };
+await devolverMonitoria(ERIVAN, await doBanco(ERIVAN, H0.id), 'TESTE: devolvida depois do 14, antes da reconstituição.');
+await reenviar(H0.id);
+await validarMonitoria(ERIVAN, await doBanco(ERIVAN, H0.id));
+await reenviar(I0.id);
 ok('V.5', 'reconstituir sem declarar o ADMIN responsável é recusado pelo 06 (MI401) e não grava nada',
-   semDecl.erro?.code === 'MI401' && (await n('select count(*) n from public.monitoria_eventos')) === 0, semDecl.erro?.message);
+   semDecl.erro?.code === 'MI401' && (await n("select count(*) n from public.monitoria_eventos where origem = 'reconstituido'")) === 0, semDecl.erro?.message);
 const previa = (await db.query("select * from app.eventos_reconstituiveis order by auditoria_seq")).rows;
 const conf14 = await tenta(async () => (await db.exec(readFileSync(join(projeto, 'supabase/sql/conferencia-14-reconstituicao.sql'), 'utf8'))));
 const recuperaveis = previa.filter((x) => x.situacao === 'recuperável');
 ok('V.5b', `consulta SÓ LEITURA (conferencia-14): ${recuperaveis.length} recuperáveis, ${previa.length - recuperaveis.length} descartados — fonte, via e limitações em cada linha; nada gravado`,
-   !conf14.erro && recuperaveis.length === 4 && previa.every((x) => x.auditoria_seq && x.situacao)
+   !conf14.erro && recuperaveis.length === 7 && previa.every((x) => x.auditoria_seq && x.situacao)
    && previa.filter((x) => x.monitoria_id === 'MON-10001' || x.monitoria_id === 'MON-10002').every((x) => /^descartado: inclusão pela migração/.test(x.situacao))
    && recuperaveis.find((x) => x.tipo === 'VALIDACAO')?.limitacoes.includes('regra 9')
-   && (await n('select count(*) n from public.monitoria_eventos')) === 0, conf14.erro?.message ?? JSON.stringify(previa.map((x) => [x.monitoria_id, x.tipo, x.situacao])));
+   && (await n("select count(*) n from public.monitoria_eventos where origem = 'reconstituido'")) === 0, conf14.erro?.message ?? JSON.stringify(previa.map((x) => [x.monitoria_id, x.tipo, x.situacao])));
 const nRec = await rec();
 const evA = (await db.query('select tipo, rodada, nota::text nota, consideracoes, origem, responsavel_id, auditoria_seq from public.monitoria_eventos where monitoria_id = $1 order by id', [A])).rows;
 ok('V.6', `reconstituídos ${nRec} eventos da monitoria de teste: ${evA.map((x) => `${x.tipo}/r${x.rodada}/${x.nota}`).join(' → ')}`,
@@ -157,6 +189,11 @@ const gravados = (await db.query("select auditoria_seq::text s, tipo, rodada, no
 ok('V.11b', 'o que foi gravado é exatamente o que a consulta de leitura mostrou (mesmas linhas, tipos, rodadas e notas)',
    JSON.stringify(gravados) === JSON.stringify(recuperaveis.map((x) => ({ s: String(x.auditoria_seq), tipo: x.tipo, rodada: x.rodada, nota: x.nota === null ? null : String(x.nota) }))),
    JSON.stringify({ gravados, recuperaveis: recuperaveis.map((x) => [x.auditoria_seq, x.tipo, x.rodada, x.nota]) }));
+const linha = async (id) => (await db.query('select tipo, rodada, origem from public.monitoria_eventos where monitoria_id = $1 order by ocorrido_em, id', [id])).rows
+  .map((x) => `${x.tipo}/r${x.rodada}/${x.origem === 'portal' ? 'p' : 'rec'}`).join(' → ');
+const lH = await linha(H0.id), lI = await linha(I0.id);
+ok('V.41', `reconstituição DEPOIS de uso real: H ${lH}; I ${lI}`,
+   lH === 'ENVIO/r1/rec → DEVOLUCAO/r1/p → REENVIO/r2/p → VALIDACAO/r2/p' && lI === 'ENVIO/r1/rec → DEVOLUCAO/r1/rec → REENVIO/r2/p');
 ok('V.11c', 'depois de gravar, a consulta marca essas linhas como "já no histórico"',
    (await n("select count(*) n from app.eventos_reconstituiveis where situacao = 'recuperável'")) === 0);
 
@@ -304,6 +341,38 @@ ok('V.38', `restauração (modo autorizado, com motivo): ${depoisR.length} event
    !er && JSON.stringify(depoisR) === JSON.stringify(copia), er?.message);
 const novoDepois = await tenta(async () => ERIVAN.chamar('registrar_observacao', { p_id: B, p_texto: 'TESTE: depois da restauração.', p_chave: '61111111-2222-4333-8444-555555555555' }));
 ok('V.39', 'depois da restauração, novos eventos continuam sendo gravados (numeração sem colisão)', !novoDepois.erro && Number(novoDepois.ok.id) > Math.max(...copia.map((x) => Number(x.id))), novoDepois.erro?.message);
+
+// ---- 5d. o PORTAL ATUAL (publicado no Preview) com o 14 aplicado ---------------------------------
+// Opcional: MONITORIA_PORTAL_ATUAL = pasta com o src do commit publicado (git worktree). Prova que
+// o Preview de hoje continua funcionando entre a execução do 14 e a publicação da interface nova.
+if (process.env.MONITORIA_PORTAL_ATUAL) {
+  const velho = (p) => import(pathToFileURL(join(process.env.MONITORIA_PORTAL_ATUAL, p)).href);
+  const V = await velho('src/shared/compartilhado/dados.ts');
+  const VT = await velho('src/shared/compartilhado/transporte.ts');
+  const VM = await velho('src/shared/compartilhado/modo.ts');
+  VM.definirModoParaTeste(true);
+  const transporteVelho = (uid) => ({ ...transporte(uid),
+    selecionar: async (tb) => { try { return await transporte(uid).selecionar(tb); } catch (e) { throw new VT.ErroBanco(e.codigo, e.message, e.dica); } },
+    chamar: async (f, a) => { try { return await transporte(uid).chamar(f, a); } catch (e) { throw new VT.ErroBanco(e.codigo, e.message, e.dica); } } });
+  const AV = transporteVelho(U(1)), EV = transporteVelho(U(2));
+  const dV = await V.carregarDados(AV, PADROES);
+  const r1 = await V.salvarMonitoria(AV, base('F'), dV.criterios, false, false);
+  const dV2 = await V.carregarDados(AV, PADROES);
+  const mF = dV2.monitorias.find((m) => m.id === r1.id);
+  const env = await tenta(() => V.salvarMonitoria(AV, { ...mF, scores: GAB(1), status: 'Pendente', finalScore: prev(GAB(1)) }, dV2.criterios, true, true));
+  const pegar = async (q, id) => (await V.carregarDados(q, PADROES)).monitorias.find((m) => m.id === id);
+  const dev = await tenta(async () => V.devolverMonitoria(EV, await pegar(EV, r1.id), 'TESTE: portal atual devolve.'));
+  const mF2 = await pegar(AV, r1.id);
+  const ree = await tenta(async () => V.salvarMonitoria(AV, { ...mF2, scores: GAB(2), status: 'Pendente', finalScore: prev(GAB(2)) }, (await V.carregarDados(AV, PADROES)).criterios, true, true));
+  const val = await tenta(async () => V.validarMonitoria(EV, await pegar(EV, r1.id)));
+  const G0 = await criarEEnviar('G', GAB(2));
+  const rep2 = await tenta(async () => V.reprovarMonitoria(EV, await pegar(EV, G0.id), 'TESTE: portal atual reprova.'));
+  const evF = (await evs(r1.id)).map((x) => x.tipo).join();
+  ok('V.40', `PORTAL ATUAL com o 14: carrega, envia, devolve, reenvia, valida (chamada antiga, sem considerações) e reprova → ${evF}`,
+     !env.erro && !dev.erro && !ree.erro && !val.erro && !rep2.erro && evF === 'ENVIO,DEVOLUCAO,REENVIO,VALIDACAO'
+     && (await um('select status from public.monitorias where id = $1', [G0.id])).status === 'Reprovada',
+     [env, dev, ree, val, rep2].map((x) => x.erro?.message).filter(Boolean).join(' | '));
+}
 
 // ---- 6. integridade -------------------------------------------------------------------------------
 const audEv = await n("select count(distinct chave ->> 'id') n from public.auditoria where tabela = 'monitoria_eventos' and acao = 'INSERT'");
