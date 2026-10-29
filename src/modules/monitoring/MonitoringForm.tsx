@@ -19,6 +19,7 @@ import { BLOCOS_IMPORTACAO, violaRegraDeAutenticacao, type ResultadoImportacao }
 import { ImportarAvaliacaoModal } from './ImportarAvaliacaoModal';
 import { HistoricoCalibracao } from './HistoricoCalibracao';
 import { atendimentoJaRegistrado, mensagemAtendimentoJaRegistrado, perguntaPossivelDuplicidade, possiveisDuplicidades } from '../../domain/duplicidade';
+import { colaboradorasSelecionaveis, mensagemColaboradoraInativa, rotuloColaboradora, vinculoNovoComInativa } from '../../domain/colaboradoraAtiva';
 
 /** Chave da requisição de criação (script 15). crypto.randomUUID existe em https e localhost. */
 const novaChaveCriacao = (): string =>
@@ -802,6 +803,12 @@ export const MonitoringForm = ({
    * na criação e no envio, não a cada salvamento do mesmo rascunho.
    */
   const recusarSeJaRegistrado = (data: Monitoring, enviando: boolean): boolean => {
+    // Colaboradora inativa não recebe monitoria nova (script 16); a antiga dela segue normalmente.
+    const colab = collaborators.find((c) => c.id === data.colaboradorId);
+    if (vinculoNovoComInativa(colab, initialData?.colaboradorId)) {
+      alert(mensagemColaboradoraInativa(colab!.name));
+      return true;
+    }
     const quem = data.monitorId || currentUser?.id || '';
     const existente = atendimentoJaRegistrado(data, quem, monitorings);
     if (existente) {
@@ -1082,7 +1089,7 @@ export const MonitoringForm = ({
                           style={{ borderColor: (hasAttemptedNext && !formData.colaboradorId) ? '#ef4444' : '#d1d5db', backgroundColor: '#f9fafb' }}
                         >
                           <option value="">Selecione na lista...</option>
-                          {collaborators.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                          {colaboradorasSelecionaveis(collaborators, initialData?.colaboradorId).map(c => <option key={c.id} value={c.id}>{rotuloColaboradora(c)}</option>)}
                         </select>
                       </div>
                       

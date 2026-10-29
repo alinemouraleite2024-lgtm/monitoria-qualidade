@@ -22,6 +22,7 @@ import type { Canal, Collaborator, Criterion, Monitoring, TipoMonitoria, User } 
 import { getCriteriosBloqueados } from './criterionGating';
 import { calcularDuracao } from './duracao';
 import { atendimentoJaRegistrado, possiveisDuplicidades } from './duplicidade';
+import { mensagemColaboradoraInativa, vinculoNovoComInativa } from './colaboradoraAtiva';
 
 export const SCHEMA_IMPORTACAO = 'monitoria-chatgpt/1';
 
@@ -142,6 +143,8 @@ export interface ContextoImportacao {
   currentUser: User | null;
   catalogCategorias: string[];
   monitorings: Monitoring[];
+  /** Colaboradora já vinculada à monitoria em edição (vazio na monitoria nova). */
+  colaboradorJaVinculadoId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -368,8 +371,12 @@ export const validarImportacao = (texto: string, ctx: ContextoImportacao): Resul
       erros.push(`Colaborador "${colabNome}" não encontrado no cadastro. Confira a grafia ou informe o "colaboradorId".`);
     }
   }
-  if (colaborador && colaborador.active === false) {
-    avisos.push(`${colaborador.name} está inativa no cadastro.`);
+  // Inativa não recebe monitoria nova (script 16); na monitoria antiga dela, só avisa.
+  if (colaborador && vinculoNovoComInativa(colaborador, ctx.colaboradorJaVinculadoId)) {
+    erros.push(mensagemColaboradoraInativa(colaborador.name));
+    colaborador = undefined;
+  } else if (colaborador && colaborador.active === false) {
+    avisos.push(`${colaborador.name} está inativa no cadastro (monitoria antiga dela).`);
   }
 
   // Monitora — o formulário credita a monitoria a quem está logada. Se o JSON diz outra pessoa,

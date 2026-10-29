@@ -43,6 +43,12 @@ const SUITES = [
   { nome: '11 (homologação ponta a ponta)', arq: 'testes-11-homologacao.mjs', args: [raiz], ts: true, requer: [join(saida, '09b_migracao_dados.sql'), join(saida, 'manifesto.json')] },
   { nome: '13 (metas: banco e portal)', arq: 'testes-13-metas.mjs', args: [raiz], ts: true, requer: [join(saida, '09b_migracao_dados.sql'), join(saida, 'manifesto.json')] },
   { nome: '14 (histórico de calibração)', arq: 'testes-14-historico.mjs', args: [raiz], ts: true, requer: [join(saida, '09b_migracao_dados.sql'), join(saida, 'manifesto.json')] },
+  { nome: 'backup e restauração', arq: 'testes-backup.mjs', args: [raiz, join(fx, 'reguas')], ts: true },
+  { nome: '15 (duplicidade na criação)', arq: 'testes-15-duplicidade.mjs', args: [raiz], ts: true, requer: [join(saida, '09b_migracao_dados.sql'), join(saida, 'manifesto.json')] },
+  { nome: '15 e 15b (ensaio da implantação)', arq: 'testes-15-implantacao.mjs', args: [raiz], ts: true, requer: [join(saida, '09b_migracao_dados.sql'), join(saida, 'manifesto.json')] },
+  { nome: '15r (ensaio da reversão)', arq: 'testes-15-reversao.mjs', args: [raiz], ts: true, requer: [join(saida, '09b_migracao_dados.sql'), join(saida, 'manifesto.json')] },
+  { nome: '15c e 11b (encerramento dos testes)', arq: 'testes-15c-encerramento.mjs', args: [raiz], ts: true, requer: [join(saida, '09b_migracao_dados.sql'), join(saida, 'manifesto.json')] },
+  { nome: '16 (colaboradora inativa)', arq: 'testes-16-colaboradora-inativa.mjs', args: [raiz], ts: true, requer: [join(saida, '09b_migracao_dados.sql'), join(saida, 'manifesto.json')] },
 ];
 
 console.log(`Suítes de integração · relógio ${dias ? `+${dias} dias` : 'de hoje'}\n`);
