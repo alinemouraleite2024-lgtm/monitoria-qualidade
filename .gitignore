@@ -30,3 +30,12 @@ dist-ssr
 
 # Relatório de lint gerado (462KB, não deve ser versionado)
 lint.json
+
+# Backups e dados reais (29/10/2026): nunca versionar. A cópia oficial fica só na pasta
+# restrita "Backups MonitorIA" do OneDrive corporativo (docs/BACKUP-MANUAL.md).
+# Em supabase/backup/ só o código (restauracao.mjs) e documentação entram no git.
+/supabase/backup/*
+!/supabase/backup/*.mjs
+!/supabase/backup/*.md
+monitoria-backup-*
+Supabase Snippet*
