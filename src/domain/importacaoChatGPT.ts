@@ -21,6 +21,7 @@
 import type { Canal, Collaborator, Criterion, Monitoring, TipoMonitoria, User } from '../types/domain';
 import { getCriteriosBloqueados } from './criterionGating';
 import { calcularDuracao } from './duracao';
+import { atendimentoJaRegistrado, possiveisDuplicidades } from './duplicidade';
 
 export const SCHEMA_IMPORTACAO = 'monitoria-chatgpt/1';
 
@@ -724,9 +725,12 @@ export const validarImportacao = (texto: string, ctx: ContextoImportacao): Resul
     }
   });
 
-  // Duplicidade: mesmo atendimento já monitorado. Não bloqueia — calibração e reavaliação são
-  // casos legítimos —, mas exige confirmação explícita antes de aplicar.
-  const duplicidades = numeroAtendimento
+  // Duplicidade: mesmo atendimento já monitorado. Pelo número do atendimento não bloqueia —
+  // calibração e reavaliação são casos legítimos —, mas exige confirmação explícita antes de
+  // aplicar. Pela regra do script 15 (mesma monitora, colaboradora, canal e início ao minuto),
+  // o banco vai recusar a gravação (MI410): entra aqui também, para o aviso vir antes — foi o
+  // caso do AGO-009, com número e título digitados de outro jeito (29/10/2026).
+  const porNumero = numeroAtendimento
     ? ctx.monitorings.filter(
         (m) =>
           m.status !== 'Cancelada' &&
@@ -734,6 +738,14 @@ export const validarImportacao = (texto: string, ctx: ContextoImportacao): Resul
           (!numeroTitulo || !m.numeroTitulo || normalizar(m.numeroTitulo) === normalizar(numeroTitulo)),
       )
     : [];
+  const mesmoAtendimento = colaborador && canal && ctx.currentUser
+    ? atendimentoJaRegistrado({ id: '', colaboradorId: colaborador.id, canal, inicioAtendimento: inicio, status: 'Rascunho', tipo: tipo ?? 'Regular' }, ctx.currentUser.id, ctx.monitorings)
+    : null;
+  // Alerta complementar (29/10/2026): mesmo dia e colaboradora, início até 10 min ou mesmo número.
+  const parecidas = colaborador && canal && ctx.currentUser
+    ? possiveisDuplicidades({ id: '', colaboradorId: colaborador.id, canal, inicioAtendimento: inicio, numeroAtendimento, status: 'Rascunho', tipo: tipo ?? 'Regular' }, ctx.currentUser.id, ctx.monitorings)
+    : [];
+  const duplicidades = [...new Set([...porNumero, ...(mesmoAtendimento ? [mesmoAtendimento] : []), ...parecidas])];
 
   if (notaEsperada != null && notaCalculada != null && Math.abs(notaEsperada - notaCalculada) > 0.01 && erros.length === 0) {
     erros.push(

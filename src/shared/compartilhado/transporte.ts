@@ -22,7 +22,11 @@ export interface Transporte {
   alterar(tabela: string, chave: Record<string, unknown>, valores: Record<string, unknown>, versaoLida: number): Promise<number>;
 }
 
-/** Erro devolvido pelo banco, com o código (MI401, MI403, MI404, MI409, MI422, MI428 ou SQLSTATE). */
+/**
+ * Erro devolvido pelo banco, com o código (MI401, MI403, MI404, MI409, MI410, MI422, MI428 ou
+ * SQLSTATE). MI410 = o mesmo atendimento já tem monitoria desta monitora (script 15); a
+ * mensagem do banco já diz qual e vai para a tela como está.
+ */
 export class ErroBanco extends Error {
   codigo: string;
   dica: string;

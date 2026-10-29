@@ -18,6 +18,13 @@ import type { Area, Collaborator, Criterion, Monitoring, SystemSettings, User } 
 import { BLOCOS_IMPORTACAO, violaRegraDeAutenticacao, type ResultadoImportacao } from '../../domain/importacaoChatGPT';
 import { ImportarAvaliacaoModal } from './ImportarAvaliacaoModal';
 import { HistoricoCalibracao } from './HistoricoCalibracao';
+import { atendimentoJaRegistrado, mensagemAtendimentoJaRegistrado, perguntaPossivelDuplicidade, possiveisDuplicidades } from '../../domain/duplicidade';
+
+/** Chave da requisição de criação (script 15). crypto.randomUUID existe em https e localhost. */
+const novaChaveCriacao = (): string =>
+  typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, (c) => (Number(c) ^ (Math.random() * 16) >> (Number(c) / 4)).toString(16));
 
 /**
  * Contrato do formulário de monitoria.
@@ -80,7 +87,7 @@ export interface MonitoringFormProps {
    * protocolo gerados por ele, nota calculada por ele) — ou `null` quando a gravação foi recusada,
    * caso em que a mensagem já foi mostrada e o formulário continua aberto.
    */
-  onSave: (monitoring: Monitoring) => void | Promise<{ id: string; protocolo: string; nota: number } | null>;
+  onSave: (monitoring: Monitoring) => void | Promise<{ id: string; protocolo: string; nota: number; status?: string; repetida?: boolean } | null>;
 }
 
 /** Estado do formulário. Espelha Monitoring, com os campos ainda soltos durante a edição. */
@@ -255,6 +262,13 @@ export const MonitoringForm = ({
 
   const [scores, setScores] = useState<Record<string, ScoreEmEdicao>>({});
   const [lastSaved, setLastSaved] = useState<string | null>(null);
+  // Duplicidade (29/10/2026): os pares idênticos da homologação nasceram de um segundo clique em
+  // "Concluir" enquanto o banco respondia. Enquanto uma gravação está em andamento, os botões
+  // ficam desativados e um novo pedido é ignorado; e a criação leva uma chave única por
+  // formulário — se o pedido chegar duas vezes ao banco, a segunda devolve a mesma monitoria.
+  const [salvando, setSalvando] = useState(false);
+  const salvandoRef = useRef(false);
+  const chaveCriacaoRef = useRef<string>(novaChaveCriacao());
   const [expandirErros, setExpandirErros] = useState(false);
   const [expandedOrientacao, setExpandedOrientacao] = useState<Record<string, boolean>>({});
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
@@ -762,30 +776,72 @@ export const MonitoringForm = ({
       // (handleConfirmZerada, em App.jsx) pode zerar. Nunca é reaberta a false no re-save de
       // um rascunho: se já estava zerada, permanece zerada até decisão explícita do Gestor.
       eliminatoryPending: initialData?.zerada ? false : (hasEliminatoryTrigger || initialData?.eliminatoryPending || false),
-      zerada: initialData?.zerada || false
+      zerada: initialData?.zerada || false,
+      // Só a criação leva a chave; quem edita uma monitoria existente já tem o id.
+      ...(formData.id ? {} : { chaveCriacao: chaveCriacaoRef.current }),
     };
   };
 
-  const handleSaveDraft = async () => {
+  /** Uma gravação por vez: um segundo clique enquanto a primeira não terminou é ignorado. */
+  const comTrava = async (gravar: () => Promise<void>) => {
+    if (salvandoRef.current) return;
+    salvandoRef.current = true;
+    setSalvando(true);
+    try {
+      await gravar();
+    } finally {
+      salvandoRef.current = false;
+      setSalvando(false);
+    }
+  };
+
+  /**
+   * Duplicidade antes de gravar. O mesmo atendimento (mesmo minuto de início) já registrado: avisa
+   * e não grava — o banco também recusa (MI410). Parecido, com pequena diferença de preenchimento
+   * (alerta complementar): pergunta; a monitora confirma que é outro atendimento. A pergunta vem
+   * na criação e no envio, não a cada salvamento do mesmo rascunho.
+   */
+  const recusarSeJaRegistrado = (data: Monitoring, enviando: boolean): boolean => {
+    const quem = data.monitorId || currentUser?.id || '';
+    const existente = atendimentoJaRegistrado(data, quem, monitorings);
+    if (existente) {
+      alert(mensagemAtendimentoJaRegistrado(existente));
+      return true;
+    }
+    if (initialData && !enviando) return false;
+    const parecidas = possiveisDuplicidades(data, quem, monitorings);
+    return parecidas.length > 0 && !window.confirm(perguntaPossivelDuplicidade(parecidas));
+  };
+
+  const avisoSeRepetida = (registrado: { status?: string; repetida?: boolean }) =>
+    registrado.repetida
+      ? `\n\nO pedido chegou mais de uma vez ao banco; a monitoria foi registrada uma única vez (situação: ${registrado.status ?? '—'}).`
+      : '';
+
+  const handleSaveDraft = () => comTrava(async () => {
     const data = buildFinalData(true);
+    if (recusarSeJaRegistrado(data, false)) return;
     const registrado = await onSave(data);
     if (registrado === null) return;
     setLastSaved(new Date().toLocaleTimeString());
-    alert(registrado ? `Rascunho salvo com sucesso!\nCódigo: ${registrado.id}` : 'Rascunho salvo com sucesso!');
-  };
+    alert(registrado ? `Rascunho salvo com sucesso!\nCódigo: ${registrado.id}${avisoSeRepetida(registrado)}` : 'Rascunho salvo com sucesso!');
+  });
 
-  const handleSaveFinal = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSaveFinal = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    return comTrava(async () => {
     if (window.confirm("Deseja concluir esta monitoria? Após salvar ela seguirá para validação.")) {
       const data = buildFinalData(false);
+      if (recusarSeJaRegistrado(data, true)) return;
       const registrado = await onSave(data);
       if (registrado === null) return;
       // No modo compartilhado, protocolo, código e nota são os do banco — a nota oficial é a dele.
       const protocolo = registrado ? registrado.protocolo : data.protocolo;
       const codigo = registrado ? registrado.id : data.id;
       const nota = registrado ? registrado.nota : data.finalScore;
-      alert(`Monitoria salva com sucesso!\nProtocolo: ${protocolo}\nCódigo: ${codigo}\nNota: ${nota}% (${getScoreConcept(nota).label})`);
+      alert(`Monitoria salva com sucesso!\nProtocolo: ${protocolo}\nCódigo: ${codigo}\nNota: ${nota}% (${getScoreConcept(nota).label})${registrado ? avisoSeRepetida(registrado) : ''}`);
     }
+    });
   };
 
   // Evidencias Upload
@@ -876,8 +932,8 @@ export const MonitoringForm = ({
             {lastSaved && <span style={{ fontSize: '0.8rem', color: '#6b7280', marginLeft: '3rem', marginTop: '0.25rem', display: 'inline-block' }}>Salvo automaticamente às {lastSaved}</span>}
           </div>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <button type="button" className="btn btn-secondary" onClick={handleSaveDraft} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Save size={16} /> Salvar Rascunho
+            <button type="button" className="btn btn-secondary" onClick={handleSaveDraft} disabled={salvando} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Save size={16} /> {salvando ? 'Salvando…' : 'Salvar Rascunho'}
             </button>
             <button type="button" className="btn-sidebar-logout" onClick={onClose} title="Fechar e Voltar" style={{ marginLeft: '0.5rem' }}><X size={20} /></button>
           </div>
@@ -1797,8 +1853,8 @@ export const MonitoringForm = ({
           
           {step < totalSteps ? (
             <div style={{ display: 'flex', gap: '1rem' }}>
-              <button type="button" className="btn btn-secondary" onClick={handleSaveDraft} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Save size={16} /> Salvar Rascunho
+              <button type="button" className="btn btn-secondary" onClick={handleSaveDraft} disabled={salvando} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Save size={16} /> {salvando ? 'Salvando…' : 'Salvar Rascunho'}
               </button>
               <button type="button" className="btn btn-primary" onClick={handleNext} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 Próximo <ChevronRight size={16} />
@@ -1809,8 +1865,8 @@ export const MonitoringForm = ({
               <button type="button" className="btn btn-secondary" onClick={exportPDF} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Download size={16} /> Exportar PDF
               </button>
-              <button type="submit" form="monitoring-form" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#10b981', borderColor: '#10b981' }}>
-                <CheckCircle2 size={16} /> Concluir Monitoria
+              <button type="submit" form="monitoring-form" className="btn btn-primary" disabled={salvando} aria-busy={salvando} style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#10b981', borderColor: '#10b981' }}>
+                <CheckCircle2 size={16} /> {salvando ? 'Salvando…' : 'Concluir Monitoria'}
               </button>
             </div>
           )}

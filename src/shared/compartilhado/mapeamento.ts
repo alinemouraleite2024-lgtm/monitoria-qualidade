@@ -98,7 +98,7 @@ const COLUNAS_MONITORIA: Record<string, string> = {
   conclusao: 'conclusao', evidencia_observacoes: 'evidenciaObservacoes', eliminatorio_confirmado_por: 'eliminatoryConfirmedBy',
   eliminatorio_confirmado_em: 'eliminatoryConfirmedAt', aprovado_por: 'approvedBy', aprovado_em: 'approvedAt',
   revisado_por: 'reviewedBy', revisado_em: 'reviewedAt', motivo_ajuste: 'adjustmentReason', motivo_reprovacao: 'motivoReprovacao',
-  regua_versao_id: 'reguaVersaoId', origem: 'origem',
+  regua_versao_id: 'reguaVersaoId', origem: 'origem', cancelado_motivo: 'motivoCancelamento', duplicata_de: 'duplicataDe',
 };
 
 /** Linha de monitoria_eventos (script 14) → evento do histórico. */
@@ -180,6 +180,8 @@ const CAMPOS_ENVIADOS = ['colaboradorId', 'categoriaAtendimento', 'numeroAtendim
 export const montarDadosParaSalvar = (m: Monitoring, criterios: Criterion[], jaNoBanco: boolean, enviar: boolean): Record<string, unknown> => {
   const dados: Record<string, unknown> = {};
   if (jaNoBanco) dados.id = m.id;
+  // Só na criação: a mesma chave repetida (clique duplo, nova tentativa) não cria outra (15).
+  else if (m.chaveCriacao) dados.chaveCriacao = m.chaveCriacao;
   const fonte = m as unknown as Record<string, unknown>;
   for (const k of CAMPOS_ENVIADOS) if (fonte[k] !== undefined && fonte[k] !== null) dados[k] = fonte[k];
   const subsDe = new Map(criterios.map((c) => [c.id, new Set((c.subPerguntas || []).map((s) => s.id))]));

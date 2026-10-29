@@ -306,6 +306,15 @@ export interface Monitoring {
    * ou monitoria local anterior a ele); lista vazia = histórico ativo, ainda sem eventos.
    */
   historico?: EventoCalibracao[];
+  /**
+   * Chave da requisição de criação (uuid gerado uma vez por formulário novo). Vai só na
+   * criação: repetir a mesma chave devolve a monitoria já criada, sem criar outra (script 15).
+   */
+  chaveCriacao?: string;
+  /** Cancelada por duplicidade: a monitoria original, da qual esta era cópia (script 15). */
+  duplicataDe?: string;
+  /** Motivo do cancelamento pelo ADMIN (D7). */
+  motivoCancelamento?: string;
 }
 
 export type TipoEventoCalibracao =

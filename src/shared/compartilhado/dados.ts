@@ -84,12 +84,14 @@ export interface ResultadoMonitoria {
   versao: number;
   nota: number;
   regua_versao_id: string | null;
+  /** A mesma chave de criação já tinha gravado esta monitoria: nada novo foi criado (script 15). */
+  repetida?: boolean;
 }
 
 const resultado = (r: unknown): ResultadoMonitoria => {
   const o = (r ?? {}) as Record<string, unknown>;
   return { id: String(o.id), protocolo: String(o.protocolo ?? ''), status: String(o.status ?? ''), versao: Number(o.versao),
-    nota: Number(o.nota ?? 0), regua_versao_id: (o.regua_versao_id as string) ?? null };
+    nota: Number(o.nota ?? 0), regua_versao_id: (o.regua_versao_id as string) ?? null, ...(o.repetida === true ? { repetida: true } : {}) };
 };
 
 /** Salva rascunho ou envia para validação (api.salvar_monitoria). */
@@ -116,6 +118,13 @@ export const devolverMonitoria = (t: Transporte, m: Monitoring, motivo: string) 
 export const confirmarZeramento = (t: Transporte, m: Monitoring) => acao(t, 'confirmar_zeramento', m);
 export const afastarEliminatorio = (t: Transporte, m: Monitoring, motivo: string) => acao(t, 'afastar_eliminatorio', m, motivo);
 export const cancelarMonitoria = (t: Transporte, m: Monitoring, motivo: string) => acao(t, 'cancelar_monitoria', m, motivo);
+
+/**
+ * Cancela a CÓPIA de uma monitoria criada em dobro (script 15, ADMIN com MFA). O banco confere
+ * que as duas são o mesmo registro antes de cancelar e preenche o motivo padrão.
+ */
+export const cancelarPorDuplicidade = async (t: Transporte, copia: Monitoring, originalId: string) =>
+  resultado(await t.chamar('cancelar_por_duplicidade', { p_id: copia.id, p_versao_lida: copia.versao ?? null, p_original: originalId }));
 
 /**
  * Observação complementar (script 14): só acrescenta um evento — a monitoria não muda. A chave
