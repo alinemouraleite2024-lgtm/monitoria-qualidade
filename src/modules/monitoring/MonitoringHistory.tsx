@@ -7,6 +7,8 @@ import { competenciaLabel } from '../../domain/period';
 import { podeValidar, exigeReenvio, MOTIVO_REENVIO_MIGRADA } from '../../domain/validacaoService';
 import { rotuloDaResposta, tomDaResposta, respostasDoChecklist } from '../../domain/rotulosRegua';
 import { descricaoDoAnexo } from '../../domain/evidencias';
+import { arquivosDaMonitoria } from '../../domain/evidenciasOneDrive';
+import { EvidenciasArquivos } from './EvidenciasArquivos';
 import { contagemConsideracoes } from '../../domain/historicoCalibracao';
 import { HistoricoCalibracao, ContadorConsideracoes } from './HistoricoCalibracao';
 import type { Collaborator, Criterion, Monitoring, Role, User } from '../../types/domain';
@@ -284,11 +286,13 @@ export const MonitoringHistory = ({
             {(() => {
               const anexos = (monitoring.evidencias || []) as Evidencia[];
               const links = ((monitoring.links || []) as unknown[]).map(String).filter(l => l.trim());
-              if (!anexos.length && !links.length && !monitoring.evidenciaObservacoes) {
+              const arquivos = arquivosDaMonitoria(monitoring.id);
+              if (!arquivos.length && !anexos.length && !links.length && !monitoring.evidenciaObservacoes) {
                 return <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Nenhuma evidência registrada.</div>;
               }
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem' }}>
+                  {arquivos.length > 0 && <EvidenciasArquivos arquivos={arquivos} />}
                   {anexos.map((ev, i) => (
                     <div key={ev.id ?? i} style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.5rem', alignItems: 'center', minWidth: 0 }}>
                       <Paperclip size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
