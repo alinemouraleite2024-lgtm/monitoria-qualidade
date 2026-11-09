@@ -349,7 +349,7 @@ export const MonitoringHistory = ({
               completo. */}
           <div>
             <h3 style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
-              Relatório
+              {monitoring.relatorioCompleto ? 'Informações estruturadas (preenchidas pelo JSON)' : 'Relatório'}
               {monitoring.relatorioCompleto && (
                 <button type="button" className="btn btn-secondary btn-sm" aria-expanded={camposAbertos} onClick={() => setCamposAbertos(!camposAbertos)}>
                   {camposAbertos ? 'Recolher campos' : 'Ver campos'}

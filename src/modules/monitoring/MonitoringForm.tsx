@@ -275,6 +275,7 @@ export const MonitoringForm = ({
   const salvandoRef = useRef(false);
   const chaveCriacaoRef = useRef<string>(novaChaveCriacao());
   const [expandirErros, setExpandirErros] = useState(false);
+  const [estruturadasAbertas, setEstruturadasAbertas] = useState(false);
   const [expandedOrientacao, setExpandedOrientacao] = useState<Record<string, boolean>>({});
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     COMUNICAÇÃO: true,
@@ -1687,6 +1688,22 @@ export const MonitoringForm = ({
 
                   <RelatorioCompletoEtapa valor={formData.relatorioCompleto} aoMudar={(html) => setFormData(prev => ({ ...prev, relatorioCompleto: html }))} />
 
+                  {/* Recolhida sempre ao chegar: no fluxo normal o JSON preenche estes campos antes de
+                      o relatório ser colado, e abrir por haver conteúdo reabriria a duplicidade. */}
+                  <div style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '1rem 1.25rem' }}>
+                    <button
+                      type="button"
+                      aria-expanded={estruturadasAbertas}
+                      onClick={() => setEstruturadasAbertas(!estruturadasAbertas)}
+                      style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', width: '100%', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}
+                    >
+                      <span style={{ fontSize: '1.05rem', fontWeight: '700', color: '#111827' }}>Informações estruturadas (preenchidas pelo JSON)</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0, fontSize: '0.8rem', color: '#6b7280' }}>
+                        {BLOCOS_RELATORIO.filter(b => String(formData[b.campo] || '').trim()).length} de {BLOCOS_RELATORIO.length} preenchidos
+                        {estruturadasAbertas ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                      </span>
+                    </button>
+                  {estruturadasAbertas && <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.25rem', marginTop: '1rem' }}>
                   {BLOCOS_RELATORIO.map(bloco => {
                     const valor = (formData[bloco.campo] as string) || '';
                     const recolhido = bloco.recolhivel && !expandirErros && !valor;
@@ -1729,6 +1746,8 @@ export const MonitoringForm = ({
                       </div>
                     );
                   })}
+                  </div>}
+                  </div>
 
                   {/* Fora dos blocos do relatório de propósito: é anotação da monitora, não
                       conteúdo que vai para a colaboradora. */}
