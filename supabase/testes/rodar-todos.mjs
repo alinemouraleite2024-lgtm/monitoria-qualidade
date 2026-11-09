@@ -49,6 +49,7 @@ const SUITES = [
   { nome: '15r (ensaio da reversão)', arq: 'testes-15-reversao.mjs', args: [raiz], ts: true, requer: [join(saida, '09b_migracao_dados.sql'), join(saida, 'manifesto.json')] },
   { nome: '15c e 11b (encerramento dos testes)', arq: 'testes-15c-encerramento.mjs', args: [raiz], ts: true, requer: [join(saida, '09b_migracao_dados.sql'), join(saida, 'manifesto.json')] },
   { nome: '16 (colaboradora inativa)', arq: 'testes-16-colaboradora-inativa.mjs', args: [raiz], ts: true, requer: [join(saida, '09b_migracao_dados.sql'), join(saida, 'manifesto.json')] },
+  { nome: '17 (relatório completo)', arq: 'testes-17-relatorio-completo.mjs', args: [raiz], ts: true, requer: [join(saida, '09b_migracao_dados.sql'), join(saida, 'manifesto.json')] },
 ];
 
 console.log(`Suítes de integração · relógio ${dias ? `+${dias} dias` : 'de hoje'}\n`);

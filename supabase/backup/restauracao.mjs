@@ -178,7 +178,7 @@ begin
       raise exception 'RESTAURAÇÃO DESFEITA: % tem % linhas (backup: %).', r.tabela, r.atual, r.esperado;
     end if;
   end loop;
-  if (select md5(coalesce(string_agg(to_jsonb(t)::text, '|' order by t.id), '')) from public.monitorias t) <> ${lit(m.impressoes.monitorias)}
+  if (select md5(coalesce(string_agg((to_jsonb(t) - 'relatorio_completo')::text, '|' order by t.id), '')) from public.monitorias t) <> ${lit(m.impressoes.monitorias)}
      or (select md5(coalesce(string_agg(to_jsonb(t)::text, '|' order by t.monitoria_id, t.criterio_id), '')) from public.monitoria_respostas t) <> ${lit(m.impressoes.respostas)}
      or (select md5(coalesce(string_agg(to_jsonb(t)::text, '|' order by to_jsonb(t)::text), '')) from public.monitoria_evidencias t) <> ${lit(m.impressoes.evidencias)}
      or (select md5(coalesce(string_agg(to_jsonb(t)::text, '|' order by t.id), '')) from public.monitoria_eventos t) <> ${lit(m.impressoes.eventos)} then

@@ -95,7 +95,7 @@ const COLUNAS_MONITORIA: Record<string, string> = {
   numero_titulo: 'numeroTitulo', categoria_atendimento: 'categoriaAtendimento', empreendimento: 'empreendimento', tempo: 'tempo',
   inicio_atendimento: 'inicioAtendimento', fim_atendimento: 'fimAtendimento', comentarios: 'comments', pontos_fortes: 'strengths',
   oportunidades: 'opportunities', contexto: 'contexto', leitura_tecnica: 'leituraTecnica', erros_identificados: 'errosIdentificados',
-  conclusao: 'conclusao', evidencia_observacoes: 'evidenciaObservacoes', eliminatorio_confirmado_por: 'eliminatoryConfirmedBy',
+  conclusao: 'conclusao', relatorio_completo: 'relatorioCompleto', evidencia_observacoes: 'evidenciaObservacoes', eliminatorio_confirmado_por: 'eliminatoryConfirmedBy',
   eliminatorio_confirmado_em: 'eliminatoryConfirmedAt', aprovado_por: 'approvedBy', aprovado_em: 'approvedAt',
   revisado_por: 'reviewedBy', revisado_em: 'reviewedAt', motivo_ajuste: 'adjustmentReason', motivo_reprovacao: 'motivoReprovacao',
   regua_versao_id: 'reguaVersaoId', origem: 'origem', cancelado_motivo: 'motivoCancelamento', duplicata_de: 'duplicataDe',
@@ -166,7 +166,7 @@ export type { SystemSettings, BrandConfig };
 // ---- monitoria -> operação do banco ---------------------------------------------------------------
 const CAMPOS_ENVIADOS = ['colaboradorId', 'categoriaAtendimento', 'numeroAtendimento', 'numeroTitulo', 'canal', 'date', 'competencia',
   'inicioAtendimento', 'fimAtendimento', 'duracaoMinutos', 'tipo', 'comments', 'strengths', 'opportunities', 'contexto',
-  'leituraTecnica', 'errosIdentificados', 'conclusao', 'evidenciaObservacoes', 'evidencias', 'links'] as const;
+  'leituraTecnica', 'errosIdentificados', 'conclusao', 'relatorioCompleto', 'evidenciaObservacoes', 'evidencias', 'links'] as const;
 
 /**
  * Monta `p_dados` de api.salvar_monitoria.

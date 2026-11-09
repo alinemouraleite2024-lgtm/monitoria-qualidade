@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { X, FileText, Check, AlertCircle, Paperclip, Link as LinkIcon, RotateCcw } from 'lucide-react';
 import { getScoreConcept } from '../../scoreUtils';
 import { canalLabel } from '../../constants/canais';
@@ -17,6 +17,8 @@ import type { Collaborator, Criterion, Monitoring, Role, User } from '../../type
 // devolver, reprovar) só existe aqui, depois de a monitoria inteira estar na tela. A fila não
 // decide mais nada. Critério com rótulo da régua, checklist aberto, evidências e relatório.
 const CORES_TOM = { ok: 'var(--primary)', meio: 'var(--warning)', ruim: 'var(--danger)', neutro: 'var(--text-main)' } as const;
+
+const RelatorioCompletoVisualizacao = lazy(() => import('./RelatorioCompletoVisualizacao'));
 
 type Evidencia = { id?: string; name?: string; type?: string; size?: string; date?: string };
 
@@ -57,6 +59,7 @@ export const MonitoringHistory = ({
   // Decisão em preparo: cada uma abre o seu campo. Etapa B (26/10): considerações OPCIONAIS ao
   // validar, OBRIGATÓRIAS ao devolver e reprovar; até 2.000 caracteres, com contador.
   const [decisao, setDecisao] = useState<null | 'validar' | 'devolver' | 'reprovar'>(null);
+  const [camposAbertos, setCamposAbertos] = useState(false);
   const [justificativa, setJustificativa] = useState('');
   const [confirmaReprovacao, setConfirmaReprovacao] = useState(false);
   const contagem = contagemConsideracoes(justificativa);
@@ -333,14 +336,27 @@ export const MonitoringHistory = ({
             />
           </div>
 
+          {monitoring.relatorioCompleto && (
+            <Suspense fallback={<div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Carregando o relatório...</div>}>
+              <RelatorioCompletoVisualizacao html={monitoring.relatorioCompleto} />
+            </Suspense>
+          )}
+
           {/* Relatório — os seis blocos do Padrão Relatório de Monitoria, na ordem em que ele
               os define. Até a 0.18.0 só três existiam aqui, e os outros eram escritos à mão
               fora do sistema. Bloco vazio é dito, não escondido: monitoria anterior a esta
               versão não tem os campos novos, e omiti-los faria parecer que o relatório está
               completo. */}
           <div>
-            <h3 style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Relatório</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
+              Relatório
+              {monitoring.relatorioCompleto && (
+                <button type="button" className="btn btn-secondary btn-sm" aria-expanded={camposAbertos} onClick={() => setCamposAbertos(!camposAbertos)}>
+                  {camposAbertos ? 'Recolher campos' : 'Ver campos'}
+                </button>
+              )}
+            </h3>
+            {(!monitoring.relatorioCompleto || camposAbertos) && <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {[
                 { rotulo: 'Contexto do Atendimento', valor: monitoring.contexto, cor: 'var(--text-muted)' },
                 { rotulo: 'Pontos Positivos', valor: monitoring.strengths, cor: 'var(--primary)' },
@@ -356,7 +372,7 @@ export const MonitoringHistory = ({
                   </div>
                 </div>
               ))}
-            </div>
+            </div>}
 
             {monitoring.comments && (
               <div style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px dashed var(--border-color)' }}>

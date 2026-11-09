@@ -255,6 +255,8 @@ export interface Monitoring {
   // os seis blocos do `Padrão Relatório de Monitoria` — ver §7 da metodologia. São o destino
   // do que o assistente da 3A.3 vai escrever; sem eles a sugestão não teria onde ser colada.
   // Opcionais: monitoria registrada antes desta versão simplesmente não os tem.
+  /** Relatório Completo: HTML limpo, colado do Word. Complementar: não entra na nota. */
+  relatorioCompleto?: string;
   /** Narrativa factual e cronológica do atendimento, sem juízo de valor. */
   contexto?: string;
   /** O que os critérios, somados, revelam sobre a condução. Conecta, não repete. */

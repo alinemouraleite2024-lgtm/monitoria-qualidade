@@ -17,6 +17,8 @@ import { resolverStatusInicial, temGestorConfigurado } from '../../domain/valida
 import type { Area, Collaborator, Criterion, Monitoring, SystemSettings, User } from '../../types/domain';
 import { BLOCOS_IMPORTACAO, violaRegraDeAutenticacao, type ResultadoImportacao } from '../../domain/importacaoChatGPT';
 import { ImportarAvaliacaoModal } from './ImportarAvaliacaoModal';
+import { RelatorioCompletoEtapa } from './RelatorioCompletoEtapa';
+import { MENSAGEM_LIMITE_RELATORIO, excedeLimite } from '../../domain/relatorioCompleto';
 import { HistoricoCalibracao } from './HistoricoCalibracao';
 import { atendimentoJaRegistrado, mensagemAtendimentoJaRegistrado, perguntaPossivelDuplicidade, possiveisDuplicidades } from '../../domain/duplicidade';
 import { colaboradorasSelecionaveis, mensagemColaboradoraInativa, rotuloColaboradora, vinculoNovoComInativa } from '../../domain/colaboradoraAtiva';
@@ -118,6 +120,7 @@ interface FormDataMonitoria {
   leituraTecnica: string;
   errosIdentificados: string;
   conclusao: string;
+  relatorioCompleto: string;
   status: string;
 }
 
@@ -255,6 +258,7 @@ export const MonitoringForm = ({
     contexto: '',
     leituraTecnica: '',
     errosIdentificados: '',
+    relatorioCompleto: '',
     conclusao: '',
     
     // Status
@@ -309,6 +313,7 @@ export const MonitoringForm = ({
         contexto: initialData.contexto || '',
         leituraTecnica: initialData.leituraTecnica || '',
         errosIdentificados: initialData.errosIdentificados || '',
+        relatorioCompleto: initialData.relatorioCompleto || '',
         conclusao: initialData.conclusao || ''
       });
       
@@ -825,7 +830,14 @@ export const MonitoringForm = ({
       ? `\n\nO pedido chegou mais de uma vez ao banco; a monitoria foi registrada uma única vez (situação: ${registrado.status ?? '—'}).`
       : '';
 
+  const relatorioPassouDoLimite = () => {
+    if (!excedeLimite(formData.relatorioCompleto)) return false;
+    alert(MENSAGEM_LIMITE_RELATORIO);
+    return true;
+  };
+
   const handleSaveDraft = () => comTrava(async () => {
+    if (relatorioPassouDoLimite()) return;
     const data = buildFinalData(true);
     if (recusarSeJaRegistrado(data, false)) return;
     const registrado = await onSave(data);
@@ -837,6 +849,7 @@ export const MonitoringForm = ({
   const handleSaveFinal = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     return comTrava(async () => {
+    if (relatorioPassouDoLimite()) return;
     if (window.confirm("Deseja concluir esta monitoria? Após salvar ela seguirá para validação.")) {
       const data = buildFinalData(false);
       if (recusarSeJaRegistrado(data, true)) return;
@@ -1671,6 +1684,8 @@ export const MonitoringForm = ({
                   fora do sistema. Ver §7 da metodologia. */}
               {step === 4 && (
                 <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.25rem' }}>
+
+                  <RelatorioCompletoEtapa valor={formData.relatorioCompleto} aoMudar={(html) => setFormData(prev => ({ ...prev, relatorioCompleto: html }))} />
 
                   {BLOCOS_RELATORIO.map(bloco => {
                     const valor = (formData[bloco.campo] as string) || '';
