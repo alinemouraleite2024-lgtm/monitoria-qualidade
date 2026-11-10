@@ -12,6 +12,7 @@ export const tabPermissionMap: Record<string, Permission | null> = {
   'monitoring-new': 'VIEW_MONITORING_FORM',
   'monitoring-retroativa': 'LANCAR_RETROATIVO',
   'monitoring-edit': 'VIEW_MONITORING_FORM',
+  privada: 'VIEW_MONITORING_FORM',
   reports: 'VIEW_REPORTS',
 
   // Gestão

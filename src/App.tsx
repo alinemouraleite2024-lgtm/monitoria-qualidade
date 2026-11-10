@@ -42,7 +42,8 @@ import {
   Zap,
   FileText,
   ClipboardCheck,
-  UserCog
+  UserCog,
+  Lock
 } from 'lucide-react';
 // Os seeds de todas as coleções vivem em src/repositories (F0-12).
 
@@ -59,7 +60,7 @@ import { modoCompartilhado } from './shared/compartilhado/modo';
 import { transporteSupabase, entrarComSenha, loginRestaurado, sairDoSupabase, estadoDoAcesso, aoRenovarSessao } from './shared/compartilhado/supabase';
 import { etapaFinal } from './shared/compartilhado/mfa';
 import {
-  carregarDados, perfilDoLogin, salvarMonitoria, validarMonitoria, reprovarMonitoria, devolverMonitoria,
+  carregarDados, perfilDoLogin, salvarMonitoria, liberarMonitorias, validarMonitoria, reprovarMonitoria, devolverMonitoria,
   confirmarZeramento, cancelarMonitoria, registrarAcesso, registrarObservacao, type ResultadoMonitoria, type DadosCompartilhados,
 } from './shared/compartilhado/dados';
 import { mensagemDoErro, ErroBanco } from './shared/compartilhado/transporte';
@@ -96,6 +97,8 @@ import { MonitoringHistory } from './modules/monitoring/MonitoringHistory';
 
 import { NotImplementedScreen } from './shared/components/NotImplementedScreen';
 import { ReportsScreen } from './features/reports/ReportsScreen';
+import { AreaPrivadaScreen, type ResultadoDoEnvio } from './features/monitorings/AreaPrivadaScreen';
+import { statusParaExibir } from './domain/areaPrivada';
 import { LoginScreen } from './features/auth/LoginScreen';
 import { MfaScreen } from './features/auth/MfaScreen';
 import { PlanningScreen } from './features/planning/PlanningScreen';
@@ -232,6 +235,7 @@ const MENU_CONFIG: MenuConfig = {
   ],
   MONITOR: [
     { id: 'monitorings', label: 'Monitorias', icon: FileSpreadsheet, grupo: 'Operação' },
+    ...(modoCompartilhado() ? [{ id: 'privada', label: 'Área privada', icon: Lock }] : []),
     { id: 'reports', label: 'Meu Histórico', icon: FileText },
     { id: 'profile', label: 'Meu Perfil', icon: UserCheck },
   ],
@@ -722,14 +726,26 @@ function AppContent() {
   const salvarNoBanco = async (m: Monitoring): Promise<ResultadoMonitoria | null> => {
     const jaNoBanco = monitorings.some((x) => x.id === m.id);
     try {
-      const r = await salvarMonitoria(transporteSupabase(), m, criteria, jaNoBanco, m.status !== 'Rascunho');
+      const guardar = m.aguardandoLiberacao === true;
+      const r = await salvarMonitoria(transporteSupabase(), m, criteria, jaNoBanco, m.status !== 'Rascunho', guardar);
       await recarregarDoBanco();
-      navigate('/monitorings');
+      navigate(guardar ? '/privada' : '/monitorings');
       return r;
     } catch (e) {
       alert(mensagemDoErro(e));
       if (e instanceof ErroBanco && e.codigo === 'MI409') await recarregarDoBanco().catch(() => undefined);
       return null;
+    }
+  };
+
+  const handleLiberar = async (itens: Monitoring[]): Promise<ResultadoDoEnvio> => {
+    try {
+      const r = await liberarMonitorias(transporteSupabase(), itens);
+      await recarregarDoBanco();
+      return r;
+    } catch (e) {
+      await recarregarDoBanco().catch(() => undefined);
+      return { erro: mensagemDoErro(e) };
     }
   };
 
@@ -1502,7 +1518,7 @@ function AppContent() {
       const formattedDate = new Date(m.date).toLocaleDateString('pt-BR');
       const cleanComments = (m.comments ?? '').replace(/"/g, '""');
       const fmtDataHora = (v?: string) => (v ? new Date(v).toLocaleString('pt-BR') : '');
-      csvContent += `"${m.id}","${m.competencia ?? ''}","${formattedDate}","${mon}","${col}","${m.numeroAtendimento ?? ''}","${m.protocolo ?? ''}","${m.numeroTitulo ?? ''}","${m.categoriaAtendimento ?? ''}","${canalLabel(m.canal)}","${m.tipo}","${fmtDataHora(m.inicioAtendimento)}","${fmtDataHora(m.fimAtendimento)}","${exibirDuracao(m.duracaoMinutos, m.tempo)}","${m.status}","${notaParaExibir(m)}","${cleanComments}"\n`;
+      csvContent += `"${m.id}","${m.competencia ?? ''}","${formattedDate}","${mon}","${col}","${m.numeroAtendimento ?? ''}","${m.protocolo ?? ''}","${m.numeroTitulo ?? ''}","${m.categoriaAtendimento ?? ''}","${canalLabel(m.canal)}","${m.tipo}","${fmtDataHora(m.inicioAtendimento)}","${fmtDataHora(m.fimAtendimento)}","${exibirDuracao(m.duracaoMinutos, m.tempo)}","${statusParaExibir(m)}","${notaParaExibir(m)}","${cleanComments}"\n`;
     });
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
@@ -1527,7 +1543,7 @@ function AppContent() {
           <td>${mon}</td>
           <td>${col}</td>
           <td>${canalLabel(m.canal)} (${m.tipo})</td>
-          <td>${m.status}</td>
+          <td>${statusParaExibir(m)}</td>
           <td style="font-weight: bold; color: ${m.finalScore >= 95 ? '#008443' : m.finalScore >= 75 ? '#f59e0b' : '#ef4444'}">${notaParaExibir(m)}</td>
           <td>${m.comments}</td>
         </tr>
@@ -1739,6 +1755,7 @@ function AppContent() {
                     }}
                     onEditar={(m) => navigate(`/monitorings/${m.id}/edit`)}
                     onVerRelatorios={() => navigate('/reports')}
+                    onVerAreaPrivada={COMPARTILHADO ? () => navigate('/privada') : undefined}
                   />
               </Screen>
             } />
@@ -1825,6 +1842,22 @@ function AppContent() {
                         onSave={handleSaveFormMonitoring}
                       />
                     </div>
+                ) : <NotFoundScreen />}
+              </Screen>
+            } />
+
+            <Route path="/privada" element={
+              <Screen tab="privada" perfil={perfilAtivo}>
+                {COMPARTILHADO && currentUser ? (
+                  <AreaPrivadaScreen
+                    monitorings={monitorings}
+                    collaborators={collaborators}
+                    monitorId={currentUser.id}
+                    hoje={hoje}
+                    onEditar={(m) => navigate(`/monitorings/${m.id}/edit`)}
+                    onVisualizar={(m) => { setSelectedMonitoringDetail(m); setShowDetailModal(true); }}
+                    onLiberar={handleLiberar}
+                  />
                 ) : <NotFoundScreen />}
               </Screen>
             } />

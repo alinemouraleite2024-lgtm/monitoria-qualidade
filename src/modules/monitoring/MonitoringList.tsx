@@ -3,6 +3,7 @@ import { getScoreConcept } from '../../scoreUtils';
 import { CANAIS, canalLabel } from '../../constants/canais';
 import { FILTROS_VAZIOS, type FiltrosHistorico } from '../../domain/historyFilter';
 import { temPerfil } from '../../domain/perfis';
+import { statusParaExibir } from '../../domain/areaPrivada';
 import type { Collaborator, Monitoring, User } from '../../types/domain';
 
 // A tabela, a busca e os cinco filtros que viviam em /monitorings.
@@ -196,7 +197,7 @@ export const MonitoringList = ({
                     )}
                   </td>
                   <td>
-                    <span className={getStatusBadge(m.status)}>{m.status}</span>
+                    <span className={getStatusBadge(m.status)}>{statusParaExibir(m)}</span>
                     {m.zerada && (
                       <span className="badge-pill badge-danger" style={{ marginLeft: '0.25rem' }}>Zerada</span>
                     )}

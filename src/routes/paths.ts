@@ -8,7 +8,7 @@
 // /monitorings, e as três seções da Administração, que ganham hierarquia sob /admin.
 
 export const TABS: string[] = [
-  'monitorings', 'reports', 'dashboard', 'planning', 'allocations',
+  'monitorings', 'privada', 'reports', 'dashboard', 'planning', 'allocations',
   'admin-criterios', 'admin-acessos', 'admin-sistema',
   'csat', 'nps', 'profile',
 ];

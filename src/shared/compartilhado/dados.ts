@@ -95,12 +95,16 @@ const resultado = (r: unknown): ResultadoMonitoria => {
 };
 
 /** Salva rascunho ou envia para validação (api.salvar_monitoria). */
-export const salvarMonitoria = async (t: Transporte, m: Monitoring, criterios: Criterion[], jaNoBanco: boolean, enviar: boolean) =>
+export const salvarMonitoria = async (t: Transporte, m: Monitoring, criterios: Criterion[], jaNoBanco: boolean, enviar: boolean, guardar = false) =>
   resultado(await t.chamar('salvar_monitoria', {
-    p_dados: montarDadosParaSalvar(m, criterios, jaNoBanco, enviar),
+    p_dados: montarDadosParaSalvar(m, criterios, jaNoBanco, enviar, guardar),
     p_versao_lida: jaNoBanco ? (m.versao ?? null) : null,
     p_enviar: enviar,
   }));
+
+/** Envia as guardadas para validação (script 19). Tudo ou nada; a já enviada é só informada. */
+export const liberarMonitorias = async (t: Transporte, itens: Monitoring[]) =>
+  (await t.chamar('liberar_monitorias', { p_itens: itens.map((m) => ({ id: m.id, versao: m.versao ?? null })) })) as { liberadas: string[]; ja_enviadas: string[] };
 
 const acao = async (t: Transporte, funcao: string, m: Monitoring, motivo?: string) =>
   resultado(await t.chamar(funcao, motivo === undefined

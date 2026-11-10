@@ -126,7 +126,7 @@ const BlocoDoEscopo = ({ escopo, onAbrir, onEditar, onMonitorar }: {
         </div>
       )}
 
-      {(escopo.devolvidas.length > 0 || escopo.rascunhos.length > 0 || escopo.reprovadas.length > 0) && (
+      {(escopo.devolvidas.length > 0 || escopo.rascunhos.length > 0 || escopo.guardadas.length > 0 || escopo.reprovadas.length > 0) && (
         <div style={{ marginTop: '0.6rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
           {escopo.devolvidas.map((m) => (
             <div key={m.id} style={{
@@ -153,6 +153,14 @@ const BlocoDoEscopo = ({ escopo, onAbrir, onEditar, onMonitorar }: {
               <button className="btn btn-secondary btn-sm" onClick={() => onEditar(m)}>
                 <Pencil size={13} /> Retomar
               </button>
+            </div>
+          ))}
+          {escopo.guardadas.map((m) => (
+            <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.8rem', padding: '0.35rem 0.6rem' }}>
+              <span className="badge-pill badge-info">Aguardando liberação</span>
+              <span style={{ fontWeight: 700, color: 'var(--primary)' }}>{m.id}</span>
+              <span style={{ color: 'var(--text-muted)', flex: 1 }}>não ocupa vaga até ser enviada</span>
+              <button className="btn btn-secondary btn-sm" onClick={() => onAbrir(m)}>Ver</button>
             </div>
           ))}
           {escopo.reprovadas.map((m) => (

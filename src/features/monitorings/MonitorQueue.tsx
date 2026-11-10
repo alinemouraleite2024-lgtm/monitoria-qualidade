@@ -25,6 +25,7 @@ interface MonitorQueueProps {
   onAbrir: (m: Monitoring) => void;
   onEditar: (m: Monitoring) => void;
   onVerRelatorios: () => void;
+  onVerAreaPrivada?: () => void;
 }
 
 const dataCurta = (iso: string) =>
@@ -41,6 +42,7 @@ export const MonitorQueue = ({
   onAbrir,
   onEditar,
   onVerRelatorios,
+  onVerAreaPrivada,
 }: MonitorQueueProps) => {
   const [expandidas, setExpandidas] = useState<Set<string>>(new Set());
   const alternar = (id: string) => setExpandidas((atual) => {
@@ -195,6 +197,15 @@ export const MonitorQueue = ({
               </button>
             </Linha>
           ))}
+        </div>
+      )}
+
+      {pendencias.guardadas.length > 0 && onVerAreaPrivada && (
+        <div className="section-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.88rem' }}>
+            <strong>{pendencias.guardadas.length}</strong> {pendencias.guardadas.length === 1 ? 'guardada' : 'guardadas'} nesta competência, ainda sem contar para a meta.
+          </span>
+          <button className="btn btn-secondary btn-sm" onClick={onVerAreaPrivada}>Abrir área privada</button>
         </div>
       )}
 

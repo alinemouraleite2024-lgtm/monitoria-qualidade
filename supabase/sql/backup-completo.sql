@@ -61,8 +61,9 @@ meta as (
        'quebras', (select count(*) from (select a.hash <> app.auditoria_hash(a)
                      or a.hash_anterior is distinct from lag(a.hash) over (order by a.seq) q from public.auditoria a) x where q)),
     'impressoes', jsonb_build_object(
-       'monitorias', (select md5(coalesce(string_agg((to_jsonb(m) - 'relatorio_completo')::text, '|' order by m.id), '')) from public.monitorias m),
+       'monitorias', (select md5(coalesce(string_agg((to_jsonb(m) - 'relatorio_completo' - 'aguardando_liberacao' - 'concluida_em')::text, '|' order by m.id), '')) from public.monitorias m),
        'relatorios', (select md5(coalesce(string_agg(m.id || '=' || (to_jsonb(m) ->> 'relatorio_completo'), '|' order by m.id), '')) from public.monitorias m),
+       'guardas', (select md5(coalesce(string_agg(m.id || '=' || coalesce(to_jsonb(m) ->> 'aguardando_liberacao', '-') || '/' || coalesce(to_jsonb(m) ->> 'concluida_em', '-'), '|' order by m.id), '')) from public.monitorias m),
        'respostas', (select md5(coalesce(string_agg(to_jsonb(r)::text, '|' order by r.monitoria_id, r.criterio_id), '')) from public.monitoria_respostas r),
        'evidencias', (select md5(coalesce(string_agg(to_jsonb(e)::text, '|' order by to_jsonb(e)::text), '')) from public.monitoria_evidencias e),
        'eventos', (select md5(coalesce(string_agg(to_jsonb(e)::text, '|' order by e.id), '')) from public.monitoria_eventos e)),

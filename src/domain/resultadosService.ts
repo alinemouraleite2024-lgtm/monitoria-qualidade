@@ -12,7 +12,8 @@
 // Nada aqui decide escopo nem filtro: quem chama entrega o conjunto (a competência, os filtros
 // de Relatórios, a equipe do gestor), e o mesmo conjunto alimenta tela e exportação.
 
-import type { Monitoring, MonitoringStatus } from '../types/domain';
+import type { Monitoring } from '../types/domain';
+import { statusParaExibir } from './areaPrivada';
 import { countsTowardGoal } from './monitoringRules';
 import type { Period } from './period';
 import { naCompetencia, periodLabel, previousPeriod } from './period';
@@ -33,14 +34,14 @@ export interface ResumoNotas {
   menor: number | null;
   maior: number | null;
   zeradas: number;
-  porStatus: Partial<Record<MonitoringStatus, number>>;
+  porStatus: Record<string, number>;
 }
 
 export const resumirNotas = (monitorias: Monitoring[]): ResumoNotas => {
   const validas = monitorias.filter(entraNaMedia);
   const notas = validas.map((m) => m.finalScore);
-  const porStatus: Partial<Record<MonitoringStatus, number>> = {};
-  for (const m of monitorias) porStatus[m.status] = (porStatus[m.status] ?? 0) + 1;
+  const porStatus: Record<string, number> = {};
+  for (const m of monitorias) { const s = statusParaExibir(m); porStatus[s] = (porStatus[s] ?? 0) + 1; }
   return {
     total: monitorias.length,
     consideradas: validas.length,

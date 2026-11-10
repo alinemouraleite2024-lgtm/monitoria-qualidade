@@ -17,6 +17,7 @@
 
 import type { Canal, Collaborator, Holiday, Monitoring, User } from '../types/domain';
 import type { Period } from './period';
+import { estaGuardada } from './areaPrivada';
 import { naCompetencia, parseData, businessDaysRemainingIn } from './period';
 import { getCarteira, getSemVinculo } from './allocationService';
 import {
@@ -208,6 +209,8 @@ export interface EscopoDetalhado {
   devolvidas: Monitoring[];
   /** Rascunhos começados e não terminados neste escopo. */
   rascunhos: Monitoring[];
+  /** Concluídas e guardadas: não ocupam vaga até serem enviadas. */
+  guardadas: Monitoring[];
   /** Reprovadas: não contam e reabrem a vaga. */
   reprovadas: Monitoring[];
 }
@@ -272,7 +275,8 @@ export const getDetalheDaColaboradora = (
     excedentes.forEach((m) => consumidas.add(m.id));
 
     const devolvidas = doEscopo.filter(foiDevolvida);
-    const rascunhos = doEscopo.filter((m) => m.status === 'Rascunho' && !foiDevolvida(m));
+    const rascunhos = doEscopo.filter((m) => m.status === 'Rascunho' && !foiDevolvida(m) && !estaGuardada(m));
+    const guardadas = doEscopo.filter(estaGuardada);
     const reprovadas = doEscopo.filter((m) => m.status === 'Reprovada');
     [...devolvidas, ...rascunhos, ...reprovadas].forEach((m) => consumidas.add(m.id));
 
@@ -282,6 +286,7 @@ export const getDetalheDaColaboradora = (
       excedentes,
       devolvidas,
       rascunhos,
+      guardadas,
       reprovadas,
     };
   });
@@ -304,6 +309,8 @@ export interface Pendencias {
   devolvidas: Monitoring[];
   /** Rascunhos comuns: começados e não terminados. */
   rascunhos: Monitoring[];
+  /** Guardadas na área privada: não precisam de ação até a monitora decidir enviar. */
+  guardadas: Monitoring[];
 }
 
 /**
@@ -323,7 +330,8 @@ export const getPendencias = (
   );
   return {
     devolvidas: minhas.filter(foiDevolvida),
-    rascunhos: minhas.filter((m) => m.status === 'Rascunho' && !foiDevolvida(m)),
+    rascunhos: minhas.filter((m) => m.status === 'Rascunho' && !foiDevolvida(m) && !estaGuardada(m)),
+    guardadas: minhas.filter(estaGuardada),
   };
 };
 

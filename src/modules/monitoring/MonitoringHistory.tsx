@@ -18,6 +18,8 @@ import type { Collaborator, Criterion, Monitoring, Role, User } from '../../type
 // decide mais nada. Critério com rótulo da régua, checklist aberto, evidências e relatório.
 const CORES_TOM = { ok: 'var(--primary)', meio: 'var(--warning)', ruim: 'var(--danger)', neutro: 'var(--text-main)' } as const;
 
+import { estaGuardada, rascunhoPrivado, statusParaExibir } from '../../domain/areaPrivada';
+
 const RelatorioCompletoVisualizacao = lazy(() => import('./RelatorioCompletoVisualizacao'));
 
 type Evidencia = { id?: string; name?: string; type?: string; size?: string; date?: string };
@@ -67,6 +69,7 @@ export const MonitoringHistory = ({
   const cancelarDecisao = () => { setDecisao(null); setJustificativa(''); setConfirmaReprovacao(false); };
 
   if (!monitoring) return null;
+  const notaAindaNaoFixada = rascunhoPrivado(monitoring);
 
   const getUserName = (id: string) => {
     const u = users.find(u => u.id === id);
@@ -143,10 +146,22 @@ export const MonitoringHistory = ({
             <div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>Status Atual</div>
               <span className={`badge-pill badge-${monitoring.status === 'Validada' ? 'success' : monitoring.status === 'Reprovada' ? 'danger' : 'warning'}`}>
-                {monitoring.status}
+                {statusParaExibir(monitoring)}
               </span>
             </div>
           </div>
+
+          {/* Datas reais do trabalho (script 19). Ausente em monitoria anterior: não se inventa data. */}
+          {(monitoring.criadoEm || monitoring.concluidaEm || monitoring.enviadoEm) && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', backgroundColor: '#fafbfc', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+              {[['Criada em', monitoring.criadoEm], ['Concluída em', monitoring.concluidaEm], ['Disponibilizada em', monitoring.enviadoEm]].map(([rotulo, valor]) => (
+                <div key={rotulo}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>{rotulo}</div>
+                  <div style={{ fontSize: '0.9rem', fontWeight: '500' }}>{valor ? new Date(valor).toLocaleString('pt-BR') : 'Não registrada'}</div>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Identificação do atendimento — bloco correspondente ao "🔎 Identificação" do
               Padrão Relatório de Monitoria, que até a 0.13.0 não existia em tela nenhuma.
@@ -231,15 +246,21 @@ export const MonitoringHistory = ({
           {/* Scores Overview */}
           <div>
             <h3 style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Resumo da Avaliação</h3>
+            {notaAindaNaoFixada ? (
+              <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                Nota ainda não fixada: ela é definida ao concluir a monitoria.
+              </div>
+            ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
               <div style={{ fontSize: '2.5rem', fontWeight: '800', color: monitoring.finalScore >= 75 ? 'var(--primary)' : 'var(--danger)', lineHeight: 1 }}>
                 {monitoring.finalScore?.toFixed(2)}%
               </div>
               <div>
-                <div style={{ fontWeight: '600' }}>Nota Final</div>
+                <div style={{ fontWeight: '600' }}>{estaGuardada(monitoring) ? 'Nota fixada na conclusão' : 'Nota Final'}</div>
                 <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{getScoreConcept(monitoring.finalScore).label}</div>
               </div>
             </div>
+            )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {monitoring.scores?.map((s, idx) => {

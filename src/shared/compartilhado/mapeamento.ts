@@ -99,6 +99,7 @@ const COLUNAS_MONITORIA: Record<string, string> = {
   eliminatorio_confirmado_em: 'eliminatoryConfirmedAt', aprovado_por: 'approvedBy', aprovado_em: 'approvedAt',
   revisado_por: 'reviewedBy', revisado_em: 'reviewedAt', motivo_ajuste: 'adjustmentReason', motivo_reprovacao: 'motivoReprovacao',
   regua_versao_id: 'reguaVersaoId', origem: 'origem', cancelado_motivo: 'motivoCancelamento', duplicata_de: 'duplicataDe',
+  aguardando_liberacao: 'aguardandoLiberacao', concluida_em: 'concluidaEm', enviado_em: 'enviadoEm', criado_em: 'criadoEm',
 };
 
 /** Linha de monitoria_eventos (script 14) → evento do histórico. */
@@ -177,7 +178,7 @@ const CAMPOS_ENVIADOS = ['colaboradorId', 'categoriaAtendimento', 'numeroAtendim
  *   07/10/2026). O banco recusaria o envio misturando versões (E2); o portal limpa antes.
  * - A nota do portal só vai no envio, como conferência: o banco calcula a oficial (E1).
  */
-export const montarDadosParaSalvar = (m: Monitoring, criterios: Criterion[], jaNoBanco: boolean, enviar: boolean): Record<string, unknown> => {
+export const montarDadosParaSalvar = (m: Monitoring, criterios: Criterion[], jaNoBanco: boolean, enviar: boolean, guardar = false): Record<string, unknown> => {
   const dados: Record<string, unknown> = {};
   if (jaNoBanco) dados.id = m.id;
   // Só na criação: a mesma chave repetida (clique duplo, nova tentativa) não cria outra (15).
@@ -193,6 +194,7 @@ export const montarDadosParaSalvar = (m: Monitoring, criterios: Criterion[], jaN
     }
     return { criterionId: s.criterionId, score: s.score, lowScoreReason: s.lowScoreReason || '', subRespostas: sub ?? null };
   });
-  if (enviar && typeof m.finalScore === 'number' && Number.isFinite(m.finalScore)) dados.finalScore = m.finalScore;
+  if ((enviar || guardar) && typeof m.finalScore === 'number' && Number.isFinite(m.finalScore)) dados.finalScore = m.finalScore;
+  if (guardar) dados.guardar = true;
   return dados;
 };

@@ -9,7 +9,7 @@ import { SearchableSelect } from '../../components/SearchableSelect';
 import { CANAIS, canalLabel } from '../../constants/canais';
 import { getScoreConcept } from '../../scoreUtils';
 import { calcularDuracao, formatarDuracao } from '../../domain/duracao';
-import { competenciaDe, competenciaLabel, getCurrentPeriod, periodToCompetencia } from '../../domain/period';
+import { competenciaDe, competenciaLabel, getCurrentPeriod, periodToCompetencia, todayISO } from '../../domain/period';
 import { gerarIdMonitoria, gerarProtocolo } from '../../domain/identificadores';
 import { getCriteriosBloqueados, temConflitoDeAutenticacao } from '../../domain/criterionGating';
 import { temPerfil } from '../../domain/perfis';
@@ -19,6 +19,8 @@ import { BLOCOS_IMPORTACAO, violaRegraDeAutenticacao, type ResultadoImportacao }
 import { ImportarAvaliacaoModal } from './ImportarAvaliacaoModal';
 import { RelatorioCompletoEtapa } from './RelatorioCompletoEtapa';
 import { MENSAGEM_LIMITE_RELATORIO, excedeLimite } from '../../domain/relatorioCompleto';
+import { competenciaIniciada, dataBR, dentroDaAntecedencia, estaGuardada, inicioDaCompetencia, MESES_DE_ANTECEDENCIA, podeSerGuardada } from '../../domain/areaPrivada';
+import { modoCompartilhado } from '../../shared/compartilhado/modo';
 import { HistoricoCalibracao } from './HistoricoCalibracao';
 import { atendimentoJaRegistrado, mensagemAtendimentoJaRegistrado, perguntaPossivelDuplicidade, possiveisDuplicidades } from '../../domain/duplicidade';
 import { colaboradorasSelecionaveis, mensagemColaboradoraInativa, rotuloColaboradora, vinculoNovoComInativa } from '../../domain/colaboradoraAtiva';
@@ -506,7 +508,9 @@ export const MonitoringForm = ({
    * primeiro toque existe porque o contrário desfaria a escolha: ajustar o horário do
    * atendimento não pode reescrever uma competência que alguém definiu de propósito.
    */
-  const [competenciaTocada, setCompetenciaTocada] = useState(false);
+  // Monitoria já gravada: a competência dela é uma decisão tomada, e abrir não pode reescrevê-la
+  // (uma preparada para um mês futuro voltaria ao mês do atendimento só de ser aberta).
+  const [competenciaTocada, setCompetenciaTocada] = useState(Boolean(initialData));
 
   useEffect(() => {
     if (competenciaTocada || !formData.inicioAtendimento) return;
@@ -528,6 +532,9 @@ export const MonitoringForm = ({
   // exatamente como são — e não sabem que a importação existe.
   // ---------------------------------------------------------------------------------------
   const podeImportar = !initialData && !modoRetroativo;
+  const guardadaAberta = Boolean(initialData && estaGuardada(initialData));
+  const podeGuardar = modoCompartilhado() && !modoRetroativo && podeSerGuardada(initialData);
+  const competenciaNaoIniciada = modoCompartilhado() && Boolean(formData.competencia) && !competenciaIniciada(formData.competencia, todayISO());
   const [mostrarImportacao, setMostrarImportacao] = useState(false);
   const [importacao, setImportacao] = useState<{
     notaEsperada?: number;
@@ -705,6 +712,10 @@ export const MonitoringForm = ({
     if (step === 1) {
       const error = validateStep1();
       if (error) return; // UI reflects it
+      if (modoCompartilhado() && !dentroDaAntecedencia(formData.competencia, todayISO())) {
+        alert(`A preparação antecipada alcança no máximo ${MESES_DE_ANTECEDENCIA} meses à frente. Confira a competência.`);
+        return;
+      }
     }
     if (step === 3) {
       const error = validateStep3();
@@ -722,7 +733,7 @@ export const MonitoringForm = ({
     setStep(s => Math.max(s - 1, 1));
   };
 
-  const buildFinalData = (isDraft: boolean): Monitoring => {
+  const buildFinalData = (isDraft: boolean, guardar = false): Monitoring => {
     // Ambos gerados uma única vez, no primeiro salvamento — inclusive de rascunho — e nunca
     // regerados: `formData.id` e `formData.protocolo` já estarão preenchidos nas gravações
     // seguintes. Rascunho abandonado não queima número porque nada é gerado antes de salvar.
@@ -767,7 +778,9 @@ export const MonitoringForm = ({
       // uma monitoria de janeiro registrada como Pendente não apareceria em fila nenhuma e
       // ficaria aguardando validação para sempre. O selo existe para que ela nunca seja
       // confundida com uma que passou por validação real.
-      status: (modoRetroativo && !isDraft)
+      // Sem marca aqui, salvar uma guardada a devolve a Rascunho: a conclusão anterior deixa de valer.
+      aguardandoLiberacao: guardar ? true : undefined,
+      status: guardar ? 'Rascunho' : (modoRetroativo && !isDraft)
         ? 'Validada'
         : resolverStatusInicial({
             isDraft,
@@ -837,8 +850,24 @@ export const MonitoringForm = ({
     return true;
   };
 
+  const handleGuardar = () => {
+    const form = document.getElementById('monitoring-form') as HTMLFormElement | null;
+    if (form && !form.reportValidity()) return;
+    return comTrava(async () => {
+      if (relatorioPassouDoLimite()) return;
+      if (!window.confirm('Concluir e guardar esta monitoria? Ela fica na sua área privada, com a nota fixada, e só vai para validação quando você enviar.')) return;
+      const data = buildFinalData(false, true);
+      if (recusarSeJaRegistrado(data, true)) return;
+      const registrado = await onSave(data);
+      if (registrado === null) return;
+      const nota = registrado ? registrado.nota : data.finalScore;
+      alert(`Monitoria guardada na área privada.\nCódigo: ${registrado ? registrado.id : data.id}\nNota fixada: ${nota}%\nEla não foi enviada para validação.`);
+    });
+  };
+
   const handleSaveDraft = () => comTrava(async () => {
     if (relatorioPassouDoLimite()) return;
+    if (guardadaAberta && !window.confirm('Salvar esta alteração desfaz a conclusão: a monitoria volta a Rascunho, com tudo o que foi preenchido, e a nota fixada deixa de valer até você concluir de novo. Continuar?')) return;
     const data = buildFinalData(true);
     if (recusarSeJaRegistrado(data, false)) return;
     const registrado = await onSave(data);
@@ -971,6 +1000,13 @@ export const MonitoringForm = ({
               {initialData.reviewedAt && ` em ${new Date(initialData.reviewedAt).toLocaleString('pt-BR')}`}
             </div>
             <div style={{ fontSize: '0.85rem', color: '#854d0e', marginTop: '0.25rem', whiteSpace: 'pre-wrap' }}>{initialData.adjustmentReason}</div>
+          </div>
+        )}
+
+        {guardadaAberta && initialData && (
+          <div role="note" style={{ margin: '1rem 2rem 0', padding: '0.85rem 1rem', border: '1px solid var(--info, #0284c7)', backgroundColor: 'rgba(2, 132, 199, 0.08)', borderRadius: '8px', fontSize: '0.85rem' }}>
+            <strong>Guardada, aguardando liberação.</strong> Nota fixada: {initialData.finalScore.toFixed(2).replace('.', ',')}%.
+            {' '}Abrir não muda nada. Se você salvar uma alteração, ela volta a Rascunho, a nota fixada deixa de valer e será preciso concluir de novo. Até lá, o número mostrado neste formulário é só uma prévia.
           </div>
         )}
 
@@ -1906,8 +1942,15 @@ export const MonitoringForm = ({
               <button type="button" className="btn btn-secondary" onClick={exportPDF} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Download size={16} /> Exportar PDF
               </button>
-              <button type="submit" form="monitoring-form" className="btn btn-primary" disabled={salvando} aria-busy={salvando} style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#10b981', borderColor: '#10b981' }}>
-                <CheckCircle2 size={16} /> {salvando ? 'Salvando…' : 'Concluir Monitoria'}
+              {podeGuardar && (
+                <button type="button" className="btn btn-secondary" onClick={handleGuardar} disabled={salvando} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Save size={16} /> Concluir e guardar
+                </button>
+              )}
+              <button type="submit" form="monitoring-form" className="btn btn-primary" disabled={salvando || competenciaNaoIniciada} aria-busy={salvando}
+                title={competenciaNaoIniciada ? `Envio a partir de ${dataBR(inicioDaCompetencia(formData.competencia))}` : undefined}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#10b981', borderColor: '#10b981' }}>
+                <CheckCircle2 size={16} /> {salvando ? 'Salvando…' : podeGuardar ? 'Concluir e enviar' : 'Concluir Monitoria'}
               </button>
             </div>
           )}

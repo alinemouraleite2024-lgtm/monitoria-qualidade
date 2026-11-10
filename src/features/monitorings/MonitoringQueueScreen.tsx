@@ -68,6 +68,7 @@ interface MonitoringQueueScreenProps {
   onAbrir: (m: Monitoring) => void;
   onEditar: (m: Monitoring) => void;
   onVerRelatorios: () => void;
+  onVerAreaPrivada?: () => void;
 }
 
 export const MonitoringQueueScreen = ({
@@ -87,6 +88,7 @@ export const MonitoringQueueScreen = ({
   onAbrir,
   onEditar,
   onVerRelatorios,
+  onVerAreaPrivada,
 }: MonitoringQueueScreenProps) => {
   const [busca, setBusca] = useState('');
 
@@ -168,6 +170,7 @@ export const MonitoringQueueScreen = ({
   const pendencias = {
     devolvidas: filtra(dados.pendencias.devolvidas),
     rascunhos: filtra(dados.pendencias.rascunhos),
+    guardadas: filtra(dados.pendencias.guardadas),
   };
   const aguardando = dados.aguardando.filter((x) =>
     matchesBusca(x.monitoring, busca, nomeDe(x.monitoring.colaboradorId))
@@ -252,6 +255,7 @@ export const MonitoringQueueScreen = ({
       />
 
       <MonitorQueue
+        onVerAreaPrivada={onVerAreaPrivada}
         fila={dados.fila}
         pendencias={pendencias}
         aguardando={aguardando}

@@ -257,6 +257,13 @@ export interface Monitoring {
   // Opcionais: monitoria registrada antes desta versão simplesmente não os tem.
   /** Relatório Completo: HTML limpo, colado do Word. Complementar: não entra na nota. */
   relatorioCompleto?: string;
+  /** Concluída e guardada na área privada, ainda não enviada para validação (script 19). */
+  aguardandoLiberacao?: boolean;
+  /** Última conclusão válida. Ausente em monitorias anteriores ao script 19. */
+  concluidaEm?: string;
+  /** Primeiro envio para validação: a data real de disponibilização. */
+  enviadoEm?: string;
+  criadoEm?: string;
   /** Narrativa factual e cronológica do atendimento, sem juízo de valor. */
   contexto?: string;
   /** O que os critérios, somados, revelam sobre a condução. Conecta, não repete. */
