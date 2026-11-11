@@ -344,11 +344,12 @@ export interface NaFilaDeValidacao {
   /** Dias corridos desde a referência abaixo. */
   dias: number;
   /**
-   * A referência é exata? Hoje o registro não guarda a data de envio, só a data do
-   * atendimento. Enquanto não houver `submittedAt`, a contagem parte da data do atendimento
-   * e este campo diz à tela para não afirmar "enviada há N dias" como se fosse exato.
+   * A referência é o envio real? Sim quando há o último envio no histórico ou a data de envio
+   * gravada. Registro antigo sem nenhum dos dois conta da data do atendimento, e a tela diz isso.
    */
   referenciaExata: boolean;
+  /** Dia (AAAA-MM-DD) de onde a espera é contada. */
+  desde: string;
 }
 
 const diasEntre = (deISO: string, ateISO: string): number => {
@@ -358,11 +359,40 @@ const diasEntre = (deISO: string, ateISO: string): number => {
   return Math.max(0, Math.round(ms / 86400000));
 };
 
-const paraFila = (m: Monitoring, hojeISO: string): NaFilaDeValidacao => ({
-  monitoring: m,
-  dias: diasEntre(m.date, hojeISO),
-  referenciaExata: false,
-});
+/** Dia local de um instante gravado com hora (o envio é gravado em UTC). */
+const diaLocal = (iso: string): string => {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+/**
+ * Desde quando a monitoria espera a gestora. A espera conta do envio, não do atendimento: um
+ * atendimento de outubro enviado ontem espera há um dia. Depois de uma devolução vale o reenvio,
+ * que é quando ela voltou à fila (o histórico guarda cada um; a data gravada é só a primeira).
+ */
+export const referenciaDaEspera = (m: Monitoring): { desde: string; exata: boolean } => {
+  const envios = (m.historico ?? []).filter((e) => (e.tipo === 'ENVIO' || e.tipo === 'REENVIO') && e.ocorridoEm);
+  const ultimo = envios.map((e) => e.ocorridoEm).sort().at(-1);
+  if (ultimo) return { desde: diaLocal(ultimo), exata: true };
+  if (m.enviadoEm) return { desde: diaLocal(m.enviadoEm), exata: true };
+  return { desde: m.date.slice(0, 10), exata: false };
+};
+
+const paraFila = (m: Monitoring, hojeISO: string): NaFilaDeValidacao => {
+  const { desde, exata } = referenciaDaEspera(m);
+  return { monitoring: m, dias: diasEntre(desde, hojeISO), referenciaExata: exata, desde };
+};
+
+/** Como a espera aparece na tela. Sem data de envio, a tela diz de onde a conta parte. */
+export const textoDaEspera = (dias: number, exata: boolean): string => {
+  const n = `${dias} ${dias === 1 ? 'dia' : 'dias'}`;
+  if (!exata) return `${n} desde o atendimento (sem data de envio)`;
+  return dias === 0 ? 'enviada hoje' : `na fila há ${n}`;
+};
+
+/** Quem espera há mais tempo primeiro; empate pelo dia de entrada e pelo código, sempre na mesma ordem. */
+const maisAntigaPrimeiro = (a: NaFilaDeValidacao, b: NaFilaDeValidacao): number =>
+  b.dias - a.dias || a.desde.localeCompare(b.desde) || a.monitoring.id.localeCompare(b.monitoring.id, 'pt-BR', { numeric: true });
 
 /** Monitorias de um monitor esperando a gestora, das mais antigas para as mais recentes. */
 export const getAguardandoValidacao = (
@@ -374,7 +404,7 @@ export const getAguardandoValidacao = (
   monitorings
     .filter((m) => m.monitorId === monitorId && naCompetencia(m.competencia, period) && isAwaitingValidation(m))
     .map((m) => paraFila(m, hojeISO))
-    .sort((a, b) => b.dias - a.dias);
+    .sort(maisAntigaPrimeiro);
 
 /** A fila da gestora: tudo que espera validação no período, de todos os monitores. */
 /**
@@ -398,7 +428,7 @@ export const getFilaDeValidacao = (
   monitorings
     .filter(isAwaitingValidation)
     .map((m) => paraFila(m, hojeISO))
-    .sort((a, b) => b.dias - a.dias);
+    .sort(maisAntigaPrimeiro);
 
 // ---------------------------------------------------------------------------
 // Trabalho fora da quota

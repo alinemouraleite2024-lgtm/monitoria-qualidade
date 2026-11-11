@@ -11,7 +11,7 @@ import { useState } from 'react';
 import { Search, PlusCircle, RotateCcw, Pencil, Clock, ChevronDown, ChevronRight } from 'lucide-react';
 import { ColaboradoraDetalhe } from './ColaboradoraDetalhe';
 import type { Monitoring } from '../../types/domain';
-import type { LinhaDaFila, NaFilaDeValidacao, Pendencias, ForaDaQuota } from '../../domain/queueService';
+import { textoDaEspera, type LinhaDaFila, type NaFilaDeValidacao, type Pendencias, type ForaDaQuota } from '../../domain/queueService';
 import { canalLabel } from '../../constants/canais';
 
 interface MonitorQueueProps {
@@ -218,12 +218,12 @@ export const MonitorQueue = ({
             nota="Já contam como feitas · nada a fazer aqui"
             tom="warning"
           />
-          {aguardando.map(({ monitoring: m, dias }) => (
+          {aguardando.map(({ monitoring: m, dias, referenciaExata }) => (
             <Linha key={m.id}>
               <span style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--primary)' }}>{m.id}</span>
               <div style={{ flex: '1 1 320px', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
                 atendimento de {dataCurta(m.date)}
-                {dias > 0 && <> · na fila há {dias} dia{dias > 1 ? 's' : ''}</>}
+                {' · '}{textoDaEspera(dias, referenciaExata)}
               </div>
               <button className="btn btn-secondary btn-sm" onClick={() => onAbrir(m)}>Ver</button>
             </Linha>

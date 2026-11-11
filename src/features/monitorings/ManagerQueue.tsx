@@ -7,7 +7,7 @@
 
 import { Search, Eye, AlertTriangle, Inbox } from 'lucide-react';
 import type { Monitoring, User, Collaborator } from '../../types/domain';
-import type { NaFilaDeValidacao, RitmoDoMonitor, RiscoDoMes } from '../../domain/queueService';
+import { textoDaEspera, type NaFilaDeValidacao, type RitmoDoMonitor, type RiscoDoMes } from '../../domain/queueService';
 import { canalLabel } from '../../constants/canais';
 import { competenciaLabel } from '../../domain/period';
 import { getScoreConcept } from '../../scoreUtils';
@@ -57,7 +57,7 @@ export const ManagerQueue = ({
         </div>
       )}
 
-      {fila.map(({ monitoring: m, dias }) => {
+      {fila.map(({ monitoring: m, dias, referenciaExata }) => {
         const conceito = getScoreConcept(m.finalScore);
         const eliminatorio = Boolean(m.eliminatoryPending) && !m.zerada;
         return (
@@ -91,11 +91,9 @@ export const ManagerQueue = ({
                 </div>
               )}
               atendimento {dataCurta(m.date)}
-              {dias > 0 && (
-                <div style={{ fontSize: '0.74rem', color: dias >= 5 ? 'var(--warning)' : 'var(--text-muted)' }}>
-                  na fila há {dias} dia{dias > 1 ? 's' : ''}
-                </div>
-              )}
+              <div style={{ fontSize: '0.74rem', color: dias >= 5 ? 'var(--warning)' : 'var(--text-muted)' }}>
+                {textoDaEspera(dias, referenciaExata)}
+              </div>
             </div>
 
             <div style={{ flex: '0 0 auto', minWidth: '110px' }}>
