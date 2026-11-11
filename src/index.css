@@ -96,6 +96,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.5rem;
   padding: 1.25rem 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
@@ -103,7 +104,7 @@ body {
 .sidebar-brand {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.65rem;
   text-decoration: none;
   overflow: hidden;
 }
@@ -116,6 +117,53 @@ body {
   background-color: #ffffff;
   padding: 2px;
   flex-shrink: 0;
+}
+
+/* Árvore oficial branca sobre o verde (recorte do logotipo, proporção preservada). */
+.sidebar-simbolo {
+  display: block;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+}
+
+.sidebar.collapsed .sidebar-simbolo {
+  width: 36px;
+  height: 36px;
+}
+
+/* Barra aberta: árvore, nome e subtítulo em linha, centralizados na vertical. */
+.sidebar-marca {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1.1;
+  min-width: 0;
+}
+
+/* Letreiro oficial (recorte 384 × 47 do logotipo branco, exibido a 1/3 para ficar nítido). */
+.sidebar-marca-nome {
+  display: block;
+  width: 128px;
+  height: auto;
+}
+
+.sidebar-marca-sub {
+  margin-top: 0.2rem;
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.78);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+/* Barra recolhida (68 px): árvore em cima, botão de abrir embaixo, ambos centralizados. */
+.sidebar.collapsed .sidebar-header {
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 1rem 0.5rem;
 }
 
 .sidebar-title {

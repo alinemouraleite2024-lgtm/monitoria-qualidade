@@ -18,7 +18,6 @@ interface SidebarProps {
 }
 
 export const Sidebar = ({
-  brand,
   currentUser,
   perfilAtivo,
   onTrocarPerfil,
@@ -32,8 +31,15 @@ export const Sidebar = ({
 <aside className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
   <div className="sidebar-header">
     <a href="#" className="sidebar-brand" onClick={(e) => { e.preventDefault(); onNavigate('monitorings'); }}>
-      <img src={brand.logoUrl} className="sidebar-logo" alt={brand.name} />
-      <span className="sidebar-title sidebar-brand-text" style={{ marginLeft: '0.5rem' }}>{brand.name}</span>
+      {/* Árvore e letreiro oficiais, recortados do logotipo branco (arquivos do próprio portal, não da
+          configuração). Barra aberta: árvore + letreiro + "Gestão da Qualidade"; recolhida: só a árvore. */}
+      <img src="/marca/simbolo-branco.png" className="sidebar-simbolo" alt={sidebarCollapsed ? 'Moura Leite' : ''} />
+      {!sidebarCollapsed && (
+        <span className="sidebar-marca">
+          <img src="/marca/nome-branco.png" className="sidebar-marca-nome" alt="Moura Leite" />
+          <span className="sidebar-marca-sub">Gestão da Qualidade</span>
+        </span>
+      )}
     </a>
     <button className="btn-toggle-sidebar" onClick={() => setSidebarCollapsed(!sidebarCollapsed)}>
       <Menu size={16} />
