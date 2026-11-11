@@ -12,6 +12,8 @@
 // mudar conforme o contexto em que a pessoa estava.
 
 import type { Area, Monitoring, MonitoringStatus, Role, SystemSettings, User } from '../types/domain';
+import { isAwaitingValidation } from './monitoringRules';
+import { competenciaDe } from './period';
 
 /**
  * Gestor responsável pelo trabalho de um monitor, via área.
@@ -24,6 +26,27 @@ export const getGestorDaArea = (monitorId: string, areas: Area[]): string | null
   const area = areas.find((a) => a.active && (a.monitorIds || []).includes(monitorId));
   return area?.gestorId || null;
 };
+
+/** Competência inicial de validação do supervisor, se configurada e válida (AAAA-MM). */
+export const competenciaInicialDaValidacao = (settings: SystemSettings, gestorId: string | null): string | null => {
+  const valor = gestorId ? settings.validacaoDesdePorGestor?.[gestorId] : undefined;
+  return typeof valor === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(valor) ? valor : null;
+};
+
+/**
+ * A pendência está na fila operacional do supervisor responsável? Só organiza a fila e os
+ * contadores: a monitoria não muda de situação e continua em Relatórios, validável.
+ */
+export const entraNaFilaDeValidacao = (m: Monitoring, areas: Area[], settings: SystemSettings): boolean => {
+  if (!isAwaitingValidation(m)) return false;
+  const inicio = competenciaInicialDaValidacao(settings, getGestorDaArea(m.monitorId, areas));
+  if (!inicio) return true;
+  return (m.competencia || competenciaDe(m.date)) >= inicio;
+};
+
+/** Pendente, mas anterior à competência inicial do supervisor: fora da fila operacional. */
+export const foraDaFilaDeValidacao = (m: Monitoring, areas: Area[], settings: SystemSettings): boolean =>
+  isAwaitingValidation(m) && !entraNaFilaDeValidacao(m, areas, settings);
 
 /**
  * Status com que uma monitoria nasce ao ser concluída.

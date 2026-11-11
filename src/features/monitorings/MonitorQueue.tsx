@@ -214,16 +214,21 @@ export const MonitorQueue = ({
         <div className="section-card" style={{ padding: 0, overflow: 'hidden' }}>
           <Cabecalho
             titulo="Aguardando a gestora"
-            contador={aguardando.length}
-            nota="Já contam como feitas · nada a fazer aqui"
+            contador={aguardando.filter((f) => !f.foraDaFila).length}
+            nota={aguardando.every((f) => f.foraDaFila)
+              ? 'Já contam como feitas · nenhuma aguarda ação na fila do supervisor'
+              : 'Já contam como feitas · nada a fazer aqui'}
             tom="warning"
           />
-          {aguardando.map(({ monitoring: m, dias, referenciaExata }) => (
+          {[...aguardando].sort((a, b) => Number(Boolean(a.foraDaFila)) - Number(Boolean(b.foraDaFila))).map(({ monitoring: m, dias, referenciaExata, foraDaFila }) => (
             <Linha key={m.id}>
               <span style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--primary)' }}>{m.id}</span>
               <div style={{ flex: '1 1 320px', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                {foraDaFila && <><span className="badge-pill badge-info">Fora da fila de validação</span>{' '}</>}
                 atendimento de {dataCurta(m.date)}
-                {' · '}{textoDaEspera(dias, referenciaExata)}
+                {' · '}{foraDaFila
+                  ? 'anterior ao início das validações do supervisor; não aguarda ação na fila dele e segue em Relatórios'
+                  : textoDaEspera(dias, referenciaExata)}
               </div>
               <button className="btn btn-secondary btn-sm" onClick={() => onAbrir(m)}>Ver</button>
             </Linha>

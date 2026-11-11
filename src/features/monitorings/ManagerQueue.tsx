@@ -15,6 +15,8 @@ import { exigeReenvio, MOTIVO_REENVIO_MIGRADA } from '../../domain/validacaoServ
 
 interface ManagerQueueProps {
   fila: NaFilaDeValidacao[];
+  /** Pendentes anteriores à competência inicial do supervisor: fora desta fila, em Relatórios. */
+  foraDaFila?: number;
   ritmo: RitmoDoMonitor[];
   risco: RiscoDoMes;
   colaboradorasPorId: Record<string, Collaborator | undefined>;
@@ -31,6 +33,7 @@ const dataCurta = (iso: string) =>
 
 export const ManagerQueue = ({
   fila,
+  foraDaFila = 0,
   ritmo,
   risco,
   colaboradorasPorId,
@@ -45,6 +48,14 @@ export const ManagerQueue = ({
     {/* ---------------- Fila de validação ---------------- */}
     <div className="section-card" style={{ padding: 0, overflow: 'hidden' }}>
       <Cabecalho titulo="Fila de validação" contador={fila.length} nota="Mais antigas primeiro" tom="warning" />
+      {foraDaFila > 0 && (
+        <div style={{ padding: '0.6rem 1.15rem', borderTop: '1px solid var(--border-color)', fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <span>
+            {foraDaFila} {foraDaFila === 1 ? 'pendência de competência anterior ao início das suas validações fica' : 'pendências de competências anteriores ao início das suas validações ficam'} fora desta fila e {foraDaFila === 1 ? 'continua' : 'continuam'} em Relatórios.
+          </span>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={onVerRelatorios}>Abrir Relatórios</button>
+        </div>
+      )}
 
       {fila.length === 0 && (
         <div style={{

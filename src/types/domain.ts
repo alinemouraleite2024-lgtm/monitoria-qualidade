@@ -502,6 +502,12 @@ export interface SystemSettings {
    * comportamento que a operação já praticava à mão.
    */
   defasagemCompetencia: number;
+  /**
+   * Competência (AAAA-MM) a partir da qual cada supervisor valida, pelo id do perfil. Pendentes de
+   * competência anterior saem da fila e dos contadores dele, sem mudar de situação, e seguem em
+   * Relatórios. Supervisor sem entrada vê tudo, como antes.
+   */
+  validacaoDesdePorGestor?: Record<string, string>;
 }
 
 /** Sessão persistida: grava só o par mínimo, o usuário completo é re-resolvido na leitura. */

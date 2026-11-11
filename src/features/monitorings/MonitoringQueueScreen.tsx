@@ -44,6 +44,7 @@ import { getEquipeDoGestor } from '../../domain/scopeService';
 import { temPerfil } from '../../domain/perfis';
 import { PeriodProgress } from './PeriodProgress';
 import { MonitorQueue } from './MonitorQueue';
+import { entraNaFilaDeValidacao, foraDaFilaDeValidacao } from '../../domain/validacaoService';
 import { ManagerQueue } from './ManagerQueue';
 
 interface MonitoringQueueScreenProps {
@@ -149,14 +150,19 @@ export const MonitoringQueueScreen = ({
       // A fila NÃO é recortada por competência (0.22.1): pendente é pendente em qualquer mês.
       filaValidacao: getFilaDeValidacao(monitorings, hoje)
         .filter((f) => equipe === null || equipe.includes(f.monitoring.monitorId))
-        .filter((f) => f.monitoring.monitorId !== currentUser.id),
+        .filter((f) => f.monitoring.monitorId !== currentUser.id)
+        .filter((f) => entraNaFilaDeValidacao(f.monitoring, areas, settings)),
+      // Pendentes anteriores à competência inicial: saem da fila, mas a tela diz quantas são.
+      foraDaFilaDoGestor: monitorings.filter((m) =>
+        (equipe === null || equipe.includes(m.monitorId)) && m.monitorId !== currentUser.id && foraDaFilaDeValidacao(m, areas, settings)).length,
       // Ritmo e risco da equipe seguem a mesma competência auditada: é sobre ela que a equipe
       // está trabalhando agora. A fila de validação continua sem recorte de mês (0.22.1).
       ritmoEquipe: getRitmoDaEquipe(ctx, monitoresNoEscopo, periodo, mesDeTrabalho, hoje),
       risco: getRiscoDoMes(ctx, monitoresNoEscopo, periodo, dataDaCarteira),
       fila: getFilaDaCarteira(ctx, monitorId, periodo, dataDaCarteira),
       pendencias: getPendencias(monitorings, monitorId, periodo),
-      aguardando: getAguardandoValidacao(monitorings, monitorId, periodo, hoje),
+      aguardando: getAguardandoValidacao(monitorings, monitorId, periodo, hoje)
+        .map((f) => ({ ...f, foraDaFila: foraDaFilaDeValidacao(f.monitoring, areas, settings) })),
       foraDaQuota: getForaDaQuota(ctx, monitorId, periodo),
     };
   }, [monitorings, colaboradorGoals, collaborators, allocations, holidays, users, areas, currentUser, perfilAtivo, monitorId, hoje, periodo, mesDeTrabalho, dataDaCarteira]);
@@ -229,6 +235,7 @@ export const MonitoringQueueScreen = ({
       {ehGestao ? (
         <ManagerQueue
           fila={filaValidacao}
+          foraDaFila={dados.foraDaFilaDoGestor}
           ritmo={dados.ritmoEquipe}
           risco={dados.risco}
           colaboradorasPorId={porId(collaborators)}

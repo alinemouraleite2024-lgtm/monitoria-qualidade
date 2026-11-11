@@ -350,6 +350,8 @@ export interface NaFilaDeValidacao {
   referenciaExata: boolean;
   /** Dia (AAAA-MM-DD) de onde a espera é contada. */
   desde: string;
+  /** Anterior à competência inicial do supervisor: não aguarda ação na fila dele. */
+  foraDaFila?: boolean;
 }
 
 const diasEntre = (deISO: string, ateISO: string): number => {

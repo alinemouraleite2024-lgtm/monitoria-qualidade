@@ -4,7 +4,7 @@ import { getMetaDaColaboradora, getEscoposDaColaboradora } from '../../domain/go
 import { canalLabel } from '../../constants/canais';
 import { getEquipeDoGestor } from '../../domain/scopeService';
 import { naCompetencia } from '../../domain/period';
-import { isAwaitingValidation } from '../../domain/monitoringRules';
+import { entraNaFilaDeValidacao } from '../../domain/validacaoService';
 import { resumirNotas, resultadosPorColaboradora, evolucaoMensal, notaParaExibir } from '../../domain/resultadosService';
 
 const fmtNota = (n) => (n === null ? '—' : `${n.toFixed(2).replace('.', ',')}%`);
@@ -57,7 +57,8 @@ export const DashboardScreen = ({
   const porColaboradora = resultadosPorColaboradora(doPeriodo, nomeDe);
   const evolucao = evolucaoMensal(monitoriasDoEscopo, periodoAtual, 6);
   const maiorQtd = Math.max(1, ...evolucao.map(p => p.consideradas));
-  const aguardandoValidacao = monitoriasDoEscopo.filter(isAwaitingValidation).length;
+  // Mesma regra da fila: pendente anterior à competência inicial do supervisor não entra no aviso.
+  const aguardandoValidacao = monitoriasDoEscopo.filter((m) => entraNaFilaDeValidacao(m, areas, settings)).length;
 
   return (
           <div className="animate-fade-in">
