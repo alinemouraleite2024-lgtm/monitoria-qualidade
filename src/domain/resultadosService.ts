@@ -14,7 +14,7 @@
 
 import type { Monitoring } from '../types/domain';
 import { statusParaExibir } from './areaPrivada';
-import { countsTowardGoal } from './monitoringRules';
+import { countsTowardGoal, isEmReavaliacao } from './monitoringRules';
 import type { Period } from './period';
 import { naCompetencia, periodLabel, previousPeriod } from './period';
 
@@ -22,11 +22,16 @@ const arred = (n: number) => Math.round(n * 100) / 100;
 
 /** A monitoria entra na média? Mesma régua da contagem de meta. */
 export const entraNaMedia = (m: Monitoring): boolean =>
-  countsTowardGoal(m) && typeof m.finalScore === 'number' && Number.isFinite(m.finalScore);
+  // 21: em reavaliação conta como entregue, mas a nota está sujeita a ajuste e fica fora da média.
+  countsTowardGoal(m) && !isEmReavaliacao(m) && typeof m.finalScore === 'number' && Number.isFinite(m.finalScore);
 
 export interface ResumoNotas {
   /** Todas as monitorias do conjunto, em qualquer situação. */
   total: number;
+  /** Realizadas e entregues (inclui as em reavaliação). Cada monitoria conta uma vez. */
+  entregues: number;
+  /** Entregues que aguardam ajustes da monitora (21): contam como realizadas, fora da média. */
+  emReavaliacao: number;
   /** As que entram na média. */
   consideradas: number;
   /** `null` quando nenhuma entra — ausência de nota não é nota zero. */
@@ -44,6 +49,8 @@ export const resumirNotas = (monitorias: Monitoring[]): ResumoNotas => {
   for (const m of monitorias) { const s = statusParaExibir(m); porStatus[s] = (porStatus[s] ?? 0) + 1; }
   return {
     total: monitorias.length,
+    entregues: monitorias.filter(countsTowardGoal).length,
+    emReavaliacao: monitorias.filter(isEmReavaliacao).length,
     consideradas: validas.length,
     media: notas.length ? arred(notas.reduce((s, n) => s + n, 0) / notas.length) : null,
     menor: notas.length ? Math.min(...notas) : null,
@@ -77,6 +84,8 @@ export const resultadosPorColaboradora = (
 export interface PontoEvolucao {
   periodo: Period;
   rotulo: string;
+  /** Realizadas e entregues na competência (inclui em reavaliação). */
+  entregues: number;
   consideradas: number;
   media: number | null;
 }
@@ -88,7 +97,7 @@ export const evolucaoMensal = (monitorias: Monitoring[], ate: Period, meses = 6)
   for (let i = 0; i < meses; i += 1) { periodos.unshift(p); p = previousPeriod(p); }
   return periodos.map((periodo) => {
     const r = resumirNotas(monitorias.filter((m) => naCompetencia(m.competencia, periodo)));
-    return { periodo, rotulo: periodLabel(periodo), consideradas: r.consideradas, media: r.media };
+    return { periodo, rotulo: periodLabel(periodo), entregues: r.entregues, consideradas: r.consideradas, media: r.media };
   });
 };
 

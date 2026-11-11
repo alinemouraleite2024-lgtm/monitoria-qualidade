@@ -533,6 +533,8 @@ export const MonitoringForm = ({
   // ---------------------------------------------------------------------------------------
   const podeImportar = !initialData && !modoRetroativo;
   const guardadaAberta = Boolean(initialData && estaGuardada(initialData));
+  // 21: devolvida pelo supervisor. Salvar mantém "Em reavaliação"; concluir reenvia para validação.
+  const emReavaliacao = initialData?.status === 'Em reavaliação';
   const podeGuardar = modoCompartilhado() && !modoRetroativo && podeSerGuardada(initialData);
   const competenciaNaoIniciada = modoCompartilhado() && Boolean(formData.competencia) && !competenciaIniciada(formData.competencia, todayISO());
   const [mostrarImportacao, setMostrarImportacao] = useState(false);
@@ -780,7 +782,8 @@ export const MonitoringForm = ({
       // confundida com uma que passou por validação real.
       // Sem marca aqui, salvar uma guardada a devolve a Rascunho: a conclusão anterior deixa de valer.
       aguardandoLiberacao: guardar ? true : undefined,
-      status: guardar ? 'Rascunho' : (modoRetroativo && !isDraft)
+      // 21: salvar os ajustes de uma devolvida mantém "Em reavaliação"; ela nunca volta a rascunho.
+      status: guardar ? 'Rascunho' : (isDraft && emReavaliacao) ? 'Em reavaliação' : (modoRetroativo && !isDraft)
         ? 'Validada'
         : resolverStatusInicial({
             isDraft,
@@ -873,7 +876,8 @@ export const MonitoringForm = ({
     const registrado = await onSave(data);
     if (registrado === null) return;
     setLastSaved(new Date().toLocaleTimeString());
-    alert(registrado ? `Rascunho salvo com sucesso!\nCódigo: ${registrado.id}${avisoSeRepetida(registrado)}` : 'Rascunho salvo com sucesso!');
+    const oQue = emReavaliacao ? 'Ajustes salvos (a monitoria segue em reavaliação até o reenvio)' : 'Rascunho salvo com sucesso';
+    alert(registrado ? `${oQue}!\nCódigo: ${registrado.id}${avisoSeRepetida(registrado)}` : `${oQue}!`);
   });
 
   const handleSaveFinal = (e: FormEvent<HTMLFormElement>) => {
@@ -983,7 +987,7 @@ export const MonitoringForm = ({
           </div>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             <button type="button" className="btn btn-secondary" onClick={handleSaveDraft} disabled={salvando} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Save size={16} /> {salvando ? 'Salvando…' : 'Salvar Rascunho'}
+              <Save size={16} /> {salvando ? 'Salvando…' : emReavaliacao ? 'Salvar ajustes' : 'Salvar Rascunho'}
             </button>
             <button type="button" className="btn-sidebar-logout" onClick={onClose} title="Fechar e Voltar" style={{ marginLeft: '0.5rem' }}><X size={20} /></button>
           </div>
@@ -992,10 +996,10 @@ export const MonitoringForm = ({
         {/* Etapa A (26/10/2026): monitoria devolvida mostra, dentro do formulário, o que o gestor
             pediu para rever. Antes o motivo só aparecia na fila e no detalhe — a monitora
             corrigia de memória. Só leitura: não altera nada do preenchimento. */}
-        {initialData?.status === 'Rascunho' && initialData.adjustmentReason && (
+        {(emReavaliacao || initialData?.status === 'Rascunho') && initialData?.adjustmentReason && (
           <div role="note" style={{ margin: '1rem 2rem 0', padding: '0.85rem 1rem', border: '1px solid var(--warning)', backgroundColor: 'rgba(234, 179, 8, 0.08)', borderRadius: '8px' }}>
             <div style={{ fontWeight: 700, color: '#a16207', fontSize: '0.9rem' }}>
-              Devolvida para correção
+              {emReavaliacao ? 'Em reavaliação — devolvida para ajustes' : 'Devolvida para correção'}
               {initialData.reviewedBy && ` por ${users.find(u => u.id === initialData.reviewedBy)?.name ?? 'gestor'}`}
               {initialData.reviewedAt && ` em ${new Date(initialData.reviewedAt).toLocaleString('pt-BR')}`}
             </div>
@@ -1931,7 +1935,7 @@ export const MonitoringForm = ({
           {step < totalSteps ? (
             <div style={{ display: 'flex', gap: '1rem' }}>
               <button type="button" className="btn btn-secondary" onClick={handleSaveDraft} disabled={salvando} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Save size={16} /> {salvando ? 'Salvando…' : 'Salvar Rascunho'}
+                <Save size={16} /> {salvando ? 'Salvando…' : emReavaliacao ? 'Salvar ajustes' : 'Salvar Rascunho'}
               </button>
               <button type="button" className="btn btn-primary" onClick={handleNext} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 Próximo <ChevronRight size={16} />
@@ -1950,7 +1954,7 @@ export const MonitoringForm = ({
               <button type="submit" form="monitoring-form" className="btn btn-primary" disabled={salvando || competenciaNaoIniciada} aria-busy={salvando}
                 title={competenciaNaoIniciada ? `Envio a partir de ${dataBR(inicioDaCompetencia(formData.competencia))}` : undefined}
                 style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#10b981', borderColor: '#10b981' }}>
-                <CheckCircle2 size={16} /> {salvando ? 'Salvando…' : podeGuardar ? 'Concluir e enviar' : 'Concluir Monitoria'}
+                <CheckCircle2 size={16} /> {salvando ? 'Salvando…' : emReavaliacao ? 'Reenviar para validação' : podeGuardar ? 'Concluir e enviar' : 'Concluir Monitoria'}
               </button>
             </div>
           )}

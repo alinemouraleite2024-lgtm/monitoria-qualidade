@@ -156,7 +156,7 @@ import {
   parseData,
 } from './domain/period';
 import type { Period } from './domain/period';
-import { countsForCarteiraGoal } from './domain/monitoringRules';
+import { countsForCarteiraGoal, editavelPelaMonitora } from './domain/monitoringRules';
 import { getPlanoVigente, resolverMetasDoPeriodo, sucederPlano, vigenciaColide } from './domain/planoMetasService';
 import {
   aplicaFiltrosDeHistorico,
@@ -727,7 +727,8 @@ function AppContent() {
     const jaNoBanco = monitorings.some((x) => x.id === m.id);
     try {
       const guardar = m.aguardandoLiberacao === true;
-      const r = await salvarMonitoria(transporteSupabase(), m, criteria, jaNoBanco, m.status !== 'Rascunho', guardar);
+      // 21: salvar os ajustes de uma devolvida ("Em reavaliação") não é envio; concluir é.
+      const r = await salvarMonitoria(transporteSupabase(), m, criteria, jaNoBanco, !editavelPelaMonitora(m.status), guardar);
       await recarregarDoBanco();
       navigate(guardar ? '/privada' : '/monitorings');
       return r;
@@ -1380,7 +1381,7 @@ function AppContent() {
     }
     updateMonitoringById(monId, m => comHistorico(m, {
       ...m,
-      status: 'Rascunho',
+      status: 'Em reavaliação',   // 21: devolvida segue entregue, aguardando ajustes
       adjustmentReason: reason || '',
       reviewedBy: currentUser!.id,
       reviewedAt: new Date().toISOString()
@@ -1565,7 +1566,7 @@ function AppContent() {
         <body>
           <h1>Relatório Executivo de Avaliações - V2</h1>
           <div><strong>Branding:</strong> ${brand.name} | <strong>Competência:</strong> ${periodLabel(reportPeriod)} | <strong>Emitido em:</strong> ${parseData(hoje).toLocaleDateString('pt-BR')}</div>
-          <div style="margin-top: 6px"><strong>Monitorias:</strong> ${resumoPdf.total} | <strong>Na média:</strong> ${resumoPdf.consideradas} | <strong>Média geral:</strong> ${resumoPdf.media === null ? '—' : `${resumoPdf.media.toFixed(2)}%`} <span style="color:#666">(Pendente, Validada e Concluída; rascunho, reprovada e cancelada ficam fora da média)</span></div>
+          <div style="margin-top: 6px"><strong>Monitorias:</strong> ${resumoPdf.total} | <strong>Na média:</strong> ${resumoPdf.consideradas} | <strong>Média geral:</strong> ${resumoPdf.media === null ? '—' : `${resumoPdf.media.toFixed(2)}%`} <span style="color:#666">(Pendente, Validada e Concluída; rascunho, em reavaliação, reprovada e cancelada ficam fora da média)</span></div>
           <table>
             <thead>
               <tr>

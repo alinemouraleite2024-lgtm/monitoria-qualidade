@@ -80,8 +80,12 @@ export const eventosDaTransicao = (
   const saiu = (s: Monitoring['status']) => antes?.status !== s && depois.status === s;
   const eventos: EventoCalibracao[] = [];
 
-  // envio: da monitora, sempre que sai de Rascunho (ou nasce enviada)
-  if (depois.status !== 'Rascunho' && depois.status !== 'Cancelada' && (!antes || antes.status === 'Rascunho')) {
+  // envio: da monitora, sempre que sai de Rascunho ou de Em reavaliação (ou nasce enviada).
+  // 21: salvar ajustes mantém Em reavaliação e não é envio; Rascunho <-> Em reavaliação não é evento.
+  if (depois.status === 'Em reavaliação' && antes?.status === 'Rascunho') return [];
+  if (depois.status === 'Rascunho' && antes?.status === 'Em reavaliação') return [];
+  if (depois.status !== 'Rascunho' && depois.status !== 'Cancelada' && depois.status !== 'Em reavaliação'
+      && (!antes || antes.status === 'Rascunho' || antes.status === 'Em reavaliação')) {
     // já houve qualquer evento = já tinha sido enviada (ex.: devolvida antes do histórico existir)
     const rodada = rodadaAtual(hist, hist.length > 0) + 1;
     eventos.push(novo(rodada === 1 ? 'ENVIO' : 'REENVIO', rodada));
@@ -97,7 +101,7 @@ export const eventosDaTransicao = (
   const texto = (ctx.consideracoes ?? '').trim() || null;
   if (saiu('Validada')) eventos.push(novo('VALIDACAO', rodada, { consideracoes: texto }));
   else if (saiu('Reprovada')) eventos.push(novo('REPROVACAO', rodada, { consideracoes: depois.motivoReprovacao ?? texto }));
-  else if (saiu('Rascunho')) eventos.push(novo('DEVOLUCAO', rodada, { consideracoes: depois.adjustmentReason ?? texto }));
+  else if (saiu('Rascunho') || saiu('Em reavaliação')) eventos.push(novo('DEVOLUCAO', rodada, { consideracoes: depois.adjustmentReason ?? texto }));
   else if (saiu('Cancelada')) eventos.push(novo('CANCELAMENTO', rodada, { consideracoes: texto }));
   return eventos;
 };

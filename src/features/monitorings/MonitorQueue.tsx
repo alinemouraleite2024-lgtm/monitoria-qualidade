@@ -169,8 +169,11 @@ export const MonitorQueue = ({
               <span style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--primary)' }}>{m.id}</span>
               <div style={{ flex: '1 1 320px' }}>
                 <div style={{ fontSize: '0.82rem' }}>
-                  <span className="badge-pill badge-danger">Devolvida</span>{' '}
+                  <span className="badge-pill badge-danger">{m.status === 'Em reavaliação' ? 'Em reavaliação' : 'Devolvida'}</span>{' '}
                   atendimento de {dataCurta(m.date)}
+                  {m.status === 'Em reavaliação' && (
+                    <span style={{ color: 'var(--text-muted)' }}> · já conta como feita; corrija e reenvie</span>
+                  )}
                 </div>
                 <div style={{
                   fontSize: '0.82rem', color: 'var(--text-muted)',

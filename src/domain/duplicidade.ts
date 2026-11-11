@@ -105,7 +105,9 @@ export const mensagemAtendimentoJaRegistrado = (existente: Monitoring): string =
   const codigo = existente.protocolo || existente.id;
   return existente.status === 'Rascunho'
     ? `Este atendimento já tem um rascunho seu: ${codigo}. Continue por ele em vez de criar outra monitoria.`
-    : `Este atendimento já foi avaliado por você: ${codigo}, situação ${existente.status} (início em ${dataHora(existente.inicioAtendimento)}). ` +
+    : existente.status === 'Em reavaliação'
+    ? `Este atendimento já tem uma monitoria sua em reavaliação: ${codigo}. Faça os ajustes e reenvie por ela em vez de criar outra monitoria.`
+    :`Este atendimento já foi avaliado por você: ${codigo}, situação ${existente.status} (início em ${dataHora(existente.inicioAtendimento)}). ` +
       'Uma nova monitoria do mesmo atendimento não foi criada.\n\n' +
       'Mesmo atendimento = mesma colaboradora, mesmo canal, mesmo dia e mesmo horário de início, ainda que o número do atendimento ou o título tenham sido digitados de outro jeito.';
 };

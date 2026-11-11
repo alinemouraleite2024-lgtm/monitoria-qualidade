@@ -45,6 +45,7 @@ import { temPerfil } from '../../domain/perfis';
 import { PeriodProgress } from './PeriodProgress';
 import { MonitorQueue } from './MonitorQueue';
 import { entraNaFilaDeValidacao, foraDaFilaDeValidacao } from '../../domain/validacaoService';
+import { isEmReavaliacao } from '../../domain/monitoringRules';
 import { ManagerQueue } from './ManagerQueue';
 
 interface MonitoringQueueScreenProps {
@@ -155,6 +156,11 @@ export const MonitoringQueueScreen = ({
       // Pendentes anteriores à competência inicial: saem da fila, mas a tela diz quantas são.
       foraDaFilaDoGestor: monitorings.filter((m) =>
         (equipe === null || equipe.includes(m.monitorId)) && m.monitorId !== currentUser.id && foraDaFilaDeValidacao(m, areas, settings)).length,
+      // 21: devolvidas pelo supervisor, aguardando ajustes da monitora. Não são pendência de
+      // validação (a fila só tem Pendente); aparecem à parte, só para acompanhamento.
+      emReavaliacaoDoGestor: monitorings.filter((m) =>
+        (equipe === null || equipe.includes(m.monitorId)) && m.monitorId !== currentUser.id && isEmReavaliacao(m))
+        .sort((a, b) => (a.reviewedAt ?? '').localeCompare(b.reviewedAt ?? '')),
       // Ritmo e risco da equipe seguem a mesma competência auditada: é sobre ela que a equipe
       // está trabalhando agora. A fila de validação continua sem recorte de mês (0.22.1).
       ritmoEquipe: getRitmoDaEquipe(ctx, monitoresNoEscopo, periodo, mesDeTrabalho, hoje),
@@ -236,6 +242,7 @@ export const MonitoringQueueScreen = ({
         <ManagerQueue
           fila={filaValidacao}
           foraDaFila={dados.foraDaFilaDoGestor}
+          emReavaliacao={filtra(dados.emReavaliacaoDoGestor)}
           ritmo={dados.ritmoEquipe}
           risco={dados.risco}
           colaboradorasPorId={porId(collaborators)}

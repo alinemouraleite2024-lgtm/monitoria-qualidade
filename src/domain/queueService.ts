@@ -24,6 +24,7 @@ import {
   countsForCarteiraGoal,
   countsOutsideCarteira,
   isAwaitingValidation,
+  isEmReavaliacao,
   isValidated,
 } from './monitoringRules';
 import {
@@ -70,9 +71,13 @@ export interface LinhaDaFila {
   detalhe: DetalheDaColaboradora;
 }
 
-/** Devolvida pela gestora: voltou a Rascunho COM motivo registrado. */
-const foiDevolvida = (m: Monitoring): boolean =>
-  m.status === 'Rascunho' && Boolean(m.adjustmentReason && m.adjustmentReason.trim());
+/**
+ * Devolvida pelo supervisor e aguardando a correção da monitora: "Em reavaliação" (21). Também
+ * reconhece a forma anterior ao 21 — Rascunho COM motivo —, para o portal funcionar com o banco
+ * antes e depois do script.
+ */
+export const foiDevolvida = (m: Monitoring): boolean =>
+  isEmReavaliacao(m) || (m.status === 'Rascunho' && Boolean(m.adjustmentReason && m.adjustmentReason.trim()));
 
 const dataDaUltima = (
   monitorings: Monitoring[],
@@ -191,7 +196,8 @@ export const getFilaDaCarteira = (
 // no canal do escopo). Devolvida, rascunho e reprovada NÃO ocupam vaga: elas explicam por que
 // a vaga está aberta, e por isso aparecem à parte em vez de desaparecer.
 
-export type EstadoDaVaga = 'validada' | 'em-validacao' | 'aberta';
+// Em reavaliação (21) ocupa a vaga: foi realizada e entregue; só aguarda os ajustes da monitora.
+export type EstadoDaVaga = 'validada' | 'em-validacao' | 'em-reavaliacao' | 'aberta';
 
 export interface VagaDaMeta {
   /** 1..alvo. É a posição na agenda, não o id de nada. */
@@ -266,7 +272,7 @@ export const getDetalheDaColaboradora = (
       if (m) consumidas.add(m.id);
       vagas.push({
         posicao: i + 1,
-        estado: m ? (isValidated(m) ? 'validada' : 'em-validacao') : 'aberta',
+        estado: m ? (isValidated(m) ? 'validada' : isEmReavaliacao(m) ? 'em-reavaliacao' : 'em-validacao') : 'aberta',
         monitoring: m,
       });
     }
@@ -274,7 +280,9 @@ export const getDetalheDaColaboradora = (
     const excedentes = contam.slice(goal.targetQty);
     excedentes.forEach((m) => consumidas.add(m.id));
 
-    const devolvidas = doEscopo.filter(foiDevolvida);
+    // Só a devolvida que NÃO ocupa vaga (forma anterior ao 21) aparece à parte; a em reavaliação já
+    // está na vaga — listá-la de novo a contaria duas vezes.
+    const devolvidas = doEscopo.filter((m) => foiDevolvida(m) && !countsForCarteiraGoal(m));
     const rascunhos = doEscopo.filter((m) => m.status === 'Rascunho' && !foiDevolvida(m) && !estaGuardada(m));
     const guardadas = doEscopo.filter(estaGuardada);
     const reprovadas = doEscopo.filter((m) => m.status === 'Reprovada');
@@ -305,7 +313,7 @@ export const getDetalheDaColaboradora = (
 // ---------------------------------------------------------------------------
 
 export interface Pendencias {
-  /** Devolvidas pela gestora: voltaram a Rascunho COM motivo registrado. */
+  /** Devolvidas pela gestora, em reavaliação: pedem a correção (a meta já as conta como feitas). */
   devolvidas: Monitoring[];
   /** Rascunhos comuns: começados e não terminados. */
   rascunhos: Monitoring[];
@@ -316,9 +324,9 @@ export interface Pendencias {
 /**
  * Separa devolvida de rascunho comum.
  *
- * As duas têm o mesmo status no dado — a devolução reutiliza `Rascunho` de propósito, para não
- * inventar vocabulário de status. O que as distingue é o motivo registrado pela gestora, e é
- * essa distinção que faz a tela dizer "corrigir" em vez de "retomar".
+ * Desde o script 21 a devolvida tem situação própria, "Em reavaliação": foi entregue e não volta a
+ * ser rascunho. Antes dele a devolução reutilizava `Rascunho` e só o motivo as distinguia; essa
+ * forma continua reconhecida. É a distinção que faz a tela dizer "corrigir" em vez de "retomar".
  */
 export const getPendencias = (
   monitorings: Monitoring[],

@@ -203,6 +203,7 @@ const LinhaDaVaga = ({ vaga, canal, onAbrir, onMonitorar }: {
 
       {vaga.estado === 'validada' && <Check size={14} style={{ color: 'var(--primary)', flex: 'none' }} />}
       {vaga.estado === 'em-validacao' && <Clock size={14} style={{ color: 'var(--warning)', flex: 'none' }} />}
+      {vaga.estado === 'em-reavaliacao' && <RotateCcw size={14} style={{ color: 'var(--info, #0284c7)', flex: 'none' }} />}
       {vaga.estado === 'aberta' && <Circle size={14} style={{ color: 'var(--text-muted)', opacity: 0.5, flex: 'none' }} />}
 
       {m ? (
@@ -210,9 +211,12 @@ const LinhaDaVaga = ({ vaga, canal, onAbrir, onMonitorar }: {
           <span style={{ fontWeight: 700, color: 'var(--primary)' }}>{m.id}</span>
           <span style={{ color: 'var(--text-muted)' }}>{dataCurta(m.date)}</span>
           {!canal && <span style={{ color: 'var(--text-muted)' }}>{canalLabel(m.canal)}</span>}
-          <span className={`badge-pill ${vaga.estado === 'validada' ? 'badge-success' : 'badge-warning'}`}>
-            {vaga.estado === 'validada' ? 'Validada' : 'Em validação'}
+          <span className={`badge-pill ${vaga.estado === 'validada' ? 'badge-success' : vaga.estado === 'em-reavaliacao' ? 'badge-info' : 'badge-warning'}`}>
+            {vaga.estado === 'validada' ? 'Validada' : vaga.estado === 'em-reavaliacao' ? 'Em reavaliação' : 'Em validação'}
           </span>
+          {vaga.estado === 'em-reavaliacao' && m.adjustmentReason && (
+            <span style={{ color: 'var(--text-muted)', flex: '1 1 200px' }}>aguardando ajustes: “{m.adjustmentReason}”</span>
+          )}
           <span style={{ flex: 1 }} />
           <button className="btn btn-secondary btn-sm" onClick={() => onAbrir(m)}>Ver</button>
         </>

@@ -30,12 +30,22 @@ import type { Monitoring, MonitoringStatus, TipoMonitoria } from '../types/domai
  * `Concluída` permanece por tolerância a dado antigo: nada o grava hoje, mas registros
  * anteriores podem tê-lo, e removê-lo faria essas monitorias sumirem da contagem.
  */
-export const STATUS_QUE_CONTAM: MonitoringStatus[] = ['Pendente', 'Validada', 'Concluída'];
+export const STATUS_QUE_CONTAM: MonitoringStatus[] = ['Pendente', 'Validada', 'Concluída', 'Em reavaliação'];
+
+/**
+ * Devolvida pelo supervisor para ajustes (script 21). Continua realizada e entregue — ocupa a vaga
+ * da meta —, mas a nota fica fora da média até o reenvio (decisão da gestão da qualidade, 11/11/2026).
+ */
+export const isEmReavaliacao = (m: Pick<Monitoring, 'status'>): boolean => m.status === 'Em reavaliação';
+
+/** A monitora ainda pode editar: rascunho (inclusive guardada) ou devolvida em reavaliação. */
+export const editavelPelaMonitora = (status: MonitoringStatus | string | undefined): boolean =>
+  status === 'Rascunho' || status === 'Em reavaliação';
 
 /** Tipos que não abatem a quota de nenhuma colaboradora. */
 export const TIPOS_FORA_DA_CARTEIRA: TipoMonitoria[] = ['Direcionada', 'Calibração'];
 
-/** A monitoria representa trabalho entregue? Rascunho, Reprovada e Cancelada não. */
+/** A monitoria representa trabalho entregue? Rascunho, Reprovada e Cancelada não; Em reavaliação sim. */
 export const countsTowardGoal = (m: Monitoring): boolean =>
   STATUS_QUE_CONTAM.includes(m.status);
 

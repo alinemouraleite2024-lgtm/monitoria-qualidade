@@ -17,6 +17,8 @@ interface ManagerQueueProps {
   fila: NaFilaDeValidacao[];
   /** Pendentes anteriores à competência inicial do supervisor: fora desta fila, em Relatórios. */
   foraDaFila?: number;
+  /** Devolvidas, aguardando ajustes da monitora (21): só acompanhamento, não pendem de validação. */
+  emReavaliacao?: Monitoring[];
   ritmo: RitmoDoMonitor[];
   risco: RiscoDoMes;
   colaboradorasPorId: Record<string, Collaborator | undefined>;
@@ -34,6 +36,7 @@ const dataCurta = (iso: string) =>
 export const ManagerQueue = ({
   fila,
   foraDaFila = 0,
+  emReavaliacao = [],
   ritmo,
   risco,
   colaboradorasPorId,
@@ -145,6 +148,37 @@ export const ManagerQueue = ({
         );
       })}
     </div>
+
+    {/* ---------------- Em reavaliação (21) ---------------- */}
+    {/* Devolvidas por você: já contam como realizadas e voltam a esta fila quando a monitora
+        reenviar. Aqui só se acompanha — nada a validar. */}
+    {emReavaliacao.length > 0 && (
+      <div className="section-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <Cabecalho titulo="Em reavaliação" contador={emReavaliacao.length} nota="Aguardando ajustes da monitora · voltam à fila no reenvio" />
+        {emReavaliacao.map((m) => (
+          <div key={m.id} style={{
+            display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap',
+            padding: '0.75rem 1.15rem', borderTop: '1px solid var(--border-color)',
+          }}>
+            <div style={{ flex: '1 1 220px', minWidth: '190px' }}>
+              <div style={{ fontWeight: 600 }}>{colaboradorasPorId[m.colaboradorId]?.name ?? m.colaboradorId}</div>
+              <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                <span style={{ fontWeight: 700, color: 'var(--primary)' }}>{m.id}</span>
+                {' · '}{monitoresPorId[m.monitorId]?.name ?? m.monitorId}
+                {m.competencia && <> · {competenciaLabel(m.competencia)}</>}
+                {m.reviewedAt && <> · devolvida em {dataCurta(m.reviewedAt)}</>}
+              </div>
+            </div>
+            <div style={{ flex: '2 1 260px', fontSize: '0.8rem', color: 'var(--text-muted)', borderLeft: '2px solid var(--border-color)', paddingLeft: '0.7rem' }}>
+              “{m.adjustmentReason}”
+            </div>
+            <button className="btn btn-secondary btn-sm" onClick={() => onAbrir(m)}>
+              <Eye size={14} /> Ver
+            </button>
+          </div>
+        ))}
+      </div>
+    )}
 
     {/* ---------------- Ritmo da equipe ---------------- */}
     <div className="section-card" style={{ padding: 0, overflow: 'hidden' }}>

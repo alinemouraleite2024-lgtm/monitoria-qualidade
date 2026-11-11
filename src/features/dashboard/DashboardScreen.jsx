@@ -56,7 +56,7 @@ export const DashboardScreen = ({
   const nomeDe = (id) => collaborators.find(c => c.id === id)?.name ?? users.find(u => u.id === id)?.name;
   const porColaboradora = resultadosPorColaboradora(doPeriodo, nomeDe);
   const evolucao = evolucaoMensal(monitoriasDoEscopo, periodoAtual, 6);
-  const maiorQtd = Math.max(1, ...evolucao.map(p => p.consideradas));
+  const maiorQtd = Math.max(1, ...evolucao.map(p => p.entregues));
   // Mesma regra da fila: pendente anterior à competência inicial do supervisor não entra no aviso.
   const aguardandoValidacao = monitoriasDoEscopo.filter((m) => entraNaFilaDeValidacao(m, areas, settings)).length;
 
@@ -252,22 +252,22 @@ export const DashboardScreen = ({
                               das seis competências até a que está na tela. */}
                           <h2 className="section-card-title"><TrendingUp size={18} /> Evolução Mensal</h2>
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                            Monitorias entregues e nota média por competência (Pendente, Validada, Concluída).
+                            Monitorias entregues (Pendente, Validada, Concluída e Em reavaliação) e nota média por competência (sem as em reavaliação).
                           </div>
                           <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: '0.5rem', height: '180px', marginTop: '1rem' }}>
                             {evolucao.map(p => {
                               const atual = p.periodo.year === periodoAtual.year && p.periodo.month === periodoAtual.month;
                               return (
                                 <div key={p.rotulo} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', height: '100%', justifyContent: 'flex-end' }}
-                                  title={`${p.rotulo}: ${p.consideradas} entregue(s), média ${fmtNota(p.media)}`}>
+                                  title={`${p.rotulo}: ${p.entregues} entregue(s), ${p.consideradas} na média, média ${fmtNota(p.media)}`}>
                                   <span style={{ fontSize: '0.7rem', fontWeight: 700 }}>{fmtNota(p.media)}</span>
                                   <div style={{
                                     width: '100%', maxWidth: '36px', borderRadius: '4px 4px 0 0',
-                                    height: `${Math.max(2, Math.round((p.consideradas / maiorQtd) * 110))}px`,
+                                    height: `${Math.max(2, Math.round((p.entregues / maiorQtd) * 110))}px`,
                                     backgroundColor: atual ? 'var(--primary)' : 'var(--primary-light)',
                                     border: '1px solid var(--primary)',
                                   }} />
-                                  <span style={{ fontSize: '0.75rem', fontWeight: 700 }}>{p.consideradas}</span>
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 700 }}>{p.entregues}</span>
                                   <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
                                     {p.rotulo.split(' ')[0].slice(0, 3)}/{String(p.periodo.year).slice(2)}
                                   </span>
@@ -421,7 +421,7 @@ export const DashboardScreen = ({
                           {' · '}{notas.consideradas} na média
                           {' · '}média geral <strong style={{ color: 'var(--text-main)' }}>{fmtNota(notas.media)}</strong>
                           {notas.zeradas > 0 && ` · ${notas.zeradas} zerada(s) por eliminatório`}
-                          {(notas.total - notas.consideradas) > 0 && ` · ${notas.total - notas.consideradas} fora da média (rascunho, reprovada ou cancelada)`}
+                          {(notas.total - notas.consideradas) > 0 && ` · ${notas.total - notas.consideradas} fora da média (rascunho, em reavaliação, reprovada ou cancelada)`}
                         </p>
                         {porColaboradora.length === 0 ? (
                           <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', margin: 0 }}>Nenhuma monitoria nesta competência.</p>

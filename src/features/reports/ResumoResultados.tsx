@@ -39,7 +39,8 @@ export const ResumoResultados = ({ monitorias, nomeDe, periodoLabel }: Props) =>
       </div>
       <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.75rem' }}>
         Entram na média as monitorias entregues (Pendente, Validada, Concluída). Rascunho ainda não
-        tem nota; Reprovada e Cancelada não são resultado válido.
+        tem nota; Em reavaliação conta como realizada, mas a nota aguarda os ajustes e só volta à média
+        no reenvio; Reprovada e Cancelada não são resultado válido.
       </p>
       {linhas.length > 0 && (
         <div className="table-responsive">

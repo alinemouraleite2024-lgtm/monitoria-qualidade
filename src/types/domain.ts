@@ -162,7 +162,9 @@ export interface Criterion {
  */
 export type MonitoringStatus =
   | 'Rascunho' | 'Pendente' | 'Concluída' | 'Validada' | 'Reprovada' | 'Cancelada'
-  | 'Aprovada' | 'Aguardando Aprovação';
+  | 'Aprovada' | 'Aguardando Aprovação'
+  /** Devolvida pelo supervisor para ajustes (script 21): entregue, aguardando a correção da monitora. */
+  | 'Em reavaliação';
 
 /** Tipos oficiais. Fluxo e "Fluxo / Processo" são migrados para Processo no carregamento. */
 export type TipoMonitoria = 'Regular' | 'Direcionada' | 'Processo' | 'Calibração';

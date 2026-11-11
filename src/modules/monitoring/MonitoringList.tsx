@@ -67,6 +67,7 @@ export const MonitoringList = ({
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'Rascunho': return 'badge-pill badge-info';
+      case 'Em reavaliação': return 'badge-pill badge-danger';
       case 'Pendente': return 'badge-pill badge-warning';
       case 'Em andamento': return 'badge-pill badge-warning';
       case 'Aguardando Aprovação': return 'badge-pill badge-warning';
@@ -134,6 +135,7 @@ export const MonitoringList = ({
               <option value="ALL">Todos os Status</option>
               <option value="Rascunho">Rascunho</option>
               <option value="Pendente">Pendente</option>
+              <option value="Em reavaliação">Em reavaliação</option>
               <option value="Aguardando Aprovação">Aguardando Aprovação</option>
               <option value="Aprovada">Aprovada</option>
               <option value="Validada">Validada</option>
