@@ -6,7 +6,7 @@ import { Eye, Lock, Pencil, Send } from 'lucide-react';
 import { canalLabel } from '../../constants/canais';
 import { competenciaLabel } from '../../domain/period';
 import {
-  conferirLote, competenciaIniciada, dataBR, inicioDaCompetencia, MAXIMO_POR_LOTE, separarAreaPrivada, situacaoDoPrazo,
+  conferirLote, competenciaIniciada, dataBR, inicioDaCompetencia, MAXIMO_POR_LOTE, ORIENTACAO_SEM_PRAZO, separarAreaPrivada,
 } from '../../domain/areaPrivada';
 import type { Collaborator, Monitoring } from '../../types/domain';
 
@@ -21,13 +21,6 @@ interface Props {
   onVisualizar: (m: Monitoring) => void;
   onLiberar: (itens: Monitoring[]) => Promise<ResultadoDoEnvio>;
 }
-
-const Prazo = ({ competencia, hoje }: { competencia: string; hoje: string }) => {
-  const { prazo, dias, nivel } = situacaoDoPrazo(competencia, hoje);
-  if (nivel === 'vencido') return <span className="badge-pill badge-danger">Venceu em {dataBR(prazo)}</span>;
-  if (nivel === 'proximo') return <span className="badge-pill badge-warning">{dias === 0 ? 'Vence hoje' : `Vence em ${dias} ${dias === 1 ? 'dia' : 'dias'}`}</span>;
-  return <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Até {dataBR(prazo)}</span>;
-};
 
 const dataHora = (iso?: string) => (iso ? new Date(iso).toLocaleString('pt-BR') : '—');
 
@@ -95,6 +88,9 @@ export const AreaPrivadaScreen = ({ monitorings, collaborators, monitorId, hoje,
         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: '0.25rem 0 0' }}>
           Só você vê estas monitorias. Elas não entram na fila, nas metas nem nos relatórios do supervisor até você enviar.
         </p>
+        <p role="note" style={{ fontSize: '0.9rem', margin: '0.5rem 0 0', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-panel)' }}>
+          {ORIENTACAO_SEM_PRAZO}
+        </p>
       </div>
 
       <div role="tablist" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -139,16 +135,15 @@ export const AreaPrivadaScreen = ({ monitorings, collaborators, monitorId, hoje,
                 <th>Colaboradora</th>
                 <th>Canal</th>
                 <th>Competência</th>
-                <th>Prazo</th>
                 <th>Nota</th>
                 <th>Criada em</th>
-                {aba === 'guardadas' && <th>Concluída em</th>}
+                {aba === 'guardadas' && <th>Guardada em</th>}
                 <th style={{ textAlign: 'right' }}>Ações</th>
               </tr>
             </thead>
             <tbody>
               {linhas.length === 0 && (
-                <tr><td colSpan={10} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                <tr><td colSpan={9} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
                   {aba === 'guardadas' ? 'Nenhuma monitoria aguardando liberação.' : 'Nenhum rascunho.'}
                 </td></tr>
               )}
@@ -162,10 +157,12 @@ export const AreaPrivadaScreen = ({ monitorings, collaborators, monitorId, hoje,
                     <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{m.id}</td>
                     <td>{nomeDe(m.colaboradorId)}</td>
                     <td>{m.canal ? canalLabel(m.canal) : '—'}</td>
-                    <td>{m.competencia ? competenciaLabel(m.competencia) : '—'}</td>
-                    <td>{m.competencia && (iniciada
-                      ? <Prazo competencia={m.competencia} hoje={hoje} />
-                      : <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Envio a partir de {dataBR(inicioDaCompetencia(m.competencia))}</span>)}
+                    <td>
+                      {m.competencia ? competenciaLabel(m.competencia) : '—'}
+                      {/* Competência futura: o envio só abre no primeiro dia dela (regra do 19, não é prazo). */}
+                      {m.competencia && !iniciada && (
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>envio a partir de {dataBR(inicioDaCompetencia(m.competencia))}</div>
+                      )}
                     </td>
                     <td>{aba === 'guardadas'
                       ? <span style={{ fontWeight: 700 }}>{m.finalScore.toFixed(2).replace('.', ',')}%</span>
@@ -203,11 +200,6 @@ export const AreaPrivadaScreen = ({ monitorings, collaborators, monitorId, hoje,
             <ul style={{ fontSize: '0.88rem', margin: '0.5rem 0', paddingLeft: '1.25rem' }}>
               {conferencia.porCompetencia.map((c) => <li key={c.competencia}>{competenciaLabel(c.competencia)}: {c.quantidade}</li>)}
             </ul>
-            {conferencia.vencidas.length > 0 && (
-              <div role="note" style={{ fontSize: '0.85rem', color: '#a16207', marginBottom: '0.5rem' }}>
-                {conferencia.vencidas.length} com prazo vencido: {conferencia.vencidas.map((m) => m.id).join(', ')}. O envio continua permitido.
-              </div>
-            )}
             {conferencia.bloqueadas.length > 0 && (
               <div role="alert" style={{ fontSize: '0.85rem', color: 'var(--danger)', marginBottom: '0.5rem' }}>
                 Corrija antes de enviar: {conferencia.bloqueadas.map((b) => `${b.monitoria.id} (${b.motivo})`).join(', ')}.

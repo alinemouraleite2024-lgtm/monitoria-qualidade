@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  competenciaIniciada, conferirLote, dentroDaAntecedencia, estaGuardada, podeSerGuardada, prazoDaCompetencia, rascunhoPrivado,
-  separarAreaPrivada, situacaoDoPrazo, statusParaExibir,
+  competenciaIniciada, conferirLote, dentroDaAntecedencia, estaGuardada, ORIENTACAO_SEM_PRAZO, podeSerGuardada, rascunhoPrivado,
+  separarAreaPrivada, statusParaExibir,
 } from '../src/domain/areaPrivada';
 import { countsTowardGoal } from '../src/domain/monitoringRules';
 import { entraNaMedia, notaParaExibir, resumirNotas } from '../src/domain/resultadosService';
@@ -16,16 +16,24 @@ const m = (p: Partial<Monitoring>): Monitoring => ({
 } as Monitoring);
 const guardada = (p: Partial<Monitoring> = {}) => m({ aguardandoLiberacao: true, finalScore: 82.93, ...p });
 
-test('prazo: dia 15 do mês seguinte, inclusive na virada do ano', () => {
-  assert.equal(prazoDaCompetencia('2026-10'), '2026-11-15');
-  assert.equal(prazoDaCompetencia('2026-12'), '2027-01-15');
+// Sem prazo (13/11/2026): o tempo não muda nada numa monitoria guardada.
+test('sem prazo: guardada há 1, 6 ou 13 meses continua guardada, privada e enviável só por ação da monitora', () => {
+  const antiga = guardada({ id: 'MON-1', competencia: '2025-10', concluidaEm: '2025-10-20T10:00:00Z' });
+  for (const hoje of ['2025-11-20', '2026-04-20', '2026-11-20']) {
+    assert.equal(estaGuardada(antiga), true, hoje);
+    assert.equal(statusParaExibir(antiga), 'Aguardando liberação', hoje);
+    assert.equal(countsTowardGoal(antiga), false, hoje);
+    assert.equal(entraNaMedia(antiga), false, hoje);
+    assert.deepEqual(separarAreaPrivada([antiga], 'usr-1').guardadas.map((x) => x.id), ['MON-1'], hoje);
+    const lote = conferirLote([antiga], hoje);
+    assert.deepEqual(lote.podem.map((x) => x.id), ['MON-1'], hoje);
+    assert.equal(lote.bloqueadas.length, 0, hoje);
+    assert.equal('vencidas' in lote, false, hoje);
+  }
 });
 
-test('prazo: só informa, em três níveis', () => {
-  assert.deepEqual(situacaoDoPrazo('2026-10', '2026-11-09'), { prazo: '2026-11-15', dias: 6, nivel: 'normal' });
-  assert.equal(situacaoDoPrazo('2026-10', '2026-11-10').nivel, 'proximo');
-  assert.equal(situacaoDoPrazo('2026-10', '2026-11-15').nivel, 'proximo');
-  assert.equal(situacaoDoPrazo('2026-10', '2026-11-16').nivel, 'vencido');
+test('sem prazo: a orientação da tela diz isso com todas as letras', () => {
+  assert.equal(ORIENTACAO_SEM_PRAZO, 'As monitorias guardadas permanecem privadas, sem prazo de expiração. Você decide quando enviá-las para validação.');
 });
 
 test('competência futura: envio só depois de começar; preparação até 12 meses', () => {
@@ -77,7 +85,6 @@ test('lote: conferência prévia aponta o que não pode ir', () => {
   assert.deepEqual(r.podem.map((x) => x.id), ['MON-1', 'MON-2']);
   assert.deepEqual(r.bloqueadas.map((b) => b.monitoria.id), ['MON-3', 'MON-4']);
   assert.match(r.bloqueadas[0].motivo, /01\/12\/2026/);
-  assert.deepEqual(r.vencidas.map((x) => x.id), ['MON-1', 'MON-2']);
   assert.deepEqual(r.porCompetencia, [{ competencia: '2026-09', quantidade: 1 }, { competencia: '2026-10', quantidade: 1 }]);
 });
 

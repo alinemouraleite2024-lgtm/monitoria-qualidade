@@ -1,14 +1,13 @@
 // Área privada da monitora: o que está em preparação e o que está guardado à espera de liberação.
 //
 // A guardada continua sendo Rascunho no banco (script 19), por isso já fica de fora de fila, meta,
-// média e painéis: as regras de contagem só enxergam o que foi entregue. Aqui ficam apenas o rótulo,
-// o prazo e o que pode ser enviado. A proteção contra o supervisor está no banco (script 18).
+// média e painéis: as regras de contagem só enxergam o que foi entregue. Aqui ficam apenas o rótulo
+// e o que pode ser enviado. A proteção contra o supervisor está no banco (script 18).
 
 import type { Monitoring } from '../types/domain';
 
 export const ROTULO_GUARDADA = 'Aguardando liberação';
 export const MESES_DE_ANTECEDENCIA = 12;
-export const DIAS_DE_ALERTA = 5;
 export const MAXIMO_POR_LOTE = 100;
 
 export const estaGuardada = (m: Monitoring): boolean =>
@@ -40,22 +39,12 @@ export const dentroDaAntecedencia = (competencia: string, hojeISO: string): bool
 
 export const inicioDaCompetencia = (competencia: string): string => `${competencia}-01`;
 
-/** Referência de entrega: dia 15 do mês seguinte à competência, em dias corridos. */
-export const prazoDaCompetencia = (competencia: string): string => `${somaMeses(competencia, 1)}-15`;
-
-export type NivelDoPrazo = 'normal' | 'proximo' | 'vencido';
-
-const diaUTC = (iso: string): number => {
-  const [a, m, d] = iso.slice(0, 10).split('-').map(Number);
-  return Date.UTC(a, m - 1, d);
-};
-
-/** Só informa: o prazo nunca bloqueia nem libera nada. */
-export const situacaoDoPrazo = (competencia: string, hojeISO: string): { prazo: string; dias: number; nivel: NivelDoPrazo } => {
-  const prazo = prazoDaCompetencia(competencia);
-  const dias = Math.round((diaUTC(prazo) - diaUTC(hojeISO)) / 86400000);
-  return { prazo, dias, nivel: dias < 0 ? 'vencido' : dias <= DIAS_DE_ALERTA ? 'proximo' : 'normal' };
-};
+// Sem prazo (13/11/2026): a monitoria guardada fica privada pelo tempo que a monitora quiser. Nada a
+// envia, exclui, cancela ou muda de situação por causa do tempo — só a ação "Enviar para validação".
+// O aviso "Vence em… / Venceu em…" (dia 15 do mês seguinte) foi retirado: só informava, mas passava a
+// ideia de expiração.
+export const ORIENTACAO_SEM_PRAZO =
+  'As monitorias guardadas permanecem privadas, sem prazo de expiração. Você decide quando enviá-las para validação.';
 
 export const dataBR = (iso: string): string => {
   const [a, m, d] = iso.slice(0, 10).split('-');
@@ -73,7 +62,6 @@ export const separarAreaPrivada = (monitorings: Monitoring[], monitorId: string)
 export interface ConferenciaDoLote {
   podem: Monitoring[];
   bloqueadas: { monitoria: Monitoring; motivo: string }[];
-  vencidas: Monitoring[];
   porCompetencia: { competencia: string; quantidade: number }[];
 }
 
@@ -91,7 +79,6 @@ export const conferirLote = (selecionadas: Monitoring[], hojeISO: string): Confe
   return {
     podem,
     bloqueadas,
-    vencidas: podem.filter((m) => situacaoDoPrazo(m.competencia, hojeISO).nivel === 'vencido'),
     porCompetencia: [...contagem].sort(([a], [b]) => a.localeCompare(b)).map(([competencia, quantidade]) => ({ competencia, quantidade })),
   };
 };
