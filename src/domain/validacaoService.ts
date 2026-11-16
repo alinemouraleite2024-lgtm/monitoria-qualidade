@@ -13,7 +13,7 @@
 
 import type { Area, Monitoring, MonitoringStatus, Role, SystemSettings, User } from '../types/domain';
 import { isAwaitingValidation } from './monitoringRules';
-import { competenciaDe } from './period';
+import { competenciaDe, periodToCompetencia, type Period } from './period';
 
 /**
  * Gestor responsável pelo trabalho de um monitor, via área.
@@ -25,6 +25,22 @@ import { competenciaDe } from './period';
 export const getGestorDaArea = (monitorId: string, areas: Area[]): string | null => {
   const area = areas.find((a) => a.active && (a.monitorIds || []).includes(monitorId));
   return area?.gestorId || null;
+};
+
+/**
+ * Aviso do Painel (16/11/2026): o total da fila de validação (as mesmas regras da fila, inclusive a
+ * competência inicial do supervisor) e, dentro dele, quantas são da competência selecionada no
+ * Painel. Só o segundo número acompanha o seletor.
+ */
+export const resumoDoAvisoDeValidacao = (
+  monitorias: Monitoring[],
+  areas: Area[],
+  settings: SystemSettings,
+  periodo: Period,
+): { naFila: number; daCompetencia: number } => {
+  const fila = monitorias.filter((m) => entraNaFilaDeValidacao(m, areas, settings));
+  const alvo = periodToCompetencia(periodo);
+  return { naFila: fila.length, daCompetencia: fila.filter((m) => (m.competencia || competenciaDe(m.date)) === alvo).length };
 };
 
 /** Competência inicial de validação do supervisor, se configurada e válida (AAAA-MM). */

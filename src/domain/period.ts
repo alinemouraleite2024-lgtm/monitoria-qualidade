@@ -114,6 +114,18 @@ export const competenciaDaAgenda = (mesDeTrabalho: Period, defasagemMeses: numbe
   shiftPeriod(mesDeTrabalho, -defasagemMeses);
 
 /**
+ * Competência em que o Painel abre (16/11/2026). O Gestor acompanha a competência que a equipe
+ * audita agora — a mesma da tela de Validação (mês atual − defasagem). O Administrador continua no
+ * mês vigente. É só a seleção inicial: o seletor do Painel segue livre e a competência das
+ * monitorias não muda.
+ */
+export const competenciaInicialDoPainel = (perfil: string | null | undefined, mesAtual: Period, defasagemMeses: number): Period =>
+  perfil === 'GESTOR' ? competenciaDaAgenda(mesAtual, defasagemMeses) : mesAtual;
+
+/** "outubro/2026": rótulo curto de competência, para frases. */
+export const competenciaCurta = (period: Period): string => `${MESES[period.month].toLowerCase()}/${period.year}`;
+
+/**
  * Situação de uma competência em relação ao mês de trabalho (25/10/2026).
  *
  *   padrao        é a que a agenda audita agora (mês de trabalho − defasagem);

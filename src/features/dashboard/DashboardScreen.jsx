@@ -3,8 +3,8 @@ import { FileSpreadsheet, CheckCircle2, AlertTriangle, Layers, Award, TrendingUp
 import { getMetaDaColaboradora, getEscoposDaColaboradora } from '../../domain/goalService';
 import { canalLabel } from '../../constants/canais';
 import { getEquipeDoGestor } from '../../domain/scopeService';
-import { naCompetencia } from '../../domain/period';
-import { entraNaFilaDeValidacao } from '../../domain/validacaoService';
+import { naCompetencia, competenciaCurta } from '../../domain/period';
+import { resumoDoAvisoDeValidacao } from '../../domain/validacaoService';
 import { resumirNotas, resultadosPorColaboradora, evolucaoMensal, notaParaExibir } from '../../domain/resultadosService';
 
 const fmtNota = (n) => (n === null ? '—' : `${n.toFixed(2).replace('.', ',')}%`);
@@ -58,7 +58,8 @@ export const DashboardScreen = ({
   const evolucao = evolucaoMensal(monitoriasDoEscopo, periodoAtual, 6);
   const maiorQtd = Math.max(1, ...evolucao.map(p => p.entregues));
   // Mesma regra da fila: pendente anterior à competência inicial do supervisor não entra no aviso.
-  const aguardandoValidacao = monitoriasDoEscopo.filter((m) => entraNaFilaDeValidacao(m, areas, settings)).length;
+  // 16/11/2026: total da fila (mesmas regras da Validação) e, dentro dele, as da competência do Painel.
+  const { naFila: aguardandoValidacao, daCompetencia: aguardandoNaCompetencia } = resumoDoAvisoDeValidacao(monitoriasDoEscopo, areas, settings, periodoAtual);
 
   return (
           <div className="animate-fade-in">
@@ -99,7 +100,7 @@ export const DashboardScreen = ({
               <div className="section-card animate-fade-in" style={{ marginBottom: '1.5rem', border: '1px solid var(--border-color)', backgroundColor: 'var(--primary-light)' }}>
                 <h3 className="section-card-title" style={{ color: 'var(--primary)', margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <CheckCircle2 size={18} /> {aguardandoValidacao} {aguardandoValidacao === 1 ? 'avaliação aguarda' : 'avaliações aguardam'} validação
+                    <CheckCircle2 size={18} /> {aguardandoValidacao} {aguardandoValidacao === 1 ? 'avaliação aguarda' : 'avaliações aguardam'} validação na sua fila • {aguardandoNaCompetencia} da competência {competenciaCurta(periodoAtual)}
                   </span>
                   <button className="btn btn-primary btn-sm" onClick={() => onNavigate('monitorings')} style={{ padding: '0.25rem 0.75rem' }}>
                     Ver Fila de Validação
@@ -188,14 +189,14 @@ export const DashboardScreen = ({
                         <div className="card-horiz-icon info"><TrendingUp size={18} /></div>
                       </div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 'auto' }}>
-                        Projeção de meta do ciclo.
+                        {totalMeta > 0 ? 'Projeção de meta do ciclo.' : 'Sem meta cadastrada para esta competência.'}
                       </div>
                     </div>
                     
                     <div className="card-horizontal" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div className="card-horiz-info">
-                          <span className="card-horiz-title">Pendentes</span>
+                          <span className="card-horiz-title">Faltam para a meta</span>
                           <span className="card-horiz-value">{pendentes}</span>
                         </div>
                         <div className="card-horiz-icon warning"><AlertTriangle size={18} /></div>
@@ -203,7 +204,7 @@ export const DashboardScreen = ({
                       <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>
                           <span>Restantes no mês</span>
-                          <span>{100 - cobertura}%</span>
+                          <span>{totalMeta > 0 ? `${100 - cobertura}%` : '—'}</span>
                         </div>
                         <div className="progress-container" style={{ margin: 0, height: '4px' }}>
                           <div className="progress-fill" style={{ width: `${100 - cobertura}%`, backgroundColor: 'var(--warning)' }} />

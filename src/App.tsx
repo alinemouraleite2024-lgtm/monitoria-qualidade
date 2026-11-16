@@ -152,6 +152,7 @@ import {
   businessDaysRemainingIn,
   competenciaLabel,
   competenciaDaAgenda,
+  competenciaInicialDoPainel,
   periodToCompetencia,
   parseData,
 } from './domain/period';
@@ -451,7 +452,9 @@ function AppContent() {
   // trabalho em tela de consulta — que é o papel de Relatórios.
   const [reportPeriod, setReportPeriod] = useState(() => getCurrentPeriod());
   const [planningPeriod, setPlanningPeriod] = useState(() => getCurrentPeriod());
-  const [dashboardPeriod, setDashboardPeriod] = useState(() => getCurrentPeriod());
+  // 16/11/2026: null até o usuário escolher no seletor. Enquanto isso, o Painel abre na competência
+  // inicial do perfil (Gestor: a mesma da Validação; Administrador: mês vigente).
+  const [dashboardEscolhido, setDashboardPeriod] = useState<Period | null>(null);
   /**
    * Competência da agenda (0.24.0). `null` significa "a padrão", e não "nenhuma".
    *
@@ -553,6 +556,11 @@ function AppContent() {
     [monitoringsPeriod, periodoAtual, settings.defasagemCompetencia],
   );
   const metasDaFila = React.useMemo(() => metasDe(competenciaDaFila).metas, [metasDe, competenciaDaFila]);
+  const dashboardPeriod = React.useMemo(
+    () => dashboardEscolhido ?? competenciaInicialDoPainel(perfilAtivo, periodoAtual, settings.defasagemCompetencia),
+    // periodoAtual é recalculado a cada render; o mês é o que importa.
+    [dashboardEscolhido, perfilAtivo, periodoAtual.year, periodoAtual.month, settings.defasagemCompetencia],
+  );
   const metasDoPainel = React.useMemo(() => metasDe(dashboardPeriod).metas, [metasDe, dashboardPeriod]);
   const metasDoPlanejamento = React.useMemo(() => metasDe(planningPeriod), [metasDe, planningPeriod]);
 
