@@ -2,7 +2,7 @@
 // ensaiada (09b), os scripts até o 19 e a camada de dados do PORTAL. Nada sai deste computador.
 // Monitorias de teste FICTÍCIAS.
 //
-// Prova: o 21 recusa se as devolvidas não forem as cinco aprovadas; converte sem mudar dados, notas,
+// Prova: o 21 recusa se as devolvidas não forem as aprovadas; converte sem mudar dados, notas,
 // respostas, evidências nem histórico e sem devolução duplicada; devolver grava Em reavaliação; a
 // monitora ajusta e reenvia (histórico ENVIO, DEVOLUCAO, REENVIO); o supervisor acompanha sem
 // fila; não volta à área privada; só o Administrador cancela; o 21r reverte tudo.
@@ -124,7 +124,7 @@ await db.exec(sql('19_concluir_liberar.sql'));
 
 const { countsTowardGoal: contaComoFeita } = await mod('src/domain/monitoringRules.ts');
 const s21 = sql('21_em_reavaliacao.sql');
-const LISTA_REAL = "array['MON-10001', 'MON-10028', 'MON-10030', 'MON-10031', 'MON-10034']";
+const LISTA_REAL = "array['MON-10001']";
 const funcoes = () => um(`select pg_get_functiondef('api.salvar_monitoria(jsonb, integer, boolean)'::regprocedure) s,
   pg_get_functiondef('api.devolver_monitoria(text, integer, text)'::regprocedure) d,
   pg_get_functiondef('app.tg_monitoria_eventos()'::regprocedure) g,
@@ -156,13 +156,13 @@ const antes = await imp21();
 const recReal = await tenta(() => db.exec(s21));
 await db.exec('rollback').catch(() => {});
 const aposRec = await imp21();
-ok('A.1', 'o 21 real recusa quando as devolvidas não são as cinco aprovadas, sem gravar nada',
-  recReal.erro && /diferem das cinco aprovadas/.test(recReal.erro.message) && JSON.stringify(aposRec) === JSON.stringify(antes), recReal.erro?.message);
+ok('A.1', 'o 21 real recusa quando as devolvidas não são as aprovadas, sem gravar nada',
+  recReal.erro && /diferem das aprovadas/.test(recReal.erro.message) && JSON.stringify(aposRec) === JSON.stringify(antes), recReal.erro?.message);
 ok('A.2', 'a recusa não deixa função nem situação nova', JSON.stringify(await funcoes()) === JSON.stringify(funcAntes));
 
 // Mesmo script, com a lista trocada pelas cinco fictícias (único texto alterado).
 const s21teste = s21.replace(LISTA_REAL, `array[${DEV.map((x) => `'${x}'`).join(', ')}]`);
-ok('A.3', 'a versão de teste difere do script real só na lista', s21teste !== s21 && s21teste.length === s21.length + (DEV.join('').length - 45));
+ok('A.3', 'a versão de teste difere do script real só na lista', s21teste !== s21 && s21teste.replace(`array[${DEV.map((x) => `'${x}'`).join(', ')}]`, LISTA_REAL) === s21);
 await db.exec(s21teste);
 const depois = await imp21();
 ok('A.4', 'conversão preserva dados, notas, motivo, data de envio, respostas e evidências',
@@ -235,6 +235,13 @@ await devolverMonitoria(SUPERVISOR, await doBanco(SUPERVISOR, Cx.id), 'Para test
 await cancelarMonitoria(ADMIN, await doBanco(ADMIN, Cx.id), 'Teste do script 21 (fictício).');
 ok('F.1', 'o Administrador com MFA cancela uma em reavaliação, com evento próprio', await status(Cx.id) === 'Cancelada' && await nEventos(Cx.id, 'CANCELAMENTO') === 1);
 
+// devolvida DEPOIS do 21, com ajustes salvos, ainda em reavaliação quando o 21r rodar
+const Pos = await enviar();
+await devolverMonitoria(SUPERVISOR, await doBanco(SUPERVISOR, Pos.id), 'Devolvida depois do 21 (fictício).');
+await salvarMonitoria(MONITORA, { ...(await doBanco(MONITORA, Pos.id)), status: 'Em reavaliação', comments: 'AJUSTE PARCIAL (fictício).' }, dA.criterios, true, false);
+const evPosAntes = (await db.query('select tipo from public.monitoria_eventos where monitoria_id = $1 order by id', [Pos.id])).rows.map((x) => x.tipo).join(',');
+ok('G.0', 'cenário: devolvida depois do 21, com ajustes salvos, segue "Em reavaliação"', await status(Pos.id) === 'Em reavaliação' && evPosAntes === 'ENVIO,DEVOLUCAO', evPosAntes);
+
 // ---- reversão --------------------------------------------------------------------------------------
 const antesR = await imp21();
 const nReav = await n(`select count(*) n from public.monitorias where status = 'Em reavaliação'`);
@@ -245,6 +252,19 @@ ok('R.1', `o 21r volta as ${nReav} em reavaliação a Rascunho com motivo, sem e
   && ['mon', 'notas', 'resp', 'evid', 'ev'].every((k) => antesR[k] === depoisR[k]) && depoisR.aud === antesR.aud + nReav, JSON.stringify([antesR, depoisR]));
 ok('R.2', 'o 21r devolve funções, gatilho e situações permitidas exatamente como antes', JSON.stringify(await funcoes()) === JSON.stringify(funcAntes));
 ok('R.3', 'auditoria íntegra e versão 21 removida', await quebras() === 0 && await n(`select count(*) n from app.versoes_esquema where versao = '21'`) === 0);
+// a devolvida depois do 21 volta à forma anterior, sem perder nada, e o fluxo antigo segue funcionando
+const pos = await linha(Pos.id);
+const evPosDepois = (await db.query('select tipo from public.monitoria_eventos where monitoria_id = $1 order by id', [Pos.id])).rows.map((x) => x.tipo).join(',');
+ok('R.6', 'devolvida depois do 21: volta a Rascunho com motivo e ajustes preservados, sem evento novo',
+  pos.status === 'Rascunho' && pos.motivo_ajuste === 'Devolvida depois do 21 (fictício).' && pos.comentarios === 'AJUSTE PARCIAL (fictício).' && evPosDepois === evPosAntes, `${pos.status} ${evPosDepois}`);
+const mPos = (await carregarDados(MONITORA, PADROES)).monitorias.find((m) => m.id === Pos.id);
+const { foiDevolvida } = await mod('src/domain/queueService.ts');
+const { countsTowardGoal: contaR } = await mod('src/domain/monitoringRules.ts');
+ok('R.7', 'o portal publicado continua tratando-a como devolvida (forma anterior), fora da área privada',
+  foiDevolvida(mPos) && !contaR(mPos) && await n(`select count(*) n from public.monitorias m where m.id = $1 and app.monitoria_privada(m.status, m.enviado_em, m.enviada_na_origem)`, [Pos.id]) === 0);
+await salvarMonitoria(MONITORA, { ...mPos, status: 'Pendente', finalScore: prev(GAB()) }, dA.criterios, true, true);
+ok('R.8', 'e a monitora ainda corrige e reenvia: REENVIO da rodada 2, histórico ENVIO, DEVOLUCAO, REENVIO',
+  await status(Pos.id) === 'Pendente' && (await db.query('select tipo from public.monitoria_eventos where monitoria_id = $1 order by id', [Pos.id])).rows.map((x) => x.tipo).join(',') === 'ENVIO,DEVOLUCAO,REENVIO');
 const NvR = await enviar();
 await devolverMonitoria(SUPERVISOR, await doBanco(SUPERVISOR, NvR.id), 'Depois da reversão (fictício).');
 ok('R.4', 'depois do 21r, devolver volta a gravar Rascunho como antes', await status(NvR.id) === 'Rascunho');

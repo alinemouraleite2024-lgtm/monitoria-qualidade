@@ -2,10 +2,10 @@
 // (PGlite). Nada é gravado em disco, nada sai deste computador e nada toca o Supabase. A saída traz só
 // códigos de monitoria, contagens e situações.
 //
-// Prova, com o arquivo do 21 SEM alteração: converte exatamente as cinco devolvidas aprovadas; não muda
-// dados, notas, motivos, datas de envio, respostas, evidências nem histórico; não duplica devolução; a
-// auditoria registra as cinco conversões; o supervisor (com a RLS) as acompanha fora da fila; para a
-// monitora elas voltam a contar como feitas, fora da média; a privacidade não muda; o 21r desfaz.
+// Prova, com o arquivo do 21 SEM alteração: converte só as devolvidas aprovadas (MON-10001) e não toca as
+// já reenviadas; não muda dados, notas, motivos, datas de envio, respostas, evidências nem histórico; não
+// duplica devolução; a auditoria registra a conversão; o supervisor (com a RLS) acompanha fora da fila; para
+// a monitora volta a contar como feita, fora da média; a privacidade não muda; o 21r desfaz.
 //
 // Uso: node --import <projeto>/tests/registrar-ts.mjs testes-21-dados-reais.mjs <projeto> <arquivo do backup>
 import { PGlite } from '@electric-sql/pglite';
@@ -31,7 +31,9 @@ process.on('uncaughtException', (e) => { console.log(`INTERROMPIDO: ${String(e.m
 definirModoParaTeste(true);
 const r = [];
 const ok = (id, d, c, det = '') => { r.push({ ok: !!c }); console.log(`${c ? '✔' : '✖'} ${id}  ${d}${c ? '' : `  → ${det}`}`); };
-const CINCO = ['MON-10001', 'MON-10028', 'MON-10030', 'MON-10031', 'MON-10034'];
+// Revisão de 16/11/2026: só a MON-10001 segue devolvida; as outras quatro já foram reenviadas.
+const CONVERTE = ['MON-10001'];
+const REENVIADAS = ['MON-10028', 'MON-10030', 'MON-10031', 'MON-10034'];
 
 const b = lerBackup(readFileSync(arquivo, 'utf8'));
 ok('D.0', `backup íntegro (${b.meta.gerado_em})`, conferirBackup(b).length === 0);
@@ -77,32 +79,35 @@ const transporte = (uid) => {
 const ms = linhasDe(b, 'public.monitorias');
 const gestor = perfis.find((p) => p.id === 'usr-1791895673216');
 const monitora = perfis.find((p) => p.id === ms.find((m) => m.id === 'MON-10028')?.monitor_id);
+const doMes = (d, comp) => d.monitorias.filter((m) => m.competencia === comp && m.monitorId === monitora.id);
 const visao = async (p) => {
   const d = await carregarDados(transporte(p.auth_user_id), PADROES);
   const minhas = d.monitorias.filter((m) => m.monitorId === monitora.id);
-  const out = d.monitorias.filter((m) => m.competencia === '2026-10' && m.monitorId === monitora.id);
-  // Vagas da meta de AGOSTO (único mês com metas por colaboradora na homologação; a MON-10001 é de
-  // agosto): cada monitoria ocupa no máximo uma vaga.
-  const ago = d.monitorias.filter((m) => m.competencia === '2026-08' && m.monitorId === monitora.id);
+  // Vagas da meta de AGOSTO (a MON-10001 é de agosto): cada monitoria ocupa no máximo uma vaga.
   const ctx = { monitorings: d.monitorias, goals: d.metasColaborador ?? [], collaborators: d.colaboradores ?? [] };
-  const ocupadas = [...new Set(ago.map((m) => m.colaboradorId))].flatMap((c) =>
+  const ocupadas = [...new Set(doMes(d, '2026-08').map((m) => m.colaboradorId))].flatMap((c) =>
     getDetalheDaColaboradora(ctx, monitora.id, c, { year: 2026, month: 7 }).escopos.flatMap((e) => e.vagas.filter((v) => v.monitoring).map((v) => v.monitoring.id)));
+  const situacao = (ids) => Object.fromEntries(ids.map((id) => [id, d.monitorias.find((m) => m.id === id)?.status ?? 'invisível']));
   return {
     vagas: ocupadas,
-    filaComInicio: getFilaDeValidacao(d.monitorias, '2026-11-11')
+    filaComInicio: getFilaDeValidacao(d.monitorias, '2026-11-16')
       .filter((f) => f.monitoring.monitorId !== p.id && entraNaFilaDeValidacao(f.monitoring, d.areas, d.settings)).map((f) => f.monitoring.id).sort().join(','),
     inicio: d.settings.validacaoDesdePorGestor?.[gestor.id] ?? null,
-    visiveis: CINCO.filter((id) => d.monitorias.some((m) => m.id === id)),
-    situacao: Object.fromEntries(CINCO.map((id) => [id, d.monitorias.find((m) => m.id === id)?.status ?? 'invisível'])),
-    fila: getFilaDeValidacao(d.monitorias, '2026-11-11').map((f) => f.monitoring.id),
-    feitasOutubro: out.filter(countsForCarteiraGoal).length,
-    resumoOutubro: resumirNotas(out),
+    convertidas: situacao(CONVERTE),
+    reenviadas: situacao(REENVIADAS),
+    fila: getFilaDeValidacao(d.monitorias, '2026-11-16').map((f) => f.monitoring.id),
+    feitas: { ago: doMes(d, '2026-08').filter(countsForCarteiraGoal).length, out: doMes(d, '2026-10').filter(countsForCarteiraGoal).length },
+    media: { ago: resumirNotas(doMes(d, '2026-08')).media, out: resumirNotas(doMes(d, '2026-10')).media },
+    emReavAgo: resumirNotas(doMes(d, '2026-08')).emReavaliacao,
     naMedia: minhas.filter(entraNaMedia).map((m) => m.id).sort().join(','),
   };
 };
 
-ok('D.1', 'cenário: supervisor e monitora com login; as cinco são Rascunho com motivo',
-  Boolean(gestor?.auth_user_id && monitora?.auth_user_id) && CINCO.every((id) => { const m = ms.find((x) => x.id === id); return m?.status === 'Rascunho' && (m.motivo_ajuste ?? '').trim(); }));
+const linha = (id) => ms.find((x) => x.id === id);
+ok('D.1', 'cenário: MON-10001 devolvida (Rascunho com motivo); as quatro de outubro já reenviadas (Pendentes)',
+  Boolean(gestor?.auth_user_id && monitora?.auth_user_id)
+  && CONVERTE.every((id) => linha(id)?.status === 'Rascunho' && (linha(id).motivo_ajuste ?? '').trim())
+  && REENVIADAS.every((id) => linha(id)?.status === 'Pendente'));
 const A = await imp();
 const vGA = await visao(gestor), vMA = await visao(monitora);
 
@@ -110,32 +115,33 @@ await db.exec(sql('21_em_reavaliacao.sql'));   // o arquivo real, sem alteraçã
 const B = await imp();
 ok('D.2', 'dados, notas, motivos, datas de envio, respostas e evidências idênticos', ['mon', 'notas', 'resp', 'evid'].every((k) => A[k] === B[k]));
 ok('D.3', 'histórico idêntico: nenhuma devolução duplicada', A.ev === B.ev && A.devolucoes === B.devolucoes, `${A.devolucoes} → ${B.devolucoes}`);
-ok('D.4', 'auditoria: exatamente 5 registros novos, cadeia íntegra', B.aud === A.aud + 5 && B.quebras === 0, `${A.aud} → ${B.aud}`);
+ok('D.4', `auditoria: exatamente ${CONVERTE.length} registro novo, cadeia íntegra`, B.aud === A.aud + CONVERTE.length && B.quebras === 0, `${A.aud} → ${B.aud}`);
 const mudou = B.situacoes.split(',').filter((x, i) => x !== A.situacoes.split(',')[i]);
-ok('D.5', `mudaram só as cinco: ${mudou.join(' ')}`, mudou.length === 5 && mudou.every((x) => CINCO.includes(x.split('=')[0]) && x.endsWith('=Em reavaliação')));
+ok('D.5', `mudou só: ${mudou.join(' ')}`, mudou.length === CONVERTE.length && mudou.every((x) => CONVERTE.includes(x.split('=')[0]) && x.endsWith('=Em reavaliação')));
 ok('D.6', 'privacidade: o conjunto de monitorias privadas não mudou', A.privadas === B.privadas, `${A.privadas} → ${B.privadas}`);
 
 const vGB = await visao(gestor), vMB = await visao(monitora);
-ok('D.7', 'supervisor (RLS): continua vendo as cinco, agora "Em reavaliação"', vGB.visiveis.length === 5 && Object.values(vGB.situacao).every((s) => s === 'Em reavaliação'));
-ok('D.8', `fila do supervisor igual (${vGB.fila.length}); nenhuma das cinco nela`, JSON.stringify(vGA.fila) === JSON.stringify(vGB.fila) && !vGB.fila.some((id) => CINCO.includes(id)));
-ok('D.9', `monitora, outubro: feitas ${vMA.feitasOutubro} → ${vMB.feitasOutubro} (as quatro de outubro voltam a contar)`, vMB.feitasOutubro === vMA.feitasOutubro + 4);
-ok('D.10', `média de outubro inalterada (${vMA.resumoOutubro.media} → ${vMB.resumoOutubro.media}); em reavaliação: ${vMB.resumoOutubro.emReavaliacao}`,
-  vMA.resumoOutubro.media === vMB.resumoOutubro.media && vMA.naMedia === vMB.naMedia && vMB.resumoOutubro.emReavaliacao === 4);
-ok('D.10a', `configuração do supervisor preservada (início ${vGB.inicio}); fila dele igual: ${vGB.filaComInicio}`,
-  vGA.inicio === '2026-10' && vGB.inicio === '2026-10' && vGA.filaComInicio === vGB.filaComInicio && !CINCO.some((id) => vGB.filaComInicio.includes(id)));
+ok('D.7', 'supervisor (RLS): vê a MON-10001 "Em reavaliação"; as quatro reenviadas continuam Pendentes',
+  Object.values(vGB.convertidas).every((s) => s === 'Em reavaliação') && Object.values(vGB.reenviadas).every((s) => s === 'Pendente'));
+ok('D.8', `fila do supervisor igual (${vGB.fila.length}); a MON-10001 não entra nela`, JSON.stringify(vGA.fila) === JSON.stringify(vGB.fila) && !vGB.fila.some((id) => CONVERTE.includes(id)));
+ok('D.9', `configuração do supervisor preservada (início ${vGB.inicio}); fila com início igual (${vGB.filaComInicio.split(',').length}), com as quatro reenviadas`,
+  vGA.inicio === '2026-10' && vGB.inicio === '2026-10' && vGA.filaComInicio === vGB.filaComInicio && REENVIADAS.every((id) => vGB.filaComInicio.includes(id)));
+ok('D.10', `monitora: feitas agosto ${vMA.feitas.ago} → ${vMB.feitas.ago} (+1, MON-10001); outubro ${vMA.feitas.out} → ${vMB.feitas.out} (igual)`,
+  vMB.feitas.ago === vMA.feitas.ago + 1 && vMB.feitas.out === vMA.feitas.out);
+ok('D.11', `médias inalteradas: agosto ${vMA.media.ago} → ${vMB.media.ago}; outubro ${vMA.media.out} → ${vMB.media.out}; em reavaliação em agosto: ${vMB.emReavAgo}`,
+  vMA.media.ago === vMB.media.ago && vMA.media.out === vMB.media.out && vMA.naMedia === vMB.naMedia && vMB.emReavAgo === 1);
 const repetidas = vMB.vagas.filter((id, i) => vMB.vagas.indexOf(id) !== i);
-const reavNasVagas = vMB.vagas.filter((id) => CINCO.includes(id));
-ok('D.10b', `vagas de agosto ocupadas: ${vMA.vagas.length} → ${vMB.vagas.length}; em reavaliação ocupando vaga: ${reavNasVagas.join(' ') || 'nenhuma'}; nenhuma repetida`,
-  repetidas.length === 0 && reavNasVagas.length === 1 && reavNasVagas[0] === 'MON-10001' && vMB.vagas.length === vMA.vagas.length + 1 && !vMA.vagas.includes('MON-10001'));
+ok('D.12', `vagas de agosto ocupadas: ${vMA.vagas.length} → ${vMB.vagas.length}; MON-10001 ocupa uma única vaga`,
+  repetidas.length === 0 && vMB.vagas.filter((x) => x === 'MON-10001').length === 1 && vMB.vagas.length === vMA.vagas.length + 1 && !vMA.vagas.includes('MON-10001'));
 const rep = await db.exec(sql('21_em_reavaliacao.sql')).then(() => null, (e) => e);
 await db.exec('rollback').catch(() => {});
-ok('D.11', 'o 21 não roda duas vezes', rep && /já instalado/.test(rep.message));
+ok('D.13', 'o 21 não roda duas vezes', rep && /já instalado/.test(rep.message));
 
 await db.exec(sql('21r_reverter_reavaliacao.sql'));
 const C = await imp();
-ok('D.12', 'o 21r devolve as situações e mantém dados, notas e histórico', C.situacoes === A.situacoes && ['mon', 'notas', 'resp', 'evid', 'ev', 'privadas'].every((k) => A[k] === C[k]) && C.quebras === 0);
+ok('D.14', 'o 21r devolve as situações e mantém dados, notas e histórico', C.situacoes === A.situacoes && ['mon', 'notas', 'resp', 'evid', 'ev', 'privadas'].every((k) => A[k] === C[k]) && C.quebras === 0);
 const vMC = await visao(monitora);
-ok('D.13', 'depois do 21r, a contagem da monitora volta a ser a de antes', vMC.feitasOutubro === vMA.feitasOutubro);
+ok('D.15', 'depois do 21r, a contagem da monitora volta a ser a de antes', JSON.stringify(vMC.feitas) === JSON.stringify(vMA.feitas));
 
 const falhas = r.filter((x) => !x.ok).length;
 console.log(`

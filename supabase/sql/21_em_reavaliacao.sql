@@ -12,8 +12,9 @@
 --   1. Devolver para correção leva a monitoria a "Em reavaliação", não a Rascunho.
 --   2. Em reavaliação conta como realizada e entregue (ocupa a vaga da meta), mas a nota fica fora
 --      da média até o reenvio. Isso é regra do portal; o banco não calcula meta nem média.
---   3. As cinco devolvidas existentes são convertidas, preservando dados, notas, evidências,
---      histórico e auditoria, sem evento de devolução duplicado.
+--   3. As devolvidas existentes são convertidas, preservando dados, notas, evidências, histórico e
+--      auditoria, sem evento de devolução duplicado. Revisão de 16/11/2026: só a MON-10001; as outras
+--      quatro aprovadas em 11/11 já foram corrigidas e reenviadas e não são tocadas.
 --   4. Cancelamento segue exclusivo do Administrador com MFA (api.cancelar_monitoria não muda).
 --
 -- O QUE FAZ
@@ -23,14 +24,14 @@
 --     Guardar continua recusado para o que já foi enviado (19), então ela nunca volta à área privada;
 --   - gatilho do histórico: a devolução para "Em reavaliação" vira evento DEVOLUCAO; a troca de nome
 --     Rascunho devolvido <-> Em reavaliação não grava evento (conversão e reversão);
---   - converte as cinco devolvidas existentes (Rascunho + motivo + já enviada + evento DEVOLUCAO).
+--   - converte as devolvidas aprovadas (Rascunho + motivo + já enviada + evento DEVOLUCAO): MON-10001.
 --
 -- O QUE NÃO FAZ
 --   - não muda privacidade (18): app.monitoria_privada só esconde Rascunho/Cancelada nunca enviados,
 --     e "Em reavaliação" sempre foi enviada;
 --   - não muda fila do supervisor (api.fila_validacao e o portal só listam Pendente), validação,
 --     reprovação, cancelamento, notas, respostas, evidências, critérios, pesos, réguas nem relatórios;
---   - nas cinco convertidas muda só a situação e o controle de versão (versão, data e autor da
+--   - na convertida muda só a situação e o controle de versão (versão, data e autor da
 --     alteração); cada conversão fica na auditoria.
 -- =============================================================================
 
@@ -413,12 +414,14 @@ begin
 end;
 $$;
 
--- 5. Conversão das cinco devolvidas --------------------------------------------------------------
--- Devolvida = Rascunho com motivo, já enviada e com evento DEVOLUCAO. Só as cinco aprovadas; qualquer
--- diferença (a mais, a menos ou fora do padrão) recusa o script inteiro antes de gravar.
+-- 5. Conversão das devolvidas aprovadas ----------------------------------------------------------
+-- Devolvida = Rascunho com motivo, já enviada e com evento DEVOLUCAO. Só as aprovadas na lista abaixo;
+-- qualquer diferença (a mais, a menos ou fora do padrão) recusa o script inteiro antes de gravar.
+-- Revisão de 16/11/2026 (backup monitoria-backup-2026-11-16-antes-21.csv): MON-10028, 10030, 10031 e
+-- 10034 já foram corrigidas e reenviadas (Pendentes) e NÃO são tocadas; resta só a MON-10001.
 do $converter$
 declare
-  v_esperadas text[] := array['MON-10001', 'MON-10028', 'MON-10030', 'MON-10031', 'MON-10034'];
+  v_esperadas text[] := array['MON-10001'];
   v_achadas   text[];
   v_m         record;
 begin
@@ -430,14 +433,16 @@ begin
      and not m.aguardando_liberacao
      and exists (select 1 from public.monitoria_eventos e where e.monitoria_id = m.id and e.tipo = 'DEVOLUCAO');
   if v_achadas is distinct from v_esperadas then
-    raise exception 'SCRIPT 21 RECUSADO: devolvidas encontradas (%) diferem das cinco aprovadas (%).', v_achadas, v_esperadas
+    raise exception 'SCRIPT 21 RECUSADO: devolvidas encontradas (%) diferem das aprovadas (%).', v_achadas, v_esperadas
       using errcode = 'MI403';
   end if;
   if exists (select 1 from public.monitorias m
               where m.status = 'Rascunho' and btrim(coalesce(m.motivo_ajuste, '')) <> ''
                 and m.id <> all (v_esperadas)) then
-    raise exception 'SCRIPT 21 RECUSADO: há rascunho com motivo de devolução fora das cinco aprovadas.' using errcode = 'MI403';
+    raise exception 'SCRIPT 21 RECUSADO: há rascunho com motivo de devolução fora das aprovadas.' using errcode = 'MI403';
   end if;
+  perform set_config('app.r21_n', array_length(v_esperadas, 1)::text, true);
+  perform set_config('app.r21_lista', array_to_string(v_esperadas, ','), true);
   for v_m in select id, versao from public.monitorias where id = any (v_esperadas) order by id for update loop
     update public.monitorias set status = 'Em reavaliação', versao_lida = v_m.versao where id = v_m.id;
   end loop;
@@ -465,14 +470,17 @@ begin
   if current_setting('app.r21_ev') <> v_d.ev then
     raise exception 'SCRIPT 21: o histórico ganhou ou perdeu eventos — nada foi gravado.';
   end if;
-  if v_d.aud <> current_setting('app.r21_aud')::bigint + 5 then
-    raise exception 'SCRIPT 21: a auditoria registrou % alterações em vez de 5 — nada foi gravado.', v_d.aud - current_setting('app.r21_aud')::bigint;
+  if v_d.aud <> current_setting('app.r21_aud')::bigint + current_setting('app.r21_n')::integer then
+    raise exception 'SCRIPT 21: a auditoria registrou % alterações em vez de % — nada foi gravado.',
+      v_d.aud - current_setting('app.r21_aud')::bigint, current_setting('app.r21_n');
   end if;
   if exists (select 1 from (select a.hash <> app.auditoria_hash(a) or a.hash_anterior is distinct from lag(a.hash) over (order by a.seq) q
                               from public.auditoria a) x where q) then
     raise exception 'SCRIPT 21: a cadeia da auditoria acusou quebra — nada foi gravado.';
   end if;
-  if (select count(*) from public.monitorias where status = 'Em reavaliação') <> 5
+  -- Em reavaliação = exatamente as da lista aprovada; nenhuma outra monitoria mudou de situação.
+  if (select coalesce(string_agg(id, ',' order by id), '') from public.monitorias where status = 'Em reavaliação')
+       <> current_setting('app.r21_lista')
      or exists (select 1 from public.monitorias where status = 'Rascunho' and btrim(coalesce(motivo_ajuste, '')) <> '') then
     raise exception 'SCRIPT 21: a conversão não ficou completa — nada foi gravado.';
   end if;
@@ -502,7 +510,7 @@ end;
 $conf$;
 
 insert into app.versoes_esquema (versao, descricao)
-values ('21', 'Situação Em reavaliação para monitorias devolvidas; conversão das cinco devolvidas existentes')
+values ('21', 'Situação Em reavaliação para monitorias devolvidas; conversão das devolvidas existentes (MON-10001)')
 on conflict (versao) do nothing;
 
 commit;

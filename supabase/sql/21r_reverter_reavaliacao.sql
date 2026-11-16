@@ -4,7 +4,7 @@
 --
 -- *** NÃO EXECUTAR NO SUPABASE SEM AUTORIZAÇÃO ESPECÍFICA DA GESTÃO DA QUALIDADE. ***
 -- Pré-requisito: portal anterior ao 21 republicado ANTES (o anterior não conhece "Em reavaliação").
--- O QUE FAZ: toda monitoria "Em reavaliação" (as cinco convertidas e as devolvidas depois do 21) volta a
+-- O QUE FAZ: toda monitoria "Em reavaliação" (as convertidas pelo 21 e as devolvidas depois dele) volta a
 --   Rascunho com o motivo, como era antes; sem evento novo no histórico (o gatilho do 21 ignora essa
 --   troca). Depois devolve gatilho, devolver e salvar às versões do 14 e do 19 (texto copiado) e tira
 --   a situação da tabela. Não toca em nota, resposta, evidência nem evento. Tudo numa transação.
