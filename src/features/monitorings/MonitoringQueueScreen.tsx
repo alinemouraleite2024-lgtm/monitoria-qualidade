@@ -130,16 +130,17 @@ export const MonitoringQueueScreen = ({
     // encerrado e não tem dias restantes, mas o trabalho de agosto acontece em setembro.
     const diasUteis = businessDaysRemainingIn(mesDeTrabalho, hoje);
 
-    // Decomposição da barra: a cobertura é a parte que fecha meta, e dentro dela distinguimos
-    // o que já passou pela gestora. `validated` e `awaiting` do serviço contam sem teto, então
-    // são limitados à cobertura para que os três segmentos somem exatamente o alvo.
-    const validadasNaCobertura = Math.min(progresso.validated, progresso.cobertura);
-    const aguardandoNaCobertura = progresso.cobertura - validadasNaCobertura;
+    // Decomposição da barra (16/11/2026): cada monitoria que ocupa a cobertura, classificada pela
+    // situação real — validada, em reavaliação ou aguardando validação. Não é diferença: a soma
+    // das três é a cobertura por construção (goalService.classificarCobertura).
+    const { validadas: validadasNaCobertura, emReavaliacao: emReavaliacaoNaCobertura, aguardando: aguardandoNaCobertura } =
+      progresso.coberturaPorSituacao;
 
     return {
       progresso,
       diasUteis,
       validadasNaCobertura,
+      emReavaliacaoNaCobertura,
       aguardandoNaCobertura,
       ritmo: diasUteis > 0 ? (progresso.remaining / diasUteis).toFixed(1) : String(progresso.remaining),
       // Escopo por gestor (0.17.0): a fila de validação e a leitura de equipe eram globais no
@@ -261,6 +262,7 @@ export const MonitoringQueueScreen = ({
         cobertura={dados.progresso.cobertura}
         remaining={dados.progresso.remaining}
         validadasNaCobertura={dados.validadasNaCobertura}
+        emReavaliacaoNaCobertura={dados.emReavaliacaoNaCobertura}
         aguardandoNaCobertura={dados.aguardandoNaCobertura}
         entregues={dados.progresso.entregues}
         foraDaQuota={dados.progresso.excedente + dados.progresso.outOfGoal + dados.progresso.outOfCarteira}

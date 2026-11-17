@@ -153,6 +153,7 @@ import {
   competenciaLabel,
   competenciaDaAgenda,
   competenciaInicialDoPainel,
+  competenciaInicialDosRelatorios,
   periodToCompetencia,
   parseData,
 } from './domain/period';
@@ -450,7 +451,9 @@ function AppContent() {
   // Cada tela tem o seu período. A fila de Monitorias fica de fora de propósito: ela responde
   // "o que eu preciso fazer agora", e navegar por competências ali transformaria a tela de
   // trabalho em tela de consulta — que é o papel de Relatórios.
-  const [reportPeriod, setReportPeriod] = useState(() => getCurrentPeriod());
+  // 16/11/2026: null até o usuário escolher. Enquanto isso, Relatórios / Meu Histórico abrem na
+  // competência inicial do perfil (Monitora e Gestor: mês atual − defasagem; Administrador: vigente).
+  const [reportEscolhido, setReportPeriod] = useState<Period | null>(null);
   const [planningPeriod, setPlanningPeriod] = useState(() => getCurrentPeriod());
   // 16/11/2026: null até o usuário escolher no seletor. Enquanto isso, o Painel abre na competência
   // inicial do perfil (Gestor: a mesma da Validação; Administrador: mês vigente).
@@ -561,6 +564,22 @@ function AppContent() {
     // periodoAtual é recalculado a cada render; o mês é o que importa.
     [dashboardEscolhido, perfilAtivo, periodoAtual.year, periodoAtual.month, settings.defasagemCompetencia],
   );
+  const reportPeriod = React.useMemo(
+    () => reportEscolhido ?? competenciaInicialDosRelatorios(perfilAtivo, periodoAtual, settings.defasagemCompetencia),
+    [reportEscolhido, perfilAtivo, periodoAtual.year, periodoAtual.month, settings.defasagemCompetencia],
+  );
+  // 16/11/2026: escolhas de navegação são do usuário logado. Ao sair, entrar outro usuário ou a
+  // sessão encerrar, tudo volta ao padrão do perfil — ninguém herda competência nem filtro de
+  // quem usou a aba antes. Trocar de perfil (mesma pessoa) não passa por aqui: as escolhas ficam.
+  const usuarioDaNavegacao = currentUser?.id ?? null;
+  React.useEffect(() => {
+    setMonitoringsPeriod(null);
+    setDashboardPeriod(null);
+    setReportPeriod(null);
+    setPlanningPeriod(getCurrentPeriod());
+    setDashboardAreaId('ALL');
+    setHistoricoFiltros(FILTROS_VAZIOS);
+  }, [usuarioDaNavegacao]);
   const metasDoPainel = React.useMemo(() => metasDe(dashboardPeriod).metas, [metasDe, dashboardPeriod]);
   const metasDoPlanejamento = React.useMemo(() => metasDe(planningPeriod), [metasDe, planningPeriod]);
 

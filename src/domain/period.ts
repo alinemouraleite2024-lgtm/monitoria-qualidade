@@ -122,6 +122,13 @@ export const competenciaDaAgenda = (mesDeTrabalho: Period, defasagemMeses: numbe
 export const competenciaInicialDoPainel = (perfil: string | null | undefined, mesAtual: Period, defasagemMeses: number): Period =>
   perfil === 'GESTOR' ? competenciaDaAgenda(mesAtual, defasagemMeses) : mesAtual;
 
+/**
+ * Competência em que Relatórios / Meu Histórico abrem (16/11/2026): a da rotina de monitoria.
+ * Monitora e Gestor: mês atual − defasagem; Administrador: mês vigente. Só a seleção inicial.
+ */
+export const competenciaInicialDosRelatorios = (perfil: string | null | undefined, mesAtual: Period, defasagemMeses: number): Period =>
+  perfil === 'MONITOR' || perfil === 'GESTOR' ? competenciaDaAgenda(mesAtual, defasagemMeses) : mesAtual;
+
 /** "outubro/2026": rótulo curto de competência, para frases. */
 export const competenciaCurta = (period: Period): string => `${MESES[period.month].toLowerCase()}/${period.year}`;
 

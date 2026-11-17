@@ -35,6 +35,7 @@ import {
   countsOutsideCarteira,
   isValidated,
   isAwaitingValidation,
+  isEmReavaliacao,
 } from './monitoringRules';
 
 // ---------------------------------------------------------------------------
@@ -146,6 +147,31 @@ const doEscopo = (
       (!goal.canal || m.canal === goal.canal)
   );
 
+// Mesma ordem das vagas (queueService.getDetalheDaColaboradora): a mais antiga ocupa a vaga 1.
+const porDataDaVaga = (a: Monitoring, b: Monitoring) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+
+/**
+ * Classifica, pela situação real, cada monitoria que ocupa a cobertura (16/11/2026). Não deduz
+ * "aguardando" pela diferença: conta Pendente como aguardando, Em reavaliação à parte e Validada
+ * como validada. `Concluída` (dado antigo, ninguém grava) entra em "aguardando", que é "enviada".
+ */
+export const classificarCobertura = (
+  linhas: ColaboradorGoal[],
+  monitorings: Monitoring[],
+  period: Period
+): { validadas: number; emReavaliacao: number; aguardando: number } => {
+  const r = { validadas: 0, emReavaliacao: 0, aguardando: 0 };
+  for (const g of linhas) {
+    const ocupam = doEscopo(monitorings, g, period).sort(porDataDaVaga).slice(0, Math.max(0, g.targetQty));
+    for (const m of ocupam) {
+      if (isValidated(m)) r.validadas += 1;
+      else if (isEmReavaliacao(m)) r.emReavaliacao += 1;
+      else r.aguardando += 1;
+    }
+  }
+  return r;
+};
+
 /** Progresso de uma linha de meta. Usado tanto pelo quadro de metas quanto pela fila. */
 export const getEscopoProgresso = (
   goal: ColaboradorGoal,
@@ -196,6 +222,14 @@ export interface CarteiraProgress {
   remaining: number;
   validated: number;
   awaiting: number;
+  /** Entregues em reavaliação (21), sem teto — para o detalhamento por monitora. */
+  emReavaliacao: number;
+  /**
+   * As monitorias que OCUPAM a cobertura, uma a uma, classificadas pela situação real (16/11/2026).
+   * Mesma seleção das vagas da meta: por escopo, as entregues em ordem de data até o alvo.
+   * A soma das três é sempre igual a `cobertura`.
+   */
+  coberturaPorSituacao: { validadas: number; emReavaliacao: number; aguardando: number };
   /** Entregue além do alvo de algum escopo. */
   excedente: number;
   /** Entregue em canal sem meta, ou de colaboradora sem meta. Não abate quota. */
@@ -239,6 +273,8 @@ export const getCarteiraProgress = (
     remaining: soma((e) => e.falta),
     validated: daCarteira.filter(isValidated).length,
     awaiting: daCarteira.filter(isAwaitingValidation).length,
+    emReavaliacao: daCarteira.filter(isEmReavaliacao).length,
+    coberturaPorSituacao: classificarCobertura(linhas, monitorings, period),
     excedente,
     outOfGoal,
     outOfCarteira: doPeriodo.filter(countsOutsideCarteira).length,

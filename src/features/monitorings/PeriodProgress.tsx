@@ -3,10 +3,10 @@
 // Só apresentação. Todos os valores chegam prontos de goalService — este componente não
 // soma, não conta e não decide o que conta.
 //
-// A barra tem três segmentos porque "feito" tem dois estados: validado pela gestora e
-// enviado, aguardando validação. Os dois contam para a meta (decisão de produto: feito conta
-// no envio), mas a monitora precisa distinguir — senão fica sem saber por que o número não
-// fecha do lado da gestora.
+// A barra separa o "feito" pela situação real: validado pela gestora, em reavaliação (devolvido,
+// aguardando os ajustes da monitora — 16/11/2026) e enviado, aguardando validação. Todos contam
+// para a meta (feito conta no envio), mas a monitora precisa distinguir — senão fica sem saber
+// por que o número não fecha do lado da gestora, nem o que depende dela.
 
 interface PeriodProgressProps {
   periodoLabel: string;
@@ -15,6 +15,8 @@ interface PeriodProgressProps {
   cobertura: number;
   remaining: number;
   validadasNaCobertura: number;
+  /** Em reavaliação: entregues, aguardando os ajustes da monitora. Opcional por compatibilidade. */
+  emReavaliacaoNaCobertura?: number;
   aguardandoNaCobertura: number;
   entregues: number;
   foraDaQuota: number;
@@ -23,6 +25,7 @@ interface PeriodProgressProps {
 }
 
 const pct = (parte: number, todo: number) => (todo > 0 ? (parte / todo) * 100 : 0);
+const COR_REAVALIACAO = 'var(--info, #0284c7)';
 
 export const PeriodProgress = ({
   periodoLabel,
@@ -31,6 +34,7 @@ export const PeriodProgress = ({
   cobertura,
   remaining,
   validadasNaCobertura,
+  emReavaliacaoNaCobertura = 0,
   aguardandoNaCobertura,
   entregues,
   foraDaQuota,
@@ -70,12 +74,19 @@ export const PeriodProgress = ({
         </div>
       </div>
 
+      {/* 16/11/2026: a barra e a legenda contam só as monitorias que ocupam vagas da meta; as
+          entregues fora da quota aparecem à parte, no fim. Sem isto, "1 validada" aqui e
+          "3 validadas" no Painel pareciam divergir. */}
+      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '1.1rem 0 0.35rem' }}>
+        Distribuição das vagas ocupadas na meta
+      </div>
       <div
         role="img"
-        aria-label={`${validadasNaCobertura} validadas, ${aguardandoNaCobertura} aguardando validação, ${remaining} a fazer, de ${target}`}
-        style={{ display: 'flex', height: '14px', borderRadius: '999px', overflow: 'hidden', backgroundColor: 'var(--bg-app)', border: '1px solid var(--border-color)', margin: '1.1rem 0 0.75rem' }}
+        aria-label={`${validadasNaCobertura} validadas, ${emReavaliacaoNaCobertura} em reavaliação, ${aguardandoNaCobertura} aguardando validação, ${remaining} faltam para a meta, de ${target}`}
+        style={{ display: 'flex', height: '14px', borderRadius: '999px', overflow: 'hidden', backgroundColor: 'var(--bg-app)', border: '1px solid var(--border-color)', margin: '0 0 0.75rem' }}
       >
         <div style={{ width: `${pct(validadasNaCobertura, target)}%`, backgroundColor: 'var(--primary)' }} />
+        <div style={{ width: `${pct(emReavaliacaoNaCobertura, target)}%`, backgroundColor: COR_REAVALIACAO }} />
         <div style={{
           width: `${pct(aguardandoNaCobertura, target)}%`,
           backgroundColor: 'var(--primary-light)',
@@ -85,11 +96,14 @@ export const PeriodProgress = ({
 
       <div style={{ display: 'flex', gap: '1.35rem', flexWrap: 'wrap', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
         <Legenda cor="var(--primary)" texto={`${validadasNaCobertura} validadas pela gestora`} />
+        {emReavaliacaoNaCobertura > 0 && (
+          <Legenda cor={COR_REAVALIACAO} texto={`${emReavaliacaoNaCobertura} em reavaliação, aguardando seus ajustes`} />
+        )}
         <Legenda hachurada texto={`${aguardandoNaCobertura} enviadas, aguardando validação`} />
-        <Legenda cor="var(--bg-app)" texto={`${remaining} a fazer`} />
+        <Legenda cor="var(--bg-app)" texto={`${remaining} faltam para a meta`} />
         {foraDaQuota > 0 && (
           <span style={{ color: 'var(--text-muted)' }}>
-            · {entregues} entregues no total, {foraDaQuota} fora da quota
+            · {entregues} entregues no total, {foraDaQuota} fora da quota (não ocupam vaga)
           </span>
         )}
       </div>

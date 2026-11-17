@@ -343,6 +343,7 @@ export const DashboardScreen = ({
                                             {s.entregues > 0 && (
                                               <div style={{ fontWeight: '500', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                                                 {s.entregues} entregues · {s.validated} validadas
+                                                {s.emReavaliacao > 0 && ` · ${s.emReavaliacao} em reavaliação`}
                                                 {(s.excedente + s.outOfGoal) > 0 && ` · ${s.excedente + s.outOfGoal} fora da quota`}
                                               </div>
                                             )}

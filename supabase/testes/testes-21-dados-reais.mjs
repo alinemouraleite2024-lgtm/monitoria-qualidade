@@ -133,6 +133,14 @@ ok('D.11', `médias inalteradas: agosto ${vMA.media.ago} → ${vMB.media.ago}; o
 const repetidas = vMB.vagas.filter((id, i) => vMB.vagas.indexOf(id) !== i);
 ok('D.12', `vagas de agosto ocupadas: ${vMA.vagas.length} → ${vMB.vagas.length}; MON-10001 ocupa uma única vaga`,
   repetidas.length === 0 && vMB.vagas.filter((x) => x === 'MON-10001').length === 1 && vMB.vagas.length === vMA.vagas.length + 1 && !vMA.vagas.includes('MON-10001'));
+// Barra da meta (16/11/2026): as monitorias da cobertura de agosto, classificadas pela situação real.
+const { getCarteiraProgress } = await mod('src/domain/goalService.ts');
+const dM = await carregarDados(transporte(monitora.auth_user_id), PADROES);
+const pAgo = getCarteiraProgress(dM.metasColaborador ?? [], dM.monitorias, monitora.id, { year: 2026, month: 7 });
+const cAgo = pAgo.coberturaPorSituacao;
+ok('D.12a', `barra de agosto: ${cAgo.validadas} validadas · ${cAgo.emReavaliacao} em reavaliação · ${cAgo.aguardando} aguardando = cobertura ${pAgo.cobertura}`,
+  cAgo.validadas + cAgo.emReavaliacao + cAgo.aguardando === pAgo.cobertura && cAgo.emReavaliacao === 1
+  && cAgo.aguardando === dM.monitorias.filter((m) => m.monitorId === monitora.id && m.competencia === '2026-08' && m.status === 'Pendente' && vMB.vagas.includes(m.id)).length);
 const rep = await db.exec(sql('21_em_reavaliacao.sql')).then(() => null, (e) => e);
 await db.exec('rollback').catch(() => {});
 ok('D.13', 'o 21 não roda duas vezes', rep && /já instalado/.test(rep.message));
